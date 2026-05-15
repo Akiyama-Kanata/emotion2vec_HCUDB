@@ -1,7 +1,7 @@
-# Copyright (c) Facebook, Inc. and its affiliates.
-#
-# This source code is licensed under the MIT license found in the
-# LICENSE file in the root directory of this source tree.
+"""
+Transformer ブロック・Multi-Head Attention・1次元デコーダなどの基本構成要素を定義するモジュール。
+emotion2vec の共有 Transformer エンコーダと prenet エンコーダの両方で使用される。
+"""
 
 import torch
 import torch.nn as nn
@@ -15,12 +15,16 @@ from fairseq.modules import (
 )
 
 from enum import Enum, auto
+
+
 class Modality(Enum):
+    """対応するモダリティの種類を表す列挙型。現在は音声のみサポート。"""
     AUDIO = auto()
 
 
 @dataclass
 class D2vDecoderConfig:
+    """事前学習時のデコーダ（マスク復元ヘッド）のハイパーパラメータ設定。"""
     decoder_dim: int = 384
     decoder_groups: int = 16
     decoder_kernel: int = 5
@@ -36,6 +40,7 @@ class D2vDecoderConfig:
 
 
 class FixedPositionalEncoder(nn.Module):
+    """固定（非学習）の位置埋め込みをそのまま返すエンコーダ。"""
     def __init__(self, pos_embed):
         super().__init__()
         self.positions = pos_embed
@@ -61,6 +66,8 @@ class TextFeatPositionalEncoder(nn.Module):
 
 
 class BlockEncoder(nn.Module):
+    """複数の Transformer ブロックをスタックし、Layerdrop を適用しながら逐次処理するエンコーダ。"""
+
     def __init__(self, blocks, norm_layer, layer_norm_first, layerdrop, dropout):
         super().__init__()
         self.blocks = blocks
@@ -70,12 +77,14 @@ class BlockEncoder(nn.Module):
         self.dropout = nn.Dropout(dropout, inplace=True)
 
     def forward(self, x, padding_mask, alibi_bias, alibi_scale):
+        """ALiBiバイアスとスケールを適用しながら各ブロックを順に通過させる。"""
         if self.norm is not None and not self.layer_norm_first:
             x = self.norm(x)
 
         x = self.dropout(x)
 
         for i, blk in enumerate(self.blocks):
+            # Layerdrop: 学習時のみ確率的にブロックをスキップする
             if (
                 not self.training
                 or self.layerdrop == 0
@@ -98,11 +107,11 @@ class BlockEncoder(nn.Module):
 
 
 class DecoderBase(nn.Module):
+    """デコーダ基底クラス。投影層（proj）の初期化とスキップ接続の加算を提供する。"""
     decoder_cfg: D2vDecoderConfig
 
     def __init__(self, cfg: D2vDecoderConfig):
         super().__init__()
-
         self.decoder_cfg = cfg
 
     def reset_parameters(self):
@@ -111,6 +120,7 @@ class DecoderBase(nn.Module):
                 mod.reset_parameters()
 
     def add_residual(self, x, residual, i, mask_info):
+        """スキップ接続を加算する。サイズ不一致または設定無効の場合はそのまま返す。"""
         if (
             residual is None
             or not self.decoder_cfg.decoder_residual
@@ -119,15 +129,20 @@ class DecoderBase(nn.Module):
             return x
 
         ret = x + residual
-
         return ret
 
 
 class Decoder1d(DecoderBase):
+    """
+    1次元畳み込みデコーダ。マスクされたトークンを元の特徴量空間に復元する（事前学習時のみ使用）。
+    Conv1d × decoder_layers の後、線形射影で input_dim に戻す。
+    """
+
     def __init__(self, cfg: D2vDecoderConfig, input_dim):
         super().__init__(cfg)
 
         def make_block(in_dim):
+            """Conv1d + SamePad + LayerNorm + GELU の1ブロックを作成する。"""
             block = [
                 nn.Conv1d(
                     in_dim,
@@ -142,7 +157,6 @@ class Decoder1d(DecoderBase):
                 TransposeLast(),
                 nn.GELU(),
             ]
-
             return nn.Sequential(*block)
 
         self.blocks = nn.Sequential(
@@ -152,6 +166,7 @@ class Decoder1d(DecoderBase):
             ]
         )
 
+        # 投影層: decoder_dim → input_dim に戻す（projection_layers > 1 の場合は中間層を追加）
         projs = []
         curr_dim = cfg.decoder_dim
         for i in range(cfg.projection_layers - 1):
@@ -166,8 +181,8 @@ class Decoder1d(DecoderBase):
             self.proj = nn.Sequential(*projs)
 
     def forward(self, x, mask_info):
-
-        x = x.transpose(1, 2)
+        """Conv1d (B, D, T) で処理し、スキップ接続後に投影して (B, T, D) を返す。"""
+        x = x.transpose(1, 2)  # (B, T, D) → (B, D, T) に転置（Conv1d の入力形式）
 
         residual = x
 
@@ -176,12 +191,17 @@ class Decoder1d(DecoderBase):
             x = self.add_residual(x, residual, i, mask_info)
             residual = x
 
-        x = x.transpose(1, 2)
+        x = x.transpose(1, 2)  # (B, D, T) → (B, T, D) に戻す
         x = self.proj(x)
         return x
 
 
 class AltBlock(nn.Module):
+    """
+    ALiBi位置バイアス対応のTransformerブロック。Pre-LN / Post-LN の両方をサポート。
+    ffn_targets=True のとき FFN 出力をターゲットとして返す（data2vec の教師信号生成に使用）。
+    """
+
     def __init__(
         self,
         dim,
@@ -230,7 +250,13 @@ class AltBlock(nn.Module):
         self.post_mlp_dropout = nn.Dropout(post_mlp_drop, inplace=False)
 
     def forward(self, x, padding_mask=None, alibi_bias=None):
+        """
+        Returns:
+            x: ブロック出力 (B, T, D)
+            t: ターゲット表現（ffn_targets=True なら FFN出力、False なら x と同じ）
+        """
         if self.layer_norm_first:
+            # Pre-LN: Norm → Attn → Skip → Norm → FFN → Skip
             x = x + self.drop_path(self.attn(self.norm1(x), padding_mask, alibi_bias))
             r = x = self.mlp(self.norm2(x))
             t = x
@@ -238,6 +264,7 @@ class AltBlock(nn.Module):
             if not self.ffn_targets:
                 t = x
         else:
+            # Post-LN: Attn → Skip → Norm → FFN → Skip → Norm
             x = x + self.drop_path(self.attn(x, padding_mask, alibi_bias))
             r = x = self.norm1(x)
             x = self.mlp(x)
@@ -250,6 +277,11 @@ class AltBlock(nn.Module):
 
 
 class AltAttention(nn.Module):
+    """
+    ALiBiバイアスとパディングマスク対応のMulti-Head Self-Attention。
+    cosine_attention=True のとき、QKをL2正規化してcosine類似度でスコアを計算する。
+    """
+
     def __init__(
         self,
         dim,
@@ -263,8 +295,9 @@ class AltAttention(nn.Module):
         super().__init__()
         self.num_heads = num_heads
         head_dim = dim // num_heads
-        self.scale = qk_scale or head_dim ** -0.5
+        self.scale = qk_scale or head_dim ** -0.5  # スケーリング係数: 1/√d_k
 
+        # Q/K/V を一括計算する線形層（出力次元 = dim * 3）
         self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
         self.attn_drop = nn.Dropout(attn_drop)
         self.proj = nn.Linear(dim, dim)
@@ -273,11 +306,19 @@ class AltAttention(nn.Module):
         self.cosine_attention = cosine_attention
 
         if cosine_attention:
+            # cosine attention 用の学習可能な温度パラメータ（最大値で上限を設けてスケールを安定化）
             self.logit_scale = nn.Parameter(
                 torch.log(10 * torch.ones((num_heads, 1, 1))), requires_grad=True
             )
 
     def forward(self, x, padding_mask=None, alibi_bias=None):
+        """
+        Args:
+            x: 入力 (B, N, C)
+            alibi_bias: ALiBi位置バイアス (B, H, N, N)、Noneの場合は適用しない
+        Returns:
+            出力テンソル (B, N, C)
+        """
         B, N, C = x.shape
         qkv = (
             self.qkv(x)
@@ -301,18 +342,21 @@ class AltAttention(nn.Module):
             attn = attn * logit_scale
         else:
             q = q * self.scale
-            attn = q @ k.transpose(-2, -1)
+            attn = q @ k.transpose(-2, -1)  # (B, H, N, N) のアテンションスコア
 
+        # ALiBiバイアスを加算する（相対距離に比例した負の値でローカルな注意を促す）
         if alibi_bias is not None:
             attn = attn.type_as(alibi_bias)
             attn[:, : alibi_bias.size(1)] += alibi_bias
 
+        # パディング位置に -inf を入れてsoftmax後の重みをゼロにする
         if padding_mask is not None and padding_mask.any():
             attn = attn.masked_fill(
                 padding_mask.unsqueeze(1).unsqueeze(2).to(torch.bool),
                 float("-inf"),
             )
 
+        # float32 で softmax を計算してから元の dtype に戻す（数値安定性のため）
         attn = attn.softmax(dim=-1, dtype=torch.float32).to(dtype=dtype)
         attn = self.attn_drop(attn)
         x = (attn @ v).transpose(1, 2)  #

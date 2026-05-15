@@ -1,3 +1,8 @@
+"""
+IEMOCAP感情認識タスクの5-fold交差検証を実行するメインスクリプト。
+各foldでモデルを学習し、テストセットのWA/UA/F1スコアを集計して平均を報告する。
+"""
+
 import os
 import sys
 from pathlib import Path
@@ -17,6 +22,7 @@ import logging
 logger = logging.getLogger('IEMOCAP_Downstream')
 
 def count_parameters(model):
+    """モデルの全パラメータ数を層ごとに表示し、合計を返す（デバッグ用）。"""
     total_params = 0
     for name, parameter in model.named_parameters():
         param = parameter.numel()
@@ -26,25 +32,29 @@ def count_parameters(model):
 
 @hydra.main(config_path='config', config_name='default.yaml')
 def train_iemocap(cfg: DictConfig):
+    """5-fold交差検証のメインループ。各foldでモデルを学習しテスト精度を集計する。"""
     torch.manual_seed(cfg.common.seed)
 
+    # 感情ラベルを整数IDにマッピングする辞書（ang:怒り, hap:幸福, neu:中立, sad:悲しみ）
     label_dict={'ang': 0, 'hap': 1, 'neu': 2, 'sad': 3}
-    n_samples = [1085, 1023, 1151, 1031, 1241] # Session1, 2, 3, 4, 5
+    n_samples = [1085, 1023, 1151, 1031, 1241] # Session1, 2, 3, 4, 5 のサンプル数
     idx_sessions = [0, 1, 2, 3, 4]
 
     test_wa_avg, test_ua_avg, test_f1_avg = 0., 0., 0.
-    
+
     for fold in idx_sessions: # extract the $fold$th as test set
         logger.info(f"------Now it's {fold+1}th fold------")
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         torch.cuda.empty_cache()
-        
+
+        # 特徴量とラベルを読み込む
         dataset = load_ssl_features(cfg.dataset.feat_path, label_dict)
 
-        test_len = n_samples[fold] 
+        # このfoldのテストセット範囲を計算する（累積サンプル数で開始・終了インデックスを決定）
+        test_len = n_samples[fold]
         test_idx_start = sum(n_samples[:fold])
-        test_idx_end = test_idx_start + test_len 
+        test_idx_end = test_idx_start + test_len
         train_loader, val_loader, test_loader = train_valid_test_iemocap_dataloader(
             dataset,
             cfg.dataset.batch_size,
@@ -53,10 +63,12 @@ def train_iemocap(cfg: DictConfig):
             eval_is_test=cfg.dataset.eval_is_test,
         )
 
+        # 分類器を初期化してデバイスに転送する（emotion2vecの出力次元は768）
         model = BaseModel(input_dim=768, output_dim=len(label_dict))
         model = model.to(device)
 
         # count_parameters(model)
+        # オプティマイザ: RMSprop + Cyclic LR スケジューラで学習率を周期的に変化させる
         optimizer = optim.RMSprop(model.parameters(), lr=cfg.optimization.lr, momentum=0.9)
         scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=cfg.optimization.lr, max_lr=1e-3, step_size_up=10)
         criterion = nn.CrossEntropyLoss()
@@ -64,7 +76,7 @@ def train_iemocap(cfg: DictConfig):
         best_val_wa = 0
         best_val_wa_epoch = 0
         # Training loop
-        
+
         save_dir = os.path.join(str(Path.cwd()), f"model_{fold+1}.pth")
         for epoch in range(cfg.optimization.epoch):  # Adjust the number of epochs as per your requirement
             train_loss = train_one_epoch(model, optimizer, criterion, train_loader, device)
@@ -72,6 +84,7 @@ def train_iemocap(cfg: DictConfig):
             # Validation step
             val_wa, val_ua, val_f1 = validate_and_test(model, val_loader, device, num_classes=len(label_dict))
 
+            # 検証WAが最大のエポックでモデルを保存する（early stopping の代わり）
             if val_wa > best_val_wa:
                 best_val_wa = val_wa
                 best_val_wa_epoch = epoch
@@ -80,15 +93,17 @@ def train_iemocap(cfg: DictConfig):
             # Print losses for every epoch
             logger.info(f"Epoch {epoch+1}, Training Loss: {train_loss/len(train_loader):.6f}, Validation WA: {val_wa:.2f}%; UA: {val_ua:.2f}%; F1: {val_f1:.2f}%")
 
+        # 最良エポックのチェックポイントをロードしてテストセットで評価する
         ckpt = torch.load(save_dir)
         model.load_state_dict(ckpt, strict=True)
         test_wa, test_ua, test_f1 = validate_and_test(model, test_loader, device, num_classes=len(label_dict))
         logger.info(f"The {fold+1}th Fold at epoch {best_val_wa_epoch + 1}, test WA {test_wa}%; UA {test_ua}%; F1 {test_f1}%")
-        
+
         test_wa_avg += test_wa
         test_ua_avg += test_ua
         test_f1_avg += test_f1
 
+    # 全fold平均のスコアを報告する
     logger.info(f"Average WA: {test_wa_avg/len(idx_sessions)}%; UA: {test_ua_avg/len(idx_sessions)}%; F1: {test_f1_avg/len(idx_sessions)}%")
 
 if __name__ == '__main__':

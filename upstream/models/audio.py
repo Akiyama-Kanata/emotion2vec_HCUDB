@@ -3,6 +3,12 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+"""
+音声モダリティ専用エンコーダの定義。
+CNN特徴抽出器（ConvFeatureExtractionModel）と畳み込み位置エンコーダで構成され、
+ModalitySpecificEncoder（base.py）を継承する。
+"""
+
 from functools import partial
 import torch
 import torch.nn as nn
@@ -21,6 +27,7 @@ from .modules import Modality, BlockEncoder, Decoder1d
 
 @dataclass
 class D2vAudioConfig(D2vModalityConfig):
+    """音声モダリティエンコーダのハイパーパラメータ設定。"""
     type: Modality = Modality.AUDIO
     extractor_mode: str = "layer_norm"
     feature_encoder_spec: str = field(
@@ -46,6 +53,10 @@ class D2vAudioConfig(D2vModalityConfig):
 
 
 class AudioEncoder(ModalitySpecificEncoder):
+    """
+    音声モダリティ専用エンコーダ。
+    CNN特徴抽出 → 線形射影 → 畳み込み位置エンコーダ → prenet Transformer の順で処理する。
+    """
 
     modality_cfg: D2vAudioConfig
 
@@ -59,10 +70,11 @@ class AudioEncoder(ModalitySpecificEncoder):
         alibi_biases: Dict,
         task: Optional[FairseqTask],
     ):
-
+        # CNN層の仕様をeval()で評価して[(dim, kernel, stride), ...]のリストに変換する
         self.feature_enc_layers = eval(modality_cfg.feature_encoder_spec)
-        feature_embed_dim = self.feature_enc_layers[-1][0]
+        feature_embed_dim = self.feature_enc_layers[-1][0]  # CNN最終層の出力次元
 
+        # 波形から局所特徴量を抽出する多層CNN（wav2vec2と同一アーキテクチャ）
         local_encoder = ConvFeatureExtractionModel(
             conv_layers=self.feature_enc_layers,
             dropout=0.0,
@@ -70,14 +82,16 @@ class AudioEncoder(ModalitySpecificEncoder):
             conv_bias=False,
         )
 
+        # CNN特徴量の次元を embed_dim に揃える線形射影
         project_features = nn.Sequential(
             TransposeLast(),
             nn.LayerNorm(feature_embed_dim),
             nn.Linear(feature_embed_dim, embed_dim),
         )
 
+        # 畳み込み相対位置エンコーダ（depth 層の Conv1d + LayerNorm + GELU のスタック）
         num_pos_layers = modality_cfg.conv_pos_depth
-        k = max(3, modality_cfg.conv_pos_width // num_pos_layers)
+        k = max(3, modality_cfg.conv_pos_width // num_pos_layers)  # 各層のカーネル幅
 
         positional_encoder = nn.Sequential(
             TransposeLast(),
@@ -88,9 +102,9 @@ class AudioEncoder(ModalitySpecificEncoder):
                         embed_dim,
                         kernel_size=k,
                         padding=k // 2,
-                        groups=modality_cfg.conv_pos_groups,
+                        groups=modality_cfg.conv_pos_groups,  # グループ畳み込みで計算量を削減
                     ),
-                    SamePad(k),
+                    SamePad(k),   # 入力と同じ系列長を維持するパディング除去
                     TransposeLast(),
                     LayerNorm(embed_dim, elementwise_affine=False),
                     TransposeLast(),
@@ -104,6 +118,7 @@ class AudioEncoder(ModalitySpecificEncoder):
         if modality_cfg.conv_pos_pre_ln:
             positional_encoder = nn.Sequential(LayerNorm(embed_dim), positional_encoder)
 
+        # prenet: Transformer ブロックの Drop Path率を線形補間で割り当てる
         dpr = np.linspace(
             modality_cfg.start_drop_path_rate,
             modality_cfg.end_drop_path_rate,
@@ -117,6 +132,7 @@ class AudioEncoder(ModalitySpecificEncoder):
             modality_cfg.prenet_dropout,
         )
 
+        # デコーダ（事前学習時のみ使用。skip_ema=True の場合は None になる）
         decoder = (
             Decoder1d(modality_cfg.decoder, embed_dim)
             if modality_cfg.decoder is not None
@@ -138,6 +154,10 @@ class AudioEncoder(ModalitySpecificEncoder):
         )
 
     def convert_padding_mask(self, x, padding_mask):
+        """
+        入力波形のパディングマスクを、CNN後のフレーム系列に対応したマスクに変換する。
+        各CNNレイヤーのカーネル幅とストライドを適用して出力長を計算する。
+        """
         def get_feat_extract_output_lengths(input_lengths: torch.LongTensor):
             """
             Computes the output length of the convolutional layers
@@ -171,6 +191,7 @@ class AudioEncoder(ModalitySpecificEncoder):
                         output_lengths - 1,
                     )
                 ] = 1
+                # flip → cumsum → flip でパディング位置以降を True にする
                 padding_mask = (
                     1 - padding_mask.flip([-1]).cumsum(-1).flip([-1])
                 ).bool()
@@ -182,6 +203,7 @@ class AudioEncoder(ModalitySpecificEncoder):
         return padding_mask
 
     def reset_parameters(self):
+        """線形射影とデコーダのパラメータを再初期化する。"""
         super().reset_parameters()
         for mod in self.project_features.children():
             if isinstance(mod, nn.Linear):

@@ -5,6 +5,12 @@
 # the root directory of this source tree. An additional grant of patent rights
 # can be found in the PATENTS file in the same directory.
 
+"""
+emotion2vec の事前学習タスク定義（fairseq タスク）。
+データセットの読み込み・マニフェスト管理・マルチコーパス対応を担う。
+fairseq のトレーニングループから呼び出される。
+"""
+
 import logging
 import os
 import sys
@@ -27,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class AudioMaskingConfig:
+    """音声マスク処理の設定をモデル設定から参照するデータクラス。II() でリンクされる。"""
     feature_encoder_spec: str = II("model.modalities.audio.feature_encoder_spec")
     mask_prob: float = II("model.modalities.audio.mask_prob")
     mask_prob_adjust: float = II("model.modalities.audio.mask_prob_adjust")
@@ -40,6 +47,7 @@ class AudioMaskingConfig:
 
 @dataclass
 class Emotion2vecPretrainingConfig(FairseqDataclass):
+    """emotion2vec 事前学習タスクの設定。データパス・サンプリング・マスク設定を管理する。"""
     data: str = field(default=MISSING, metadata={"help": "path to data directory"})
     labels: Optional[str] = field(
         default=None,
@@ -125,6 +133,10 @@ class Emotion2vecPretrainingTask(FairseqTask):
         return cls(cfg)
 
     def load_dataset(self, split: str, task_cfg: FairseqDataclass = None, **kwargs):
+        """
+        指定したデータスプリット（train/valid等）のデータセットを読み込んでキャッシュする。
+        単一マニフェスト・バイナリ・マルチコーパスの3形式に対応している。
+        """
         data_path = self.cfg.data
         task_cfg = task_cfg or self.cfg
 
@@ -137,12 +149,14 @@ class Emotion2vecPretrainingTask(FairseqTask):
             TextCompressionLevel, str(self.cfg.text_compression_level)
         )
 
+        # precompute_mask_config が設定されている場合はデータ読み込み時にマスクを事前計算する
         compute_mask = getattr(task_cfg, "precompute_mask_config", None) is not None
         mask_args = {}
         if compute_mask:
             mask_args = task_cfg.precompute_mask_config
 
         if getattr(task_cfg, "binarized_dataset", False):
+            # バイナリ化済みデータセット（大規模データ向け）を読み込む
             self.datasets[split] = BinarizedAudioDataset(
                 data_path,
                 split=split,
@@ -157,7 +171,8 @@ class Emotion2vecPretrainingTask(FairseqTask):
             )
         else:
             if task_cfg.multi_corpus_keys is None:
-                manifest_path = os.path.join(data_path, "{}.tsv".format(split))                
+                # 通常の単一TSVマニフェストからデータセットを読み込む
+                manifest_path = os.path.join(data_path, "{}.tsv".format(split))
 
                 self.datasets[split] = FileAudioDataset(
                     manifest_path=manifest_path,
@@ -172,6 +187,7 @@ class Emotion2vecPretrainingTask(FairseqTask):
                     **mask_args,
                 )
             else:
+                # マルチコーパス: 複数のTSVをサンプリング重み付きで混合して読み込む
                 dataset_map = OrderedDict()
                 self.dataset_map = {}
                 multi_corpus_keys = [k.strip() for k in task_cfg.multi_corpus_keys.split(",")]
@@ -182,9 +198,9 @@ class Emotion2vecPretrainingTask(FairseqTask):
                 data_weights = []
 
                 for key, file_name in data_keys:
-                    
+
                     k = key.strip()
-                    manifest_path = os.path.join(data_path, "{}.tsv".format(file_name.strip()))                
+                    manifest_path = os.path.join(data_path, "{}.tsv".format(file_name.strip()))
 
                     # TODO: Remove duplication of code from the if block above
                     dataset_map[k] = FileAudioDataset(

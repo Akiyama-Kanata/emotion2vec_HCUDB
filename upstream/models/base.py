@@ -3,6 +3,12 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+"""
+モダリティ共通エンコーダの基底クラス（ModalitySpecificEncoder）と
+ALiBi位置バイアス生成ユーティリティを定義するモジュール。
+マスク処理・位置エンコード・コンテキスト化特徴量の生成を担う。
+"""
+
 import logging
 import math
 import numpy as np
@@ -24,35 +30,38 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class D2vModalityConfig:
+    """モダリティ共通のハイパーパラメータ設定（マスク処理・位置エンコード・prenet 等）。"""
     type: Modality = MISSING
-    prenet_depth: int = 4
+    prenet_depth: int = 4      # モダリティ専用 prenet Transformer の深さ
     prenet_layerdrop: float = 0
     prenet_dropout: float = 0
     start_drop_path_rate: float = 0
     end_drop_path_rate: float = 0
 
-    num_extra_tokens: int = 0
+    num_extra_tokens: int = 0  # 先頭に付加する特殊トークン数（CLS 等）
     init_extra_token_zero: bool = True
 
+    # マスク処理の設定（事前学習時に入力の一部を隠すための設定）
     mask_noise_std: float = 0.01
     mask_prob_min: Optional[float] = None
-    mask_prob: float = 0.7
+    mask_prob: float = 0.7      # マスクするフレームの割合
     inverse_mask: bool = False
     mask_prob_adjust: float = 0
     keep_masked_pct: float = 0
 
-    mask_length: int = 5
+    mask_length: int = 5        # 連続マスクするフレームの長さ
     add_masks: bool = False
     remove_masks: bool = False
     mask_dropout: float = 0.0
-    encoder_zero_mask: bool = True
+    encoder_zero_mask: bool = True  # True のとき、マスク位置をゼロで埋める
 
-    mask_channel_prob: float = 0.0
+    mask_channel_prob: float = 0.0   # チャネル方向のマスク確率
     mask_channel_length: int = 64
 
     ema_local_encoder: bool = False  # used in data2vec_multi
-    local_grad_mult: float = 1.0
+    local_grad_mult: float = 1.0     # ローカルエンコーダへの勾配スケール係数
 
+    # ALiBi位置バイアスの設定
     use_alibi_encoder: bool = False
     alibi_scale: float = 1.0
     learned_alibi: bool = False
@@ -68,10 +77,18 @@ class D2vModalityConfig:
 
 
 MaskSeed = namedtuple("MaskSeed", ["seed", "update", "ids"])
+# x_unmasked: マスク後の非マスクトークン, mask: マスクフラグ (B, T),
+# ids_restore: 元の順序に戻すインデックス, ids_keep: 非マスクトークンのインデックス
 MaskInfo = namedtuple("MaskInfo", ["x_unmasked", "mask", "ids_restore", "ids_keep"])
 
 
 class ModalitySpecificEncoder(nn.Module):
+    """
+    モダリティ共通エンコーダの基底クラス。
+    局所エンコーダ → 位置エンコーダ → マスク処理 → prenet Transformer の処理パイプラインを提供する。
+    AudioEncoder などのモダリティ専用クラスがこのクラスを継承する。
+    """
+
     def __init__(
         self,
         modality_cfg: D2vModalityConfig,
@@ -187,14 +204,17 @@ class ModalitySpecificEncoder(nn.Module):
         return x, mask_info
 
     def local_features(self, features):
+        """局所エンコーダ（CNN等）で特徴量を抽出し、embed_dim に射影して返す。"""
         if self.local_grad_mult > 0:
             if self.local_grad_mult == 1.0:
                 x = self.local_encoder(features)
             else:
+                # local_grad_mult < 1.0 のとき、局所エンコーダへの勾配を減衰させる
                 x = GradMultiply.apply(
                     self.local_encoder(features), self.local_grad_mult
                 )
         else:
+            # local_grad_mult = 0 のとき、局所エンコーダは勾配なしで実行する
             with torch.no_grad():
                 x = self.local_encoder(features)
 
@@ -211,6 +231,14 @@ class ModalitySpecificEncoder(nn.Module):
         mask_seeds: Optional[torch.Tensor] = None,
         precomputed_mask=None,
     ):
+        """
+        位置エンコード・マスク処理・prenet Transformer を順に適用してコンテキスト表現を返す。
+
+        Args:
+            x: 局所エンコーダ出力 (B, T, D)
+            mask: True のとき学習時マスクを適用する
+            remove_masked: True のときマスクされたトークンを除去する
+        """
 
         if padding_mask is not None:
             padding_mask = self.convert_padding_mask(x, padding_mask)

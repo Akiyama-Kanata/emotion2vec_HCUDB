@@ -1,0 +1,35 @@
+common:
+  seed: 42
+
+model:
+  input_dim: 768
+  hidden_dim: 256
+  vad_dim: 3
+  num_classes: 4
+
+emotion2vec:
+  frozen: true  # false にすると fine-tune（WAVからリアルタイム処理が必要）
+
+training:
+  stage1_epochs: 30
+  stage2_epochs: 30
+  stage1_lr: 1.0e-3
+  stage2_lr_cls: 1.0e-3
+  stage2_lr_fnn: 1.0e-4  # FNN は Stage1 LR の 1/10
+
+dataset:
+  feat_path: ""    # .npy 特徴量ファイルのパス（拡張子を除く）
+  va_path: ""      # VA アノテーションファイルのパス（utterance_id valence arousal の3列）
+  batch_size: 32
+  eval_is_test: false
+  label_names:     # カテゴリラベルの順序（整数IDに対応）
+    - ang
+    - hap
+    - neu
+    - sad
+  n_samples:       # 各 Session のサンプル数（5-fold 交差検証用）
+    - 1085
+    - 1023
+    - 1151
+    - 1031
+    - 1241

@@ -33,17 +33,21 @@ def load_dataset(data_path, labels=None, min_length=3, max_length=None):
     if labels is not None and not os.path.exists(data_path + f".{labels}"):
         labels = None
 
+    utt_ids = []
+
     with open(data_path + ".lengths", "r") as len_f, open(
         data_path + f".{labels}", "r"
     ) if labels is not None else contextlib.ExitStack() as lbl_f:
         for line in len_f:
             length = int(line.rstrip())
-            lbl = None if labels is None else next(lbl_f).rstrip().split()[1]
+            lbl_line = None if labels is None else next(lbl_f).rstrip()
             if length >= min_length and (max_length is None or length <= max_length):
                 sizes.append(length)
                 offsets.append(offset)
-                if lbl is not None:
-                    emo_labels.append(lbl)
+                if lbl_line is not None:
+                    parts = lbl_line.split()
+                    utt_ids.append(parts[0])
+                    emo_labels.append(parts[1])
             else:
                 skipped += 1
             offset += length
@@ -52,7 +56,7 @@ def load_dataset(data_path, labels=None, min_length=3, max_length=None):
     offsets = np.asarray(offsets)
 
     logger.info(f"loaded {len(offsets)}, skipped {skipped} samples")
-    return npy_data, sizes, offsets, emo_labels
+    return npy_data, sizes, offsets, emo_labels, utt_ids
 
 
 def load_iemocap_with_va(feature_path: str, label_dict: dict, va_path: str) -> dict:
@@ -66,20 +70,27 @@ def load_iemocap_with_va(feature_path: str, label_dict: dict, va_path: str) -> d
     Returns:
         feats, sizes, offsets, labels(int), va_labels(float array), num
     """
-    data, sizes, offsets, emo_labels = load_dataset(
+    data, sizes, offsets, emo_labels, utt_ids = load_dataset(
         feature_path, labels="emo", min_length=1
     )
     labels = [label_dict[e] for e in emo_labels]
 
-    # VA値を読み込む（行順が特徴量と一致している前提）
-    va_values = []
+    # VA値を発話IDをキーとして辞書に読み込む
+    va_dict: dict[str, list[float]] = {}
     with open(va_path, "r") as f:
         for line in f:
             parts = line.rstrip().split()
-            valence = float(parts[1])
-            arousal = float(parts[2])
-            va_values.append([valence, arousal])
+            if len(parts) >= 3:
+                va_dict[parts[0]] = [float(parts[1]), float(parts[2])]
 
+    # 特徴量ファイルの発話順にVA値を取得
+    missing = [uid for uid in utt_ids if uid not in va_dict]
+    if missing:
+        raise ValueError(
+            f"va_labels.txt に存在しない発話ID: {missing[:5]} ... (計{len(missing)}件)"
+        )
+
+    va_values = [va_dict[uid] for uid in utt_ids]
     va_labels = np.array(va_values, dtype=np.float32)  # (N, 2)
 
     assert len(labels) == len(va_labels), (

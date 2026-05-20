@@ -1,0 +1,8 @@
+funasr
+fairseq
+numpy
+soundfile
+hydra-core
+omegaconf
+tqdm
+npy-append-array

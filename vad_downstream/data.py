@@ -201,9 +201,9 @@ def build_dataloaders(data: dict, batch_size: int, test_start: int, test_end: in
         train_ds = SpeechDatasetVAD(tv_feats, tv_sizes, tv_offsets, tv_labels, tv_va)
         val_ds = test_ds
         train_loader = DataLoader(train_ds, batch_size=batch_size, collate_fn=train_ds.collator,
-                                  num_workers=4, pin_memory=True, shuffle=True)
+                                  num_workers=0, pin_memory=False, shuffle=True)
         val_loader = DataLoader(val_ds, batch_size=batch_size, collate_fn=val_ds.collator,
-                                num_workers=4, pin_memory=True, shuffle=False)
+                                num_workers=0, pin_memory=False, shuffle=False)
     else:
         n_tv = len(tv_labels)
         n_train = int(0.8 * n_tv)
@@ -213,11 +213,11 @@ def build_dataloaders(data: dict, batch_size: int, test_start: int, test_end: in
         train_ds, val_ds = random_split(tv_ds, [n_train, n_val])
 
         train_loader = DataLoader(train_ds, batch_size=batch_size, collate_fn=tv_ds.collator,
-                                  num_workers=4, pin_memory=True, shuffle=True)
+                                  num_workers=0, pin_memory=False, shuffle=True)
         val_loader = DataLoader(val_ds, batch_size=batch_size, collate_fn=tv_ds.collator,
-                                num_workers=4, pin_memory=True, shuffle=False)
+                                num_workers=0, pin_memory=False, shuffle=False)
 
     test_loader = DataLoader(test_ds, batch_size=batch_size, collate_fn=test_ds.collator,
-                             num_workers=4, pin_memory=True, shuffle=False)
+                             num_workers=0, pin_memory=False, shuffle=False)
 
     return train_loader, val_loader, test_loader

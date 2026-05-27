@@ -5,6 +5,85 @@ AttentionPooling → VADDecoder(FNN) → EmotionClassifier(線形分類器) の�
 
 import torch
 from torch import nn
+from typing import Dict, Optional
+
+
+VAD_OUTPUT_NAMES = ("arousal", "dominance", "valence")
+
+
+class MaskedMeanPooling(nn.Module):
+    """Padding を除外してフレーム列を発話単位の平均表現に圧縮する。"""
+
+    def forward(
+        self, x: torch.Tensor, padding_mask: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
+        """
+        Args:
+            x: (B, T, D)
+            padding_mask: パディング位置が True の Boolean テンソル (B, T)
+        Returns:
+            pooled: (B, D)
+        """
+        if padding_mask is None:
+            return x.mean(dim=1)
+
+        valid = (~padding_mask).unsqueeze(-1).to(dtype=x.dtype)
+        summed = (x * valid).sum(dim=1)
+        denom = valid.sum(dim=1).clamp_min(1.0)
+        return summed / denom
+
+
+class Emotion2VecVADRegressor(nn.Module):
+    """
+    Wagner/audeering の wav2vec2 次元感情回帰ヘッドに寄せた emotion2vec 用 VAD 回帰器。
+
+    出力順は VAD_OUTPUT_NAMES に従い、(arousal, dominance, valence) の 0..1 スコアを返す。
+    emotion2vec 本体は外側で固定し、このヘッドだけを学習する想定。
+    """
+
+    output_names = VAD_OUTPUT_NAMES
+
+    def __init__(
+        self,
+        input_dim: int = 768,
+        hidden_dim: int = 256,
+        dropout: float = 0.1,
+    ):
+        super().__init__()
+        self.pool = MaskedMeanPooling()
+        self.regressor = nn.Sequential(
+            nn.Dropout(dropout),
+            nn.Linear(input_dim, hidden_dim),
+            nn.Tanh(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, len(self.output_names)),
+            nn.Sigmoid(),
+        )
+
+    def forward(
+        self, feats: torch.Tensor, padding_mask: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
+        """
+        Args:
+            feats: (B, T, D) emotion2vec frame/utterance features
+            padding_mask: パディング位置が True の Boolean テンソル (B, T)
+        Returns:
+            vad: (B, 3), columns are arousal/dominance/valence in 0..1
+        """
+        pooled = self.pool(feats, padding_mask)
+        return self.regressor(pooled)
+
+
+def vad_tensor_to_dict(pred: torch.Tensor) -> Dict[str, float]:
+    """1件分の VAD テンソルを {"arousal", "dominance", "valence"} の dict に変換する。"""
+    if pred.ndim == 2:
+        if pred.size(0) != 1:
+            raise ValueError("vad_tensor_to_dict expects a single prediction, got a batch.")
+        pred = pred.squeeze(0)
+    if pred.ndim != 1 or pred.numel() != len(VAD_OUTPUT_NAMES):
+        raise ValueError(f"expected shape (3,), got {tuple(pred.shape)}")
+    values = pred.detach().cpu().float().tolist()
+    return {name: float(value) for name, value in zip(VAD_OUTPUT_NAMES, values)}
 
 
 class AttentionPooling(nn.Module):

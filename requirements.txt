@@ -6,3 +6,4 @@ hydra-core
 omegaconf
 tqdm
 npy-append-array
+matplotlib

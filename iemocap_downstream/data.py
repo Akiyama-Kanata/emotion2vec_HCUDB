@@ -42,7 +42,7 @@ def load_dataset(data_path, labels=None, min_length=3, max_length=None):
         for line in len_f:
             length = int(line.rstrip())
             lbl = None if labels is None else next(lbl_f).rstrip().split()[
-                1]  # only emo is needed
+                1]  # ラベル行のうち、感情カテゴリだけを使う
             # min_length 未満のサンプルはスキップし、max_length 以下のものだけを収集する
             if length >= min_length and (
                 max_length is None or length <= max_length
@@ -75,8 +75,8 @@ class SpeechDataset(Dataset):
         super().__init__()
 
         self.feats = feats
-        self.sizes = sizes  # length of each sample
-        self.offsets = offsets  # offset of each sample
+        self.sizes = sizes      # 各発話サンプルのフレーム数
+        self.offsets = offsets  # 連結済み特徴量配列における各発話の開始位置
 
         self.labels = labels
 
@@ -132,9 +132,11 @@ class SpeechDataset(Dataset):
         return res
 
     def num_tokens(self, index):
+        """fairseq互換の補助メソッド。指定サンプルの系列長を返す。"""
         return self.size(index)
 
     def size(self, index):
+        """指定インデックスの発話フレーム数を返す。"""
         return self.sizes[index]
 
 def load_ssl_features(feature_path, label_dict, max_speech_seq_len=None):

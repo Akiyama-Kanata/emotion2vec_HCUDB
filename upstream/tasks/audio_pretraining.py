@@ -118,13 +118,13 @@ class Emotion2vecPretrainingConfig(FairseqDataclass):
 
 @register_task("emotion2vec_pretraining", dataclass=Emotion2vecPretrainingConfig)
 class Emotion2vecPretrainingTask(FairseqTask):
-    """ """
+    """fairseq から呼び出される emotion2vec 事前学習タスク本体。"""
 
     cfg: Emotion2vecPretrainingConfig
 
     @classmethod
     def setup_task(cls, cfg: Emotion2vecPretrainingConfig, **kwargs):
-        """Setup the task (e.g., load dictionaries).
+        """辞書などの追加資源が不要なため、設定を保持したタスクだけを生成する。
 
         Args:
             cfg (Emotion2vecPretrainingConfig): configuration of this task
@@ -140,7 +140,7 @@ class Emotion2vecPretrainingTask(FairseqTask):
         data_path = self.cfg.data
         task_cfg = task_cfg or self.cfg
 
-        # upgrade old task
+        # 古いチェックポイント由来の Namespace 設定を読み込む場合に、不足属性を補う。
         if isinstance(task_cfg, Namespace):
             if not hasattr(task_cfg, "autoregressive"):
                 task_cfg.autoregressive = not task_cfg.criterion == "ctc"
@@ -194,6 +194,7 @@ class Emotion2vecPretrainingTask(FairseqTask):
                 corpus_idx_map = {k: idx for idx, k in enumerate(multi_corpus_keys)}
                 data_keys = [k.split(":") for k in split.split(",")]
 
+                # 各コーパスのサンプリング重みを、multi_corpus_keys と同じ順番で数値化する。
                 multi_corpus_sampling_weights = [float(val.strip()) for val in task_cfg.multi_corpus_sampling_weights.split(",")]
                 data_weights = []
 
@@ -202,7 +203,7 @@ class Emotion2vecPretrainingTask(FairseqTask):
                     k = key.strip()
                     manifest_path = os.path.join(data_path, "{}.tsv".format(file_name.strip()))
 
-                    # TODO: Remove duplication of code from the if block above
+                    # 単一コーパスと同じ FileAudioDataset を作り、corpus_key で由来コーパスを識別できるようにする。
                     dataset_map[k] = FileAudioDataset(
                         manifest_path=manifest_path,
                         sample_rate=task_cfg.get("sample_rate", self.cfg.sample_rate),
@@ -222,11 +223,14 @@ class Emotion2vecPretrainingTask(FairseqTask):
                 self.dataset_map[split] = dataset_map
                 
                 if len(dataset_map) == 1:
+                    # 1コーパスだけなら MultiCorpusDataset で包まず、そのまま使う。
                     self.datasets[split] = list(dataset_map.values())[0]
                 else:
+                    # 複数コーパスの場合は、指定重みに従ってバッチ/サンプルを混合する。
                     self.datasets[split] = MultiCorpusDataset(dataset_map, distribution=data_weights, seed=0, sort_indices=True)
 
         if getattr(task_cfg, "subsample", 1) < 1:
+            # デバッグや高速実験用に、指定割合だけサブサンプリングする。
             self.datasets[split] = SubsampleDataset(
                 self.datasets[split],
                 task_cfg.subsample,
@@ -242,10 +246,11 @@ class Emotion2vecPretrainingTask(FairseqTask):
             )
 
     def max_positions(self):
-        """Maximum input length supported by the encoder."""
+        """モデル側では明示的な最大長を制限せず、fairseq には十分大きい値を返す。"""
         return sys.maxsize, sys.maxsize
 
     def build_model(self, model_cfg: FairseqDataclass, from_checkpoint=False):
+        """fairseq の標準手順でモデルを構築し、古い wav2vec 設定があれば引き継ぐ。"""
         model = super().build_model(model_cfg, from_checkpoint)
 
         actualized_cfg = getattr(model, "cfg", None)
@@ -257,6 +262,7 @@ class Emotion2vecPretrainingTask(FairseqTask):
         return model
 
     def post_save(self, cp_path, num_updates):
+        """チェックポイント保存後に、評価用コピー作成と任意の後処理スクリプト実行を行う。"""
         if self.cfg.post_save_script is not None:
             logger.info(f"launching {self.cfg.post_save_script}")
             import os.path as osp

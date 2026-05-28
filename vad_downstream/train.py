@@ -103,11 +103,11 @@ def evaluate(model: EmotionClassifier, loader, device, num_classes: int):
     """WA / UA / weighted-F1 (%) を返す。"""
     model.eval()
     correct = total = 0
-    uw_correct = [0] * num_classes
-    uw_total = [0] * num_classes
-    tp = [0] * num_classes
-    fp = [0] * num_classes
-    fn = [0] * num_classes
+    uw_correct = [0] * num_classes  # UA計算用: クラスごとの正解数
+    uw_total = [0] * num_classes    # UA/F1計算用: クラスごとのサンプル数
+    tp = [0] * num_classes          # F1計算用: True Positive
+    fp = [0] * num_classes          # F1計算用: False Positive
+    fn = [0] * num_classes          # F1計算用: False Negative
 
     for batch in loader:
         net_input = batch["net_input"]
@@ -121,10 +121,12 @@ def evaluate(model: EmotionClassifier, loader, device, num_classes: int):
         _, logits = model(feats, padding_mask)
         predicted = logits.argmax(dim=1)
 
+        # WAは全サンプルの正解率として集計する。
         total += labels.size(0)
         correct += (predicted == labels.long()).sum().item()
 
         for i in range(len(labels)):
+            # UAとF1のために、クラスごとの正解数・TP/FP/FNをサンプル単位で更新する。
             c = labels[i].item()
             p = predicted[i].item()
             uw_total[c] += 1
@@ -142,6 +144,7 @@ def evaluate(model: EmotionClassifier, loader, device, num_classes: int):
 
 
 def _weighted_f1(tp, fp, fn, totals):
+    """クラスごとのF1を計算し、各クラスのサンプル数で重み付け平均する。"""
     f1s = []
     for i in range(len(tp)):
         prec = tp[i] / max(tp[i] + fp[i], 1)
@@ -226,11 +229,14 @@ def run_fold(cfg: DictConfig, fold: int, data: dict, device: torch.device):
 
 @hydra.main(config_path="config", config_name="default.yaml", version_base=None)
 def main(cfg: DictConfig):
+    """設定ファイルを読み込み、全foldの2段階学習と平均スコア集計を実行する。"""
     torch.manual_seed(cfg.common.seed)
 
+    # configのlabel_names順を、そのまま分類器の整数ID順として使う。
     label_dict = {k: i for i, k in enumerate(cfg.dataset.label_names)}
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    # emotion2vec特徴量、カテゴリラベル、VA連続値ラベルをまとめて読み込む。
     data = load_iemocap_with_va(
         cfg.dataset.feat_path,
         label_dict,
@@ -242,6 +248,7 @@ def main(cfg: DictConfig):
 
     for fold in range(n_folds):
         logger.info(f"===== Fold {fold + 1}/{n_folds} =====")
+        # foldごとにGPUキャッシュを空け、前foldの一時メモリを持ち越さない。
         torch.cuda.empty_cache()
         wa, ua, f1 = run_fold(cfg, fold, data, device)
         wa_avg += wa

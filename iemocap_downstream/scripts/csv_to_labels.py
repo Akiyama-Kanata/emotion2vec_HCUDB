@@ -20,6 +20,7 @@ EMO_MAP = {"exc": "hap"}  # exc（興奮）をhap（幸福）に統合
 
 
 def main(args):
+    """CSVを1行ずつ読み、対象感情だけを下流学習用ラベル形式へ変換して保存する。"""
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -35,16 +36,19 @@ def main(args):
 
         reader = csv.DictReader(f)
         for row in reader:
+            # 4クラス分類で使う感情だけを残し、それ以外の発話は学習対象から外す。
             emo = row["emo"].strip()
             if emo not in TARGET_EMOTIONS:
                 skipped += 1
                 continue
 
+            # IEMOCAPの慣例に合わせ、excはhapへ統合してクラス数を4にそろえる。
             emo = EMO_MAP.get(emo, emo)
             utt_id  = row["ID"].strip()
             valence = row["Valence"].strip()
             arousal = row["Arousal"].strip()
 
+            # train.emo はカテゴリ分類用、va_labels.txt はV/A回帰用として同じ発話順で保存する。
             emo_f.write(f"{utt_id}\t{emo}\n")
             va_f.write(f"{utt_id} {valence} {arousal}\n")
             written += 1

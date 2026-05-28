@@ -75,13 +75,13 @@ def train_iemocap(cfg: DictConfig):
 
         best_val_wa = 0
         best_val_wa_epoch = 0
-        # Training loop
+        # 各エポックで学習と検証を行い、検証WAが最も高い重みを保存する。
 
         save_dir = os.path.join(str(Path.cwd()), f"model_{fold+1}.pth")
-        for epoch in range(cfg.optimization.epoch):  # Adjust the number of epochs as per your requirement
+        for epoch in range(cfg.optimization.epoch):  # 設定ファイルのエポック数だけ学習する
             train_loss = train_one_epoch(model, optimizer, criterion, train_loader, device)
             scheduler.step()
-            # Validation step
+            # 検証セットでWA/UA/F1を計算し、モデル選択に使う
             val_wa, val_ua, val_f1 = validate_and_test(model, val_loader, device, num_classes=len(label_dict))
 
             # 検証WAが最大のエポックでモデルを保存する（early stopping の代わり）
@@ -90,7 +90,7 @@ def train_iemocap(cfg: DictConfig):
                 best_val_wa_epoch = epoch
                 torch.save(model.state_dict(), save_dir)
 
-            # Print losses for every epoch
+            # エポックごとの学習損失と検証指標をログに残す
             logger.info(f"Epoch {epoch+1}, Training Loss: {train_loss/len(train_loader):.6f}, Validation WA: {val_wa:.2f}%; UA: {val_ua:.2f}%; F1: {val_f1:.2f}%")
 
         # 最良エポックのチェックポイントをロードしてテストセットで評価する

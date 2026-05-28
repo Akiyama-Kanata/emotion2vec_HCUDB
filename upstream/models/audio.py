@@ -49,7 +49,7 @@ class D2vAudioConfig(D2vModalityConfig):
         default=5,
         metadata={"help": "depth of positional encoder network"},
     )
-    conv_pos_pre_ln: bool = False
+    conv_pos_pre_ln: bool = False  # True の場合、畳み込み位置エンコーダの前に LayerNorm を挟む
 
 
 class AudioEncoder(ModalitySpecificEncoder):
@@ -159,14 +159,14 @@ class AudioEncoder(ModalitySpecificEncoder):
         各CNNレイヤーのカーネル幅とストライドを適用して出力長を計算する。
         """
         def get_feat_extract_output_lengths(input_lengths: torch.LongTensor):
-            """
-            Computes the output length of the convolutional layers
-            """
+            """CNN特徴抽出器を通過した後の系列長を、畳み込みの出力長公式で計算する。"""
 
             def _conv_out_length(input_length, kernel_size, stride):
+                """1つのConv1d層に対する出力長 floor((L-k)/s+1) を返す。"""
                 return torch.floor((input_length - kernel_size) / stride + 1)
 
             for i in range(len(self.feature_enc_layers)):
+                # 各CNN層を順番に適用した場合の有効フレーム数へ更新していく。
                 input_lengths = _conv_out_length(
                     input_lengths,
                     self.feature_enc_layers[i][1],
@@ -177,21 +177,20 @@ class AudioEncoder(ModalitySpecificEncoder):
 
         if padding_mask is not None:
             input_lengths = (1 - padding_mask.long()).sum(-1)
-            # apply conv formula to get real output_lengths
+            # 入力波形上の有効長を、CNN後のフレーム数に変換する。
             output_lengths = get_feat_extract_output_lengths(input_lengths)
 
             if padding_mask.any():
                 padding_mask = torch.zeros(x.shape[:2], dtype=x.dtype, device=x.device)
 
-                # these two operations makes sure that all values
-                # before the output lengths indices are attended to
+                # 各サンプルの最後の有効フレーム位置に印を付ける。
                 padding_mask[
                     (
                         torch.arange(padding_mask.shape[0], device=padding_mask.device),
                         output_lengths - 1,
                     )
                 ] = 1
-                # flip → cumsum → flip でパディング位置以降を True にする
+                # flip → cumsum → flip により、最後の有効位置より後だけをパディング True にする。
                 padding_mask = (
                     1 - padding_mask.flip([-1]).cumsum(-1).flip([-1])
                 ).bool()

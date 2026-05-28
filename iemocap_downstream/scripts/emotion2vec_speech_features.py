@@ -65,7 +65,7 @@ class Emotion2vecFeatureReader(object):
         self.layer = layer
 
     def read_audio(self, fname):
-        """Load an audio file and return PCM along with the sample rate"""
+        """音声ファイルを読み込み、16kHzモノラルであることを確認して波形配列を返す。"""
         wav, sr = sf.read(fname)
         channel = sf.info(fname).channels
         assert sr == 16e3, "Sample rate should be 16kHz, but got {}in file {}".format(sr, fname)
@@ -91,6 +91,7 @@ def get_iterator(args):
     with open(osp.join(args.data, args.split) + ".tsv", "r") as fp:
         lines = fp.read().split("\n")
         root = lines.pop(0).strip()  # 1行目はルートディレクトリ
+        # 2行目以降の相対パスを root と結合し、実際に読み込むwavファイル一覧を作る。
         files = [osp.join(root, line.split("\t")[0])
                  for line in lines if len(line) > 0]
 
@@ -100,6 +101,7 @@ def get_iterator(args):
 
         def iterate():
             for fname in files:
+                # 1発話ずつ抽出して yield することで、大きなデータセットでもメモリ使用量を抑える。
                 d2v_feats = reader.get_feats(fname)
                 yield d2v_feats
 
@@ -132,6 +134,7 @@ def main():
             print(len(d2v_feats), file=l_f)
 
             if len(d2v_feats) > 0:
+                # NpyAppendArray で発話ごとの可変長特徴量を1つの .npy に連結保存する。
                 npaa.append(d2v_feats.numpy())
 
 

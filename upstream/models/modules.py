@@ -51,8 +51,8 @@ class FixedPositionalEncoder(nn.Module):
 
 class TextFeatPositionalEncoder(nn.Module):
     """
-    Original encoder expects (B, T) long input. This module wraps it to take
-    local_encoder output which are (B, T, D) float tensors
+    テキスト用位置エンコーダを、(B, T, D) の浮動小数特徴量にも使えるようにするラッパー。
+    元のエンコーダは (B, T) の long 入力を想定するため、先頭チャネルだけを渡す。
     """
 
     def __init__(self, pos_encoder):
@@ -60,8 +60,7 @@ class TextFeatPositionalEncoder(nn.Module):
         self.pos_encoder = pos_encoder
 
     def forward(self, x, padding_mask):
-        # assume padded token embeddings are 0s
-        # TODO: consider using padding_mask as input
+        # パディング済みトークンの埋め込みは0である前提。必要なら padding_mask を使う実装に拡張する。
         return self.pos_encoder(x[..., 0])
 
 
@@ -320,21 +319,22 @@ class AltAttention(nn.Module):
             出力テンソル (B, N, C)
         """
         B, N, C = x.shape
+        # 1つの線形層で Q/K/V をまとめて計算し、(3, B, H, N, head_dim) に並べ替える。
         qkv = (
             self.qkv(x)
             .reshape(B, N, 3, self.num_heads, C // self.num_heads)
-            .permute(2, 0, 3, 1, 4)  # qkv x B x H x L x D
+            .permute(2, 0, 3, 1, 4)
         )
         q, k, v = (
             qkv[0],
             qkv[1],
             qkv[2],
-        )  # make torchscript happy (cannot use tensor as tuple)
+        )  # TorchScript 互換のためテンソルを明示的に分解する。
 
         dtype = q.dtype
 
         if self.cosine_attention:
-            # cosine attention
+            # cosine attention: Q/Kを正規化し、学習可能な温度で類似度の鋭さを調整する。
             attn = F.normalize(q, dim=-1) @ F.normalize(k, dim=-1).transpose(-2, -1)
             logit_scale = torch.clamp(
                 self.logit_scale, max=torch.log(torch.tensor(1.0 / 0.01))
@@ -359,7 +359,8 @@ class AltAttention(nn.Module):
         # float32 で softmax を計算してから元の dtype に戻す（数値安定性のため）
         attn = attn.softmax(dim=-1, dtype=torch.float32).to(dtype=dtype)
         attn = self.attn_drop(attn)
-        x = (attn @ v).transpose(1, 2)  #
+        # Attention重みでVを加重和し、ヘッド次元を結合して元の (B, N, C) に戻す。
+        x = (attn @ v).transpose(1, 2)
         x = x.reshape(B, N, C)
         x = self.proj(x)
         x = self.proj_drop(x)

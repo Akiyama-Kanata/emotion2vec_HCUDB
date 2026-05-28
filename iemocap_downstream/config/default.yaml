@@ -1,23 +1,23 @@
 common:
-  seed: 42
+  seed: 42  # 乱数シード。データ分割や初期化の再現性を高める
 
 dataset:
-  _name: IEMOCAP
-  feat_path: /path/to/feat_path
-  test_ratio: 0.2
-  batch_size: 128
-  fold: 5
-  eval_is_test: False
+  _name: IEMOCAP              # Hydra上のデータセット名
+  feat_path: /path/to/feat_path  # train.npy/train.lengths/train.emo の拡張子なしパス
+  test_ratio: 0.2             # holdout分割時のテスト比率（5-fold実装では主に互換用）
+  batch_size: 128             # DataLoader のバッチサイズ
+  fold: 5                     # IEMOCAP Session1-5 に対応するfold数
+  eval_is_test: False         # Trueなら検証セットとしてテストセットを流用する
 
 optimization:
-  epoch: 100
-  lr: 5e-4
-  weight_decay: 1e-5
-  label_smooth: 0.0
+  epoch: 100                  # 各foldの学習エポック数
+  lr: 5e-4                    # RMSprop の初期学習率
+  weight_decay: 1e-5          # L2正則化係数（現在のmain.pyでは未使用）
+  label_smooth: 0.0           # ラベルスムージング係数（現在のmain.pyでは未使用）
 
 lr_scheduler:
-  _name: ??
-  warmup_updates: ??
+  _name: ??                   # Scheduler設定の互換用スロット
+  warmup_updates: ??          # warmup更新数の互換用スロット
 
 model:
-  _name: BaseModel 
+  _name: BaseModel            # 使用する分類モデル名

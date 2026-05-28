@@ -72,7 +72,7 @@ class Data2VecMultiConfig(FairseqDataclass):
     )
 
     # when to finish annealing ema decay rate
-    ema_anneal_end_step: int = II("optimization.max_update")
+    ema_anneal_end_step: int = II("optimization.max_update")  # EMA decay の線形変化を終える更新ステップ
 
     ema_encoder_only: bool = field(
         default=True,
@@ -81,7 +81,7 @@ class Data2VecMultiConfig(FairseqDataclass):
         },
     )
 
-    max_update: int = II("optimization.max_update")
+    max_update: int = II("optimization.max_update")  # 学習全体の最大更新回数を optimization 設定から参照
 
     modalities: D2vModalitiesConfig = D2vModalitiesConfig()
 
@@ -93,18 +93,18 @@ class Data2VecMultiConfig(FairseqDataclass):
         metadata={"help": "stop training if prediction var falls below this"},
     )
 
-    supported_modality: Optional[Modality] = None
-    mae_init: bool = False
+    supported_modality: Optional[Modality] = None  # 特定モダリティだけを許可したい場合に指定する
+    mae_init: bool = False  # MAE方式の初期化を使うかどうか
 
     seed: int = II("common.seed")
 
-    skip_ema: bool = True
+    skip_ema: bool = True  # True の場合、特徴抽出用途ではEMAティーチャーを構築しない
 
-    cls_loss: float = 0
-    recon_loss: float = 0
-    d2v_loss: float = 0
+    cls_loss: float = 0     # 分類損失のログ/重み用スロット
+    recon_loss: float = 0   # 再構成損失のログ/重み用スロット
+    d2v_loss: float = 0     # data2vec損失のログ/重み用スロット
 
-    decoder_group: bool = False
+    decoder_group: bool = False  # True の場合、デコーダパラメータを別 optimizer group に分ける
 
     adversarial_training: Optional[bool] = field(
         default=False,

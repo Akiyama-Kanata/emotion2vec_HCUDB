@@ -339,6 +339,7 @@ def feature_cache_path(audio_path: str, cache_dir: str, index: int) -> Path:
     source = str(audio_path)
     digest = hashlib.md5(source.encode("utf-8")).hexdigest()[:12]
     stem = Path(source).stem or "audio"
+    # ファイル名に使えない文字を置換し、長すぎるstemは短くしてOS依存の問題を避ける。
     safe_stem = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in stem)[:48]
     return Path(cache_dir) / f"{index:06d}_{safe_stem}_{digest}.npy"
 
@@ -347,6 +348,7 @@ def attach_cache_paths(records: Sequence[Dict[str, object]], cache_dir: str) -> 
     """各レコードに cache_path を付与したコピーを返す。"""
     prepared: List[Dict[str, object]] = []
     for offset, record in enumerate(records):
+        # 元のrecordを破壊しないようコピーし、CSV上のindexがあればそれをキャッシュ名に使う。
         copied = dict(record)
         index = int(copied.get("index", offset))
         copied["cache_path"] = str(feature_cache_path(str(copied["file_path"]), cache_dir, index))
@@ -366,6 +368,7 @@ def ensure_feature_cache(
     extractor は file_path を受け取り、(T, D) または (D,) の numpy/torch/list を返す callable。
     返り値は cache_path を持つレコードのコピー。
     """
+    # cache_dir が指定された場合は、各レコードに保存先パスを付けてから抽出を行う。
     prepared = attach_cache_paths(records, cache_dir) if cache_dir is not None else [dict(r) for r in records]
 
     for record in prepared:
@@ -373,6 +376,7 @@ def ensure_feature_cache(
             raise ValueError("cache_path is missing. Pass cache_dir or call attach_cache_paths first.")
         cache_path = Path(str(record["cache_path"]))
         if cache_path.exists() and not force:
+            # 既存キャッシュを再利用し、重い特徴抽出を繰り返さない。
             continue
 
         cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -381,8 +385,10 @@ def ensure_feature_cache(
             feats = feats.detach().cpu().numpy()
         feats = np.asarray(feats, dtype=np.float32)
         if feats.ndim == 1:
+            # 発話単位特徴 (D,) は、DataLoader側の処理を統一するため (1, D) にする。
             feats = feats[None, :]
         elif feats.ndim == 3 and feats.shape[0] == 1:
+            # モデル出力が (1, T, D) の場合は、batch次元を取り除いて保存する。
             feats = feats[0]
         if feats.ndim != 2:
             raise ValueError(
@@ -394,6 +400,7 @@ def ensure_feature_cache(
 
 
 def _normalise_split_name(value: object) -> str:
+    """train/dev/valid/eval などの表記揺れを train/val/test に正規化する。"""
     key = str(value).strip().lower()
     if key not in _SPLIT_ALIASES:
         raise ValueError(f"unknown split value {value!r}; expected train/val/test.")
@@ -406,11 +413,13 @@ def _random_train_val_test_split(
     val_ratio: float,
     test_ratio: float,
 ) -> Dict[str, List[Dict[str, object]]]:
+    """明示的なsplit列がない場合に、乱数シード固定で train/val/test を作る。"""
     rng = np.random.default_rng(seed)
     indices = np.arange(len(records))
     rng.shuffle(indices)
 
     if len(records) < 3:
+        # 極端に小さいデータでは、検証/テストを作らず学習側に残す。
         n_test = 0
         n_val = 0
     else:
@@ -426,6 +435,7 @@ def _random_train_val_test_split(
     val: List[Dict[str, object]] = []
     test: List[Dict[str, object]] = []
     for idx, record in enumerate(records):
+        # 元レコードをコピーして返し、呼び出し側でsplit情報を加工しても入力を壊さない。
         if idx in test_idx:
             test.append(dict(record))
         elif idx in val_idx:
@@ -459,6 +469,7 @@ def split_vad_records(
     has_session = any(str(record.get("session", "")).strip() for record in records)
 
     if selected_mode == "auto":
+        # autoでは、CSVに明示splitがあれば最優先、次にsession単位、最後にrandom分割を使う。
         if has_split_column:
             selected_mode = "split"
         elif has_session:
@@ -467,6 +478,7 @@ def split_vad_records(
             selected_mode = "random"
 
     if selected_mode == "split":
+        # CSVのsplit列をそのまま信頼して、表記だけ正規化して振り分ける。
         splits = {"train": [], "val": [], "test": []}
         for record in records:
             split_name = _normalise_split_name(record.get("split", ""))
@@ -476,6 +488,7 @@ def split_vad_records(
         return splits
 
     if selected_mode == "session":
+        # 指定sessionをテストに固定し、それ以外から検証セットをランダムに取り出す。
         sessions = sorted({str(record.get("session", "")).strip() for record in records if str(record.get("session", "")).strip()})
         if not sessions:
             raise ValueError("session split requested, but no session values were found.")
@@ -489,6 +502,7 @@ def split_vad_records(
         return {"train": val_split["train"], "val": val_split["val"], "test": test}
 
     if selected_mode == "random":
+        # split列もsession列も使わない場合の汎用ランダム分割。
         return _random_train_val_test_split(records, seed=seed, val_ratio=val_ratio, test_ratio=test_ratio)
 
     raise ValueError("mode must be one of: auto, split, session, random.")
@@ -525,6 +539,7 @@ class VADFeatureDataset(Dataset):
         self.records = [dict(record) for record in records]
 
     def __getitem__(self, index):
+        """キャッシュ済み特徴量とVADラベルを1サンプル分読み込んで返す。"""
         record = self.records[index]
         feats = np.load(str(record["cache_path"])).astype(np.float32)
         if feats.ndim == 1:
@@ -533,6 +548,7 @@ class VADFeatureDataset(Dataset):
             raise ValueError(f"cached features must be 2-D, got {feats.shape}: {record['cache_path']}")
 
         labels = np.asarray([record.get(column, np.nan) for column in WAGNER_VAD_COLUMNS], dtype=np.float32)
+        # 欠損しているVAD次元はmask=Falseにし、損失計算から除外できるようにする。
         mask = np.isfinite(labels)
         labels = np.nan_to_num(labels, nan=0.0).astype(np.float32)
 
@@ -548,6 +564,7 @@ class VADFeatureDataset(Dataset):
         return len(self.records)
 
     def collator(self, samples):
+        """可変長特徴量をゼロパディングし、VADラベルと有効ラベルmaskをバッチ化する。"""
         if len(samples) == 0:
             return {}
 
@@ -558,6 +575,7 @@ class VADFeatureDataset(Dataset):
         collated_feats = feats[0].new_zeros(len(feats), target_size, feats[0].size(-1))
         padding_mask = torch.zeros(len(feats), target_size, dtype=torch.bool)
         for i, (feat, size) in enumerate(zip(feats, sizes)):
+            # 有効フレームを前詰めでコピーし、それ以降をpadding=Trueとして扱う。
             collated_feats[i, :size] = feat
             padding_mask[i, size:] = True
 
@@ -580,6 +598,7 @@ def build_vad_dataloader(
     num_workers: int = 0,
     pin_memory: bool = False,
 ) -> DataLoader:
+    """VADFeatureDatasetを作成し、学習・評価用DataLoaderとして返す。"""
     dataset = VADFeatureDataset(records)
     return DataLoader(
         dataset,

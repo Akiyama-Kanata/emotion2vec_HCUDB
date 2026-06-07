@@ -1,9 +1,9 @@
-file_path,arousal,dominance,valence,split,session
-dummy_audio/sample001.wav,0.10,0.30,0.50,train,Ses01
-dummy_audio/sample002.wav,0.70,0.40,0.20,train,Ses01
-dummy_audio/sample003.wav,0.50,0.60,0.80,train,Ses02
+file_path,valence,arousal,dominance,split,session
+dummy_audio/sample001.wav,0.50,0.10,0.30,train,Ses01
+dummy_audio/sample002.wav,0.20,0.70,0.40,train,Ses01
+dummy_audio/sample003.wav,0.80,0.50,0.60,train,Ses02
 dummy_audio/sample004.wav,0.20,0.20,0.20,train,Ses02
-dummy_audio/sample005.wav,0.90,0.70,0.40,val,Ses03
-dummy_audio/sample006.wav,0.35,0.55,0.65,val,Ses03
-dummy_audio/sample007.wav,0.15,0.45,0.75,test,Ses04
-dummy_audio/sample008.wav,0.80,0.25,0.30,test,Ses04
+dummy_audio/sample005.wav,0.40,0.90,0.70,val,Ses03
+dummy_audio/sample006.wav,0.65,0.35,0.55,val,Ses03
+dummy_audio/sample007.wav,0.75,0.15,0.45,test,Ses04
+dummy_audio/sample008.wav,0.30,0.80,0.25,test,Ses04

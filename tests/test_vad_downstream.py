@@ -24,7 +24,7 @@ class VADDownstreamTest(unittest.TestCase):
         splits = split_vad_records(records, mode="split")
 
         self.assertEqual([len(splits[name]) for name in ("train", "val", "test")], [4, 2, 2])
-        self.assertEqual(tuple(VAD_OUTPUT_NAMES), ("arousal", "dominance", "valence"))
+        self.assertEqual(tuple(VAD_OUTPUT_NAMES), ("valence", "arousal", "dominance"))
 
         loader = build_vad_dataloader(splits["train"], batch_size=2)
         batch = next(iter(loader))
@@ -32,6 +32,7 @@ class VADDownstreamTest(unittest.TestCase):
         self.assertEqual(batch["net_input"]["feats"].ndim, 3)
         self.assertEqual(tuple(batch["vad_labels"].shape), (2, 3))
         self.assertEqual(tuple(batch["vad_mask"].shape), (2, 3))
+        self.assertTrue(torch.allclose(batch["vad_labels"][0], torch.tensor([0.50, 0.10, 0.30])))
 
     def test_vad_ccc_loss_uses_available_label_mask(self):
         pred = torch.tensor([[0.1, 0.2, 0.3], [0.7, 0.8, 0.9]], dtype=torch.float32)

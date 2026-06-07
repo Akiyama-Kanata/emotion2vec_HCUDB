@@ -4,7 +4,7 @@ This directory is the main path for VAD regression with cached emotion2vec
 features. Predictions and labels always use this order:
 
 ```text
-arousal, dominance, valence
+valence, arousal, dominance
 ```
 
 ## CSV format
@@ -12,7 +12,7 @@ arousal, dominance, valence
 Required:
 
 ```csv
-file_path,arousal,dominance,valence
+file_path,valence,arousal,dominance
 ```
 
 Optional:

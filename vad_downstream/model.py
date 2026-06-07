@@ -2,7 +2,7 @@
 VAD regression head for cached emotion2vec frame features.
 
 The public output order is always:
-    arousal, dominance, valence
+    valence, arousal, dominance
 """
 
 from typing import Dict, Optional
@@ -11,7 +11,7 @@ import torch
 from torch import nn
 
 
-VAD_OUTPUT_NAMES = ("arousal", "dominance", "valence")
+VAD_OUTPUT_NAMES = ("valence", "arousal", "dominance")
 
 
 class MaskedMeanPooling(nn.Module):
@@ -41,7 +41,7 @@ class Emotion2VecVADRegressor(nn.Module):
     Wagner/audeering-compatible VAD regressor for frozen emotion2vec features.
 
     The model expects frame-level or utterance-level emotion2vec features and returns
-    0..1 scores in VAD_OUTPUT_NAMES order: arousal, dominance, valence.
+    0..1 scores in VAD_OUTPUT_NAMES order: valence, arousal, dominance.
     """
 
     output_names = VAD_OUTPUT_NAMES
@@ -71,7 +71,7 @@ class Emotion2VecVADRegressor(nn.Module):
             feats: emotion2vec features with shape (B, T, D).
             padding_mask: Boolean tensor with shape (B, T), where True means padding.
         Returns:
-            Tensor with shape (B, 3), ordered as arousal, dominance, valence.
+            Tensor with shape (B, 3), ordered as valence, arousal, dominance.
         """
         pooled = self.pool(feats, padding_mask)
         return self.regressor(pooled)

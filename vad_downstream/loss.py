@@ -2,7 +2,7 @@
 Loss functions for Wagner-compatible VAD regression.
 
 Predictions and labels use the public order:
-    arousal, dominance, valence
+    valence, arousal, dominance
 """
 
 from typing import Optional
@@ -39,7 +39,7 @@ def vad_ccc_loss(
     CCC loss averaged over available VAD dimensions.
 
     Args:
-        pred: Tensor with shape (B, 3), ordered as arousal, dominance, valence.
+        pred: Tensor with shape (B, 3), ordered as valence, arousal, dominance.
         target: Tensor with shape (B, 3), same order. Missing labels may be NaN.
         target_mask: Boolean tensor with shape (B, 3), where True means usable label.
     """

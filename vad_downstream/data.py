@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader, Dataset, random_split
 
 logger = logging.getLogger(__name__)
 
-WAGNER_VAD_COLUMNS = ("arousal", "dominance", "valence")
+WAGNER_VAD_COLUMNS = ("valence", "arousal", "dominance")
 _SPLIT_ALIASES = {
     "train": "train",
     "tr": "train",
@@ -271,7 +271,7 @@ def load_vad_csv(csv_path: str, audio_dir: Optional[str] = None) -> List[Dict[st
     必須列:
         file_path
     ラベル列:
-        arousal / dominance / valence のうち少なくとも1列
+        valence / arousal / dominance のうち少なくとも1列
     任意列:
         split, session
     """
@@ -290,7 +290,7 @@ def load_vad_csv(csv_path: str, audio_dir: Optional[str] = None) -> List[Dict[st
             for column in WAGNER_VAD_COLUMNS
         }
         if not any(vad_fields.values()):
-            raise ValueError("CSV must contain at least one of: arousal, dominance, valence.")
+            raise ValueError("CSV must contain at least one of: valence, arousal, dominance.")
 
         split_field = _lookup_field(fieldnames, "split")
         session_field = _lookup_field(fieldnames, "session")
@@ -319,7 +319,7 @@ def load_vad_csv(csv_path: str, audio_dir: Optional[str] = None) -> List[Dict[st
             if not has_label:
                 raise ValueError(
                     f"CSV line {line_number} has no usable VAD label. "
-                    "At least one of arousal/dominance/valence is required."
+                    "At least one of valence/arousal/dominance is required."
                 )
 
             if split_field is not None:

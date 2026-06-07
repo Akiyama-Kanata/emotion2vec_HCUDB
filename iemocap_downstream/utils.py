@@ -85,8 +85,20 @@ def validate_and_test(model, data_loader, device, num_classes):
     return weighted_acc, unweighted_acc, weighted_f1
 
 
-def inference(model, ):
-    pass
+@torch.no_grad()
+def inference(model, data_loader, device):
+    """DataLoader上で推論し、sample id と予測クラスIDのリストを返す。"""
+    model.eval()
+    results = []
+    for batch in data_loader:
+        ids, net_input = batch["id"], batch["net_input"]
+        feats = net_input["feats"].to(device)
+        speech_padding_mask = net_input["padding_mask"].to(device)
+        outputs = model(feats, speech_padding_mask)
+        predicted = torch.argmax(outputs, dim=1).detach().cpu()
+        for sample_id, label_id in zip(ids.tolist(), predicted.tolist()):
+            results.append({"id": sample_id, "prediction": label_id})
+    return results
 
 
 def compute_unweighted_accuracy(list1, list2):

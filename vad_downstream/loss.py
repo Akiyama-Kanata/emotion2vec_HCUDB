@@ -1,21 +1,22 @@
 """
-VAD回帰タスク用の損失関数モジュール。
-Concordance Correlation Coefficient (CCC) に基づいた損失を定義する。
+Loss functions for Wagner-compatible VAD regression.
+
+Predictions and labels use the public order:
+    arousal, dominance, valence
 """
 
-import torch
 from typing import Optional
+
+import torch
 
 
 def ccc_loss(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
     """
-    CCC損失 (1 - CCC) を計算する。
+    Concordance Correlation Coefficient loss, defined as 1 - CCC.
 
     Args:
-        pred:   (B,) の予測値
-        target: (B,) の正解値
-    Returns:
-        スカラー損失値
+        pred: Prediction tensor with shape (B,).
+        target: Target tensor with shape (B,).
     """
     pred_mean = pred.mean()
     target_mean = target.mean()
@@ -23,23 +24,10 @@ def ccc_loss(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
     target_var = target.var(unbiased=False)
     covariance = ((pred - pred_mean) * (target - target_mean)).mean()
 
-    ccc = (2 * covariance) / (pred_var + target_var + (pred_mean - target_mean) ** 2 + 1e-8)
+    ccc = (2 * covariance) / (
+        pred_var + target_var + (pred_mean - target_mean) ** 2 + 1e-8
+    )
     return 1.0 - ccc
-
-
-def stage1_loss(vad_pred: torch.Tensor, va_target: torch.Tensor) -> torch.Tensor:
-    """
-    Stage 1用損失: Valence と Arousal の CCC損失の和（Dominanceラベルなし）。
-
-    Args:
-        vad_pred:  (B, 3) — VADDecoder の出力 [V, A, D]
-        va_target: (B, 2) — VAラベル [V, A]
-    Returns:
-        スカラー損失値
-    """
-    loss_v = ccc_loss(vad_pred[:, 0], va_target[:, 0])
-    loss_a = ccc_loss(vad_pred[:, 1], va_target[:, 1])
-    return loss_v + loss_a
 
 
 def vad_ccc_loss(
@@ -48,14 +36,12 @@ def vad_ccc_loss(
     target_mask: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     """
-    Wagner互換 VAD 回帰用の CCC loss。
+    CCC loss averaged over available VAD dimensions.
 
     Args:
-        pred:        (B, 3) — [arousal, dominance, valence] の 0..1 予測
-        target:      (B, 3) — 同じ順序の正解。欠損値は NaN でもよい
-        target_mask: (B, 3) — 利用可能なラベル位置が True。None の場合は finite(target)
-    Returns:
-        利用可能な次元だけで平均した CCC loss。全ラベル欠損時は 0 loss を返す
+        pred: Tensor with shape (B, 3), ordered as arousal, dominance, valence.
+        target: Tensor with shape (B, 3), same order. Missing labels may be NaN.
+        target_mask: Boolean tensor with shape (B, 3), where True means usable label.
     """
     if pred.shape != target.shape:
         raise ValueError(f"pred and target must have the same shape: {pred.shape} != {target.shape}")

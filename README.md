@@ -17,6 +17,20 @@
     <a href="https://github.com/ddlBoJack/emotion2vec"><img src="https://img.shields.io/badge/License-MIT-red.svg" alt="mit"></a>
 </div>
 
+# Repository focus
+
+This workspace keeps the original emotion2vec implementation, and now uses it
+primarily as a feature extractor for **VAD regression**:
+
+- input labels: `file_path, arousal, dominance, valence, split, session`
+- feature input: cached emotion2vec `.npy` frame features
+- main entrypoint: `vad_downstream/train_vad.py`
+- output order: `arousal, dominance, valence`
+
+The original IEMOCAP downstream classifier remains under `iemocap_downstream/`
+as a reference implementation. Old VAD-as-intermediate-classification experiments
+were moved to `archive/vad_iemocap_two_stage/`.
+
 # News
 - [Oct. 2024] 🔧 We update the usage in the FunASR interface with source selection. "ms" or "modelscope" for China mainland users; "hf" or "huggingface" for other overseas users. **We recommend using FunASR interface for a smooth landing.**
 - [Jun. 2024] 🔧 We fix a bug in emotion2vec+. Please re-pull the latest code. 

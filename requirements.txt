@@ -1,0 +1,10 @@
+# Use Python 3.8-3.10 for fairseq compatibility.
+torch>=1.13
+fairseq==0.12.2
+hydra-core
+omegaconf
+soundfile
+numpy
+npy-append-array
+tqdm
+scikit-learn

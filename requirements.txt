@@ -1,10 +1,12 @@
 # Use Python 3.8-3.10 for fairseq compatibility.
+# Before installing this file with modern pip, run:
+#   python -m pip install "pip<24.1"
 torch>=1.13
 fairseq==0.12.2
-hydra-core
-omegaconf
+hydra-core==1.0.7
+omegaconf==2.0.6
 soundfile
-numpy
+numpy<2
 npy-append-array
 tqdm
 scikit-learn

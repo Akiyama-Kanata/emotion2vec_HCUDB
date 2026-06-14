@@ -13,6 +13,19 @@ emotion2vecを日本語音声感情認識向けに段階的に拡張する前に
 - `base` conda環境は使わず、emotion2vec専用環境を作る。
 - Pythonはfairseq互換性を優先して3.10を使う。
 
+## 専用環境を作った理由
+
+Ubuntu/WSL側の既存 `base` 環境は Python 3.12 系だったが、emotion2vec の既存実装で使う `fairseq==0.12.2`、`hydra-core==1.0.7`、`omegaconf==2.0.6` は古い依存関係を含む。
+
+そのため、`base` 環境に直接入れると他の作業環境を壊す可能性があり、かつ Python 3.12 では依存解決やビルドで詰まる可能性が高いと判断した。
+
+このリポジトリ専用に `emotion2vec-py310` を作り、Python 3.10 と `pip<24.1` を使う方針にした。以後の実験・テストは原則としてこの環境で行う。
+
+```bash
+conda activate emotion2vec-py310
+cd /mnt/c/Users/RD004/Documents/lab/emotion2vec
+```
+
 ## リポジトリ側の変更
 
 `requirements.txt` を追加し、その後インストール失敗に合わせて最小修正した。
@@ -161,4 +174,3 @@ ok
 - IEMOCAPとの混合学習。
 - 日本語データセット固有の前処理。
 - README全体の大きな更新。
-

@@ -230,6 +230,9 @@ Refer to [FunASR](https://github.com/alibaba-damo-academy/FunASR/tree/main/examp
 ## Training your downstream model
 We provide training scripts for IEMOCAP dataset in the `iemocap_downstream` folder. You can modify the scripts to train your downstream model on other datasets.
 
+## Testing
+See [TESTING.md](TESTING.md) for the supported test command. This repository is tested with the dedicated WSL/Ubuntu `emotion2vec-py310` environment, not the Windows-side `python` command.
+
 ## Contributors
 |  Institution | Contribution |
 |:------|:-----|

@@ -14,6 +14,38 @@ Current minimal modules:
 - `model.py`: defines a padded frame-level `VADRegressionHead` and an optional
   `Emotion2vecVADModel` wrapper for waveform-to-regression experiments.
 - `training.py`: provides CCC loss and a one-epoch training helper.
+- `inference.py`: provides the Stage 1 WAV-to-VA/VAD JSON wiring check. Without
+  a head checkpoint, it only runs when `--allow-random-head` is set.
+
+## WAV to VA/VAD staged plan
+
+The WAV-to-VA/VAD path is intentionally staged.
+
+Stage 1 is implemented as a wiring check. `vad_downstream/inference.py` accepts
+a single WAV path and writes JSON with:
+
+- `labels`
+- `prediction`
+- `head_checkpoint`
+- `random_head`
+
+If `--head-checkpoint` is omitted, the command fails by default. Passing
+`--allow-random-head` explicitly allows an untrained random regression head and
+marks the output with `"random_head": true`. These numbers are not research
+results.
+
+Stage 1 does not load a real emotion2vec checkpoint. `--model-dir` and
+`--checkpoint` are reserved for Stage 2 and currently raise a clear error when
+used with the built-in Stage 1 placeholder encoder.
+
+Stage 2 will connect the same command surface to real emotion2vec checkpoint
+loading, following `scripts/extract_features.py`: fairseq user module import,
+checkpoint loading, WAV normalization, and device selection. The intended WAV
+contract is 16kHz mono.
+
+Stage 3 will train `VADRegressionHead` from `.npy/.lengths/.vad`, save a head
+checkpoint, load it through `--head-checkpoint`, and add validation/evaluation
+helpers such as CCC metrics.
 
 ## Required files
 
@@ -118,8 +150,10 @@ The first implementation should stay small:
 
 - VAD-assisted categorical classifier.
 - emotion2vec fine-tuning.
-- Full validation loop, scheduler, checkpoint saving, and experiment logging.
-- WAV-path dataset or real checkpoint loading for the whole model.
+- Real emotion2vec checkpoint loading in `inference.py`.
+- Head checkpoint saving and full validation/evaluation workflow.
+- Full scheduler and experiment logging.
+- WAV-path dataset for training.
 - IEMOCAP mixed training or Japanese dataset preprocessing.
 - Conversion scripts from raw annotation files.
 - Changes to `requirements.txt`.

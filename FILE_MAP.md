@@ -45,7 +45,8 @@ emotion2vec/
 │   ├── README.md            # .npy/.lengths/.vad のデータ契約
 │   ├── data.py              # VAD/VA用データローダー
 │   ├── model.py             # 回帰headとemotion2vec込み全体モデル
-│   └── training.py          # CCC lossと最小学習ループ
+│   ├── training.py          # CCC lossと最小学習ループ
+│   └── inference.py         # WAV→VA/VAD JSON出力のStage 1疎通CLI
 ├── scripts/            # 汎用特徴抽出スクリプト
 │   ├── extract_features.py  # 単一WAVファイルから特徴抽出
 │   ├── extract_features.sh  # 上記のシェルラッパー
@@ -205,6 +206,15 @@ emotion2vec/
 - `concordance_correlation_coefficient()`: target次元ごとのCCCを計算
 - `ccc_loss()`: `1 - mean(CCC)` を学習lossとして返す
 - `train_one_epoch()`: README準拠batchを1epoch学習する
+
+### vad_downstream/inference.py
+**役割**: WAVからVA/VAD JSONを出す段階実装CLI。
+
+- Stage 1: `--allow-random-head` 指定時だけ未学習headでJSON出力まで通す疎通確認
+- 出力JSON: `labels`、`prediction`、`head_checkpoint`、`random_head`
+- `--head-checkpoint` がない場合は原則エラー
+- 実emotion2vec checkpoint読み込みはStage 2で追加予定
+- 学習済みheadの保存・評価はStage 3で追加予定
 
 ---
 

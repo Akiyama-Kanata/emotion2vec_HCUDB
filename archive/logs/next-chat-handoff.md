@@ -2,72 +2,110 @@
 
 ## 最終更新
 
-2026-06-15
+2026-06-17
 
 ## 現在地
 
-`vad_downstream/README.md` の `.npy/.lengths/.vad` 契約に従い、padded frame-level emotion2vec特徴量からVA/VADを予測し、CCC lossで1epoch学習できる最小単位まで実装済み。
+WAV→VA/VAD JSON出力の段階実装計画のうち、Stage 1「推論CLIの最小疎通」を実装済み。
+
+Stage 1は研究結果を出す実装ではない。未学習headでも `--allow-random-head` を明示した場合だけ、WAVからJSONまで配線が通ることを確認するためのもの。
 
 ## 完了したこと
 
-- `vad_downstream/data.py` はREADME準拠の `net_input.feats`、`net_input.padding_mask`、`target` を返せる。
-- `vad_downstream/model.py` に `VADRegressionHead` を追加。
-- `Emotion2vecVADModel` はencoder出力を同じ `VADRegressionHead` に渡す構成へ整理済み。
-- `vad_downstream/training.py` を追加。
-- `concordance_correlation_coefficient()`、`ccc_loss()`、`train_one_epoch()` を実装。
-- 主lossはMSEではなくCCC lossに固定。
-- `vad_downstream/README.md` と `FILE_MAP.md` に現在のVAD downstream構成を反映。
-- 参照済みログ内の `MSELoss` 記述を `CCC loss` に修正。
-- `tests/test_vad_downstream_training.py` を追加し、CCC lossと最小学習ループをテスト済み。
+- `vad_downstream/inference.py` を追加。
+- CLI引数 `--wav`、`--model-dir`、`--checkpoint`、`--target-dim 2|3`、`--head-checkpoint`、`--allow-random-head`、`--output`、`--device auto|cpu|cuda` を実装。
+- `--head-checkpoint` がない場合は原則エラーにした。
+- `--allow-random-head` 指定時だけ未学習headでJSON出力を許可。
+- JSONに `labels`、`prediction`、`head_checkpoint`、`random_head` を含めた。
+- Stage 1用の `Stage1AudioFeatureEncoder` を追加。実emotion2vecではなく疎通確認用placeholder。
+- 16kHz mono WAVのみ受け付ける読み込み処理を追加。
+- `tests/test_vad_downstream_inference.py` を追加。
+- dummy encoderでVA 2次元、VAD 3次元、random head許可/拒否を確認するテストを書いた。
+- `vad_downstream/README.md` と `FILE_MAP.md` にStage 1/2/3の位置づけを追記。
+- `archive/logs/2026-06-17-work-log.md` に今回の実装と残りStageを記録。
 
 ## 未完了 / 次の最小ステップ
 
-次はvalidation/evaluationの最小単位を追加する。
+まずStage 1のテスト実行を完了する。
 
-- `evaluate` または `validate_one_epoch` 相当を作る。
-- CCCをlossではなくmetricとして返す。
-- validationでは `model.eval()` と `torch.no_grad()` を使い、勾配更新しない。
-- README準拠の小さな一時datasetで、train後にvalidation結果を取得できることをテストする。
+推奨コマンド:
+
+```powershell
+wsl -d Ubuntu --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec -e /home/akiyama/miniforge/envs/emotion2vec-py310/bin/python -m unittest discover -s tests
+```
+
+この環境ではWSL distroが存在せず実行できなかったため、ユーザー環境でWSL/Ubuntuを利用可能にするか、別のPython実行環境を指定する必要がある。
+
+次に進むならStage 2:
+
+- `scripts/extract_features.py` と同じ方式でfairseq user moduleをimportする。
+- `--model-dir` と `--checkpoint` から実emotion2vec checkpointを読み込む。
+- `task.cfg.normalize` に従ってWAVをnormalizeする。
+- 16kHz monoのみ対応し、違反時は明確なエラーにする。
+- 実checkpointがある場合だけ `scripts/test.wav` などで疎通確認する。
+- `--head-checkpoint` がない場合は引き続き `--allow-random-head` なしでは拒否する。
+
+Stage 3でやること:
+
+- `.npy/.lengths/.vad` から `VADRegressionHead` を学習する。
+- head checkpointを保存する。
+- `inference.py --head-checkpoint` で保存済みheadを読み込む。
+- `--allow-random-head` なしで推論できる状態にする。
+- validation/evaluation helperを追加し、target次元ごとのCCCとmean CCCを返す。
 
 ## 重要な前提
 
-- `.npy/.lengths/.vad` は、当面のVAD/VA回帰実験の中間特徴量形式。
-- `.vad` はVA 2次元またはVAD 3次元で、値域は正規化済み `[-1.0, 1.0]`。
-- 主lossはCCC loss。MSE lossは現在の学習実装では使わない。
-- 「モデル」はdownstream headだけでなく、必要に応じてemotion2vec + pooling/head全体も指す。
-- 波形入力の全体モデルはあるが、実checkpointロードやWAVファイルパスdatasetは未実装。
+- 現時点では学習済みVAD/VA head checkpointは存在しない前提。
+- Stage 1の出力値は研究結果ではない。
+- `Stage1AudioFeatureEncoder` は実emotion2vecの代替ではなく、WAV→model→head→JSONの疎通確認用。
+- 実emotion2vec checkpoint読み込みはStage 2で実装する。
+- 研究用head学習、保存、評価はStage 3で実装する。
+- `.npy/.lengths/.vad` は引き続きhead学習用の中間特徴量形式。
 
 ## 変更ファイル
 
-- `vad_downstream/model.py`
-- `vad_downstream/training.py`
+- `vad_downstream/inference.py`
+- `tests/test_vad_downstream_inference.py`
 - `vad_downstream/README.md`
-- `tests/test_vad_downstream_model.py`
-- `tests/test_vad_downstream_training.py`
 - `FILE_MAP.md`
-- `archive/logs/2026-06-15-work-log.md`
+- `archive/logs/2026-06-17-work-log.md`
 - `archive/logs/next-chat-handoff.md`
+
+既存の未関連変更:
+
+- `README.md`
+- `README_ja.md`
+- `TESTING.md`
 
 ## 検証状況
 
-通常サンドボックス内ではWSL distroが見えず、`wsl` 実行は `Wsl/Service/WSL_E_DISTRO_NOT_FOUND` で失敗する。
+実行できた確認:
 
-承認を得て、既存ログと同じWSL/Ubuntu環境で以下を実行した。
-
-```bash
-wsl -d Ubuntu --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec -e /home/akiyama/miniforge/envs/emotion2vec-py310/bin/python -m unittest discover -s tests
+```powershell
+git diff --check
 ```
 
 結果:
 
-```text
-Ran 20 tests in 3.848s
-OK
-```
+- 空白エラーなし。
+- CRLF警告のみ。
+
+未実行:
+
+- `python -m unittest ...`
+- `wsl -d Ubuntu ... python -m unittest ...`
+- `py -3 -m unittest ...`
+
+理由:
+
+- Windows側で `python` コマンドなし。
+- `py -3` は `No installed Python found!`。
+- `wsl -d Ubuntu` は `WSL_E_DISTRO_NOT_FOUND`。
+- `wsl -l -v` ではWSLディストリビューション未インストール状態。
 
 ## 注意点
 
-- 次回以降、このrepoのテストは最初からサンドボックス外の `wsl -d Ubuntu ...` 実行を申請する運用でよい。通常サンドボックス内で一度失敗させる必要はない。
-- サンドボックス内では `py.exe` は見えるが、`py -V` は `No installed Python found!` になるため、Windows側Pythonでの代替実行は現状できない。
-- `git status` 実行時に `C:\Users\RD004/.config/git/ignore` へのpermission denied warningが出る。
-- 実checkpointを使った動作確認、WAVファイルパスdataset、実データ成型、`.vad` 生成器、emotion2vec本体のfine-tuningは未実施。
+- `git status` 実行時に `C:\Users\RD004/.config/git/ignore` のpermission denied warningが出る。
+- この環境では前回ログにあったWSL/Ubuntu実行環境を確認できない。
+- Stage 2ではcheckpoint pathをコードに固定しない。
+- Stage 3のcheckpoint形式は `inference.py` の `load_head_checkpoint()` が読める形式に合わせる。

@@ -250,6 +250,9 @@ wav_name2 wav_path2.wav
 ## 下流モデルの学習
 IEMOCAP データセット用の学習スクリプトを `iemocap_downstream` フォルダーで提供しています。スクリプトを変更することで、他のデータセット上で下流モデルを学習できます。
 
+## テスト実行
+対応しているテスト実行コマンドは [TESTING.md](TESTING.md) を参照してください。このリポジトリのテストは、Windows 側の `python` コマンドではなく、専用の WSL/Ubuntu `emotion2vec-py310` 環境で実行します。
+
 ## コントリビューター
 
 | Institution | Contribution |

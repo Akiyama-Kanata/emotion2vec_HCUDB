@@ -46,7 +46,7 @@ emotion2vec/
 │   ├── data.py              # VAD/VA用データローダー
 │   ├── model.py             # 回帰headとemotion2vec込み全体モデル
 │   ├── training.py          # CCC lossと最小学習ループ
-│   └── inference.py         # WAV→VA/VAD JSON出力のStage 1疎通CLI
+│   └── inference.py         # WAV→VA/VAD JSON出力のStage 1/2 CLI
 ├── scripts/            # 汎用特徴抽出スクリプト
 │   ├── extract_features.py  # 単一WAVファイルから特徴抽出
 │   ├── extract_features.sh  # 上記のシェルラッパー
@@ -211,9 +211,9 @@ emotion2vec/
 **役割**: WAVからVA/VAD JSONを出す段階実装CLI。
 
 - Stage 1: `--allow-random-head` 指定時だけ未学習headでJSON出力まで通す疎通確認
+- Stage 2: `--model-dir` と `--checkpoint` 指定時に実emotion2vec checkpointをfairseq経由で読み込む
 - 出力JSON: `labels`、`prediction`、`head_checkpoint`、`random_head`
 - `--head-checkpoint` がない場合は原則エラー
-- 実emotion2vec checkpoint読み込みはStage 2で追加予定
 - 学習済みheadの保存・評価はStage 3で追加予定
 
 ---

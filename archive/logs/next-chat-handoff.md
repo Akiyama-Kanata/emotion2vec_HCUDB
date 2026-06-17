@@ -6,46 +6,50 @@
 
 ## 現在地
 
-WAV→VA/VAD JSON出力の段階実装計画のうち、Stage 1「推論CLIの最小疎通」を実装済み。
+Stage 1「WAV→VA/VAD JSON疎通CLI」は実装済みで、正規WSL/Ubuntuコマンドによるunittestも成功した。
 
-Stage 1は研究結果を出す実装ではない。未学習headでも `--allow-random-head` を明示した場合だけ、WAVからJSONまで配線が通ることを確認するためのもの。
+Stage 2「実emotion2vec checkpoint loader」も実装済み。`--model-dir` と `--checkpoint` の両方を指定した場合のみfairseq経由で実checkpointを読み込む。片方だけ指定された場合は `ValueError`。両方未指定の場合はStage 1 placeholder encoderを維持する。
+
+Stage 3のhead学習・保存・CCC評価は未実装で、次の別作業。
 
 ## 完了したこと
 
-- `vad_downstream/inference.py` を追加。
-- CLI引数 `--wav`、`--model-dir`、`--checkpoint`、`--target-dim 2|3`、`--head-checkpoint`、`--allow-random-head`、`--output`、`--device auto|cpu|cuda` を実装。
-- `--head-checkpoint` がない場合は原則エラーにした。
-- `--allow-random-head` 指定時だけ未学習headでJSON出力を許可。
-- JSONに `labels`、`prediction`、`head_checkpoint`、`random_head` を含めた。
-- Stage 1用の `Stage1AudioFeatureEncoder` を追加。実emotion2vecではなく疎通確認用placeholder。
-- 16kHz mono WAVのみ受け付ける読み込み処理を追加。
-- `tests/test_vad_downstream_inference.py` を追加。
-- dummy encoderでVA 2次元、VAD 3次元、random head許可/拒否を確認するテストを書いた。
-- `vad_downstream/README.md` と `FILE_MAP.md` にStage 1/2/3の位置づけを追記。
-- `archive/logs/2026-06-17-work-log.md` に今回の実装と残りStageを記録。
+- `vad_downstream/inference.py` に `Emotion2vecCheckpointEncoder` を追加。
+- fairseq importを実checkpoint loader使用時だけの遅延importにした。
+- `fairseq.utils.import_user_module(UserDirModule(model_dir))` と `fairseq.checkpoint_utils.load_model_ensemble_and_task([checkpoint])` で読み込むようにした。
+- loaded modelを `eval()` にし、指定deviceへ移動するようにした。
+- `task.cfg.normalize` がtrueの場合、`F.layer_norm(source, source.shape)` を適用するようにした。
+- `extract_features(source, padding_mask=None, mask=False, remove_extra_tokens=True)` 互換で既存 `Emotion2vecVADModel` に渡すようにした。
+- `--head-checkpoint` なし、`--allow-random-head` なしの拒否挙動は維持。
+- JSON形式は `wav`, `target_dim`, `labels`, `prediction`, `head_checkpoint`, `random_head` を維持。
+- fake fairseq loaderを使うunit testを追加し、実checkpointなしでimport/load/normalize/device/JSON生成を確認できるようにした。
+- `vad_downstream/README.md` と `FILE_MAP.md` をStage 2実装済み表記に更新。
+- `archive/logs/2026-06-17-work-log.md` にStage 2作業ログ、明示依頼によるログ作成記録、次回は環境設定から始める方針を追記。
+- 本ファイルを次チャット引き継ぎとして更新。
 
 ## 未完了 / 次の最小ステップ
 
-まずStage 1のテスト実行を完了する。
+次回はStage 3実装へ直行せず、まず環境設定・実行条件の確認から始める。
 
-推奨コマンド:
+推奨順序:
+
+1. WSL/Ubuntuの見え方を整理する。
+   - `wsl -l -v`
+   - 通常sandbox内実行と承認付きsandbox外実行で差がある理由を確認する。
+2. 正規Python環境を確認する。
+   - `/home/akiyama/miniforge/envs/emotion2vec-py310/bin/python`
+   - `torch`, `fairseq`, `soundfile` などがimportできるか確認する。
+3. fairseq user module importを確認する。
+   - `upstream/` を `--model-dir` として読み込めるか確認する。
+4. 実emotion2vec checkpointの場所を確定する。
+   - workspace内には `*.pt`, `*.pth`, `*.ckpt` が見つかっていない。
+5. 実checkpointが利用可能になったら、`scripts/test.wav` でCPU疎通を確認する。
 
 ```powershell
-wsl -d Ubuntu --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec -e /home/akiyama/miniforge/envs/emotion2vec-py310/bin/python -m unittest discover -s tests
+wsl -d Ubuntu --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec -e /home/akiyama/miniforge/envs/emotion2vec-py310/bin/python -m vad_downstream.inference --wav scripts/test.wav --model-dir <MODEL_DIR> --checkpoint <CHECKPOINT> --target-dim 2 --device cpu --allow-random-head
 ```
 
-この環境ではWSL distroが存在せず実行できなかったため、ユーザー環境でWSL/Ubuntuを利用可能にするか、別のPython実行環境を指定する必要がある。
-
-次に進むならStage 2:
-
-- `scripts/extract_features.py` と同じ方式でfairseq user moduleをimportする。
-- `--model-dir` と `--checkpoint` から実emotion2vec checkpointを読み込む。
-- `task.cfg.normalize` に従ってWAVをnormalizeする。
-- 16kHz monoのみ対応し、違反時は明確なエラーにする。
-- 実checkpointがある場合だけ `scripts/test.wav` などで疎通確認する。
-- `--head-checkpoint` がない場合は引き続き `--allow-random-head` なしでは拒否する。
-
-Stage 3でやること:
+その後の本筋はStage 3:
 
 - `.npy/.lengths/.vad` から `VADRegressionHead` を学習する。
 - head checkpointを保存する。
@@ -55,12 +59,11 @@ Stage 3でやること:
 
 ## 重要な前提
 
-- 現時点では学習済みVAD/VA head checkpointは存在しない前提。
-- Stage 1の出力値は研究結果ではない。
-- `Stage1AudioFeatureEncoder` は実emotion2vecの代替ではなく、WAV→model→head→JSONの疎通確認用。
-- 実emotion2vec checkpoint読み込みはStage 2で実装する。
-- 研究用head学習、保存、評価はStage 3で実装する。
-- `.npy/.lengths/.vad` は引き続きhead学習用の中間特徴量形式。
+- 実emotion2vec checkpoint pathはコードに固定していない。
+- WAV入力契約は16kHz monoのみ。resamplingやstereo mixdownは未実装。
+- `--allow-random-head` を使う出力は疎通確認であり、研究結果ではない。
+- 学習済みVAD/VA head checkpointは現時点では存在しない前提。
+- Stage 3は今回未実装。
 
 ## 変更ファイル
 
@@ -71,15 +74,24 @@ Stage 3でやること:
 - `archive/logs/2026-06-17-work-log.md`
 - `archive/logs/next-chat-handoff.md`
 
-既存の未関連変更:
-
-- `README.md`
-- `README_ja.md`
-- `TESTING.md`
-
 ## 検証状況
 
-実行できた確認:
+通常sandbox内で実行した正規コマンド:
+
+```powershell
+wsl -d Ubuntu --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec -e /home/akiyama/miniforge/envs/emotion2vec-py310/bin/python -m unittest discover -s tests
+```
+
+結果:
+
+- `Wsl/Service/WSL_E_DISTRO_NOT_FOUND`
+
+承認付きsandbox外で同じ正規コマンドを実行:
+
+- `Ran 27 tests in 3.579s`
+- `OK`
+
+追加確認:
 
 ```powershell
 git diff --check
@@ -90,22 +102,12 @@ git diff --check
 - 空白エラーなし。
 - CRLF警告のみ。
 
-未実行:
+任意integration:
 
-- `python -m unittest ...`
-- `wsl -d Ubuntu ... python -m unittest ...`
-- `py -3 -m unittest ...`
-
-理由:
-
-- Windows側で `python` コマンドなし。
-- `py -3` は `No installed Python found!`。
-- `wsl -d Ubuntu` は `WSL_E_DISTRO_NOT_FOUND`。
-- `wsl -l -v` ではWSLディストリビューション未インストール状態。
+- `rg --files -g *.pt -g *.pth -g *.ckpt` でcheckpoint候補は見つからなかった。
+- 実checkpointを使う `scripts/test.wav` 疎通は未実行。
 
 ## 注意点
 
 - `git status` 実行時に `C:\Users\RD004/.config/git/ignore` のpermission denied warningが出る。
-- この環境では前回ログにあったWSL/Ubuntu実行環境を確認できない。
-- Stage 2ではcheckpoint pathをコードに固定しない。
-- Stage 3のcheckpoint形式は `inference.py` の `load_head_checkpoint()` が読める形式に合わせる。
+- Stage 2 loaderはfake fairseq unit testでは確認済みだが、実checkpointでの疎通はcheckpoint入手後に確認が必要。

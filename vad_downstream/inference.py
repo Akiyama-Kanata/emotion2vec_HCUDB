@@ -2,6 +2,7 @@ import argparse
 import json
 import math
 import wave
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -19,6 +20,11 @@ LABELS_BY_TARGET_DIM = {
     2: ["valence", "arousal"],
     3: ["valence", "arousal", "dominance"],
 }
+
+
+@dataclass
+class UserDirModule:
+    user_dir: str
 
 
 class Stage1AudioFeatureEncoder(nn.Module):
@@ -62,20 +68,71 @@ class Stage1AudioFeatureEncoder(nn.Module):
         return {"x": features, "padding_mask": feature_padding_mask}
 
 
+class Emotion2vecCheckpointEncoder(nn.Module):
+    """Wrapper for a fairseq-loaded emotion2vec checkpoint."""
+
+    def __init__(self, model, normalize=False):
+        super().__init__()
+        self.model = model
+        self.normalize = bool(normalize)
+        self.model.eval()
+
+    @classmethod
+    def from_checkpoint(cls, model_dir, checkpoint, device):
+        import fairseq
+
+        model_path = UserDirModule(str(model_dir))
+        fairseq.utils.import_user_module(model_path)
+        models, _cfg, task = fairseq.checkpoint_utils.load_model_ensemble_and_task(
+            [str(checkpoint)]
+        )
+        if not models:
+            raise ValueError(f"no model was loaded from checkpoint: {checkpoint}")
+
+        model = models[0]
+        model.eval()
+        if device is not None:
+            model.to(device)
+        task_cfg = getattr(task, "cfg", None)
+        normalize = getattr(task_cfg, "normalize", False)
+        return cls(model=model, normalize=normalize)
+
+    def train(self, mode=True):
+        super().train(mode)
+        self.model.eval()
+        return self
+
+    def extract_features(
+        self,
+        source,
+        padding_mask=None,
+        mask=False,
+        remove_extra_tokens=True,
+    ):
+        if self.normalize:
+            source = F.layer_norm(source, source.shape)
+        return self.model.extract_features(
+            source,
+            padding_mask=padding_mask,
+            mask=mask,
+            remove_extra_tokens=remove_extra_tokens,
+        )
+
+
 def get_parser():
     parser = argparse.ArgumentParser(
-        description="Run Stage 1 WAV-to-VA/VAD inference and write JSON output."
+        description="Run WAV-to-VA/VAD inference and write JSON output."
     )
     parser.add_argument("--wav", required=True, help="Path to a 16kHz mono WAV file.")
     parser.add_argument(
         "--model-dir",
         default=None,
-        help="Reserved for Stage 2 fairseq user module loading.",
+        help="fairseq user module directory for Stage 2 checkpoint loading.",
     )
     parser.add_argument(
         "--checkpoint",
         default=None,
-        help="Reserved for Stage 2 emotion2vec checkpoint loading.",
+        help="emotion2vec checkpoint for Stage 2 loading.",
     )
     parser.add_argument("--target-dim", type=int, choices=(2, 3), required=True)
     parser.add_argument(
@@ -129,6 +186,7 @@ def run_inference(
 ):
     if target_dim not in LABELS_BY_TARGET_DIM:
         raise ValueError(f"target_dim must be 2 or 3, got {target_dim}")
+    validate_checkpoint_args(model_dir=model_dir, checkpoint=checkpoint)
     if head_checkpoint is None and not allow_random_head:
         raise ValueError(
             "--head-checkpoint is required unless --allow-random-head is set"
@@ -136,9 +194,10 @@ def run_inference(
 
     torch_device = resolve_device(device)
     wav = load_wav_16khz_mono(wav_path).to(torch_device)
-    encoder = encoder if encoder is not None else build_stage1_encoder(
+    encoder = encoder if encoder is not None else build_audio_encoder(
         model_dir=model_dir,
         checkpoint=checkpoint,
+        device=torch_device,
     )
     model = Emotion2vecVADModel(encoder=encoder, target_dim=target_dim)
     model.to(torch_device)
@@ -159,13 +218,30 @@ def run_inference(
     )
 
 
-def build_stage1_encoder(model_dir=None, checkpoint=None):
-    if model_dir is not None or checkpoint is not None:
-        raise NotImplementedError(
-            "real emotion2vec checkpoint loading is Stage 2; omit --model-dir "
-            "and --checkpoint for the Stage 1 placeholder encoder"
+def validate_checkpoint_args(model_dir=None, checkpoint=None):
+    if model_dir is not None and checkpoint is None:
+        raise ValueError("--checkpoint is required when --model-dir is specified")
+    if model_dir is None and checkpoint is not None:
+        raise ValueError("--model-dir is required when --checkpoint is specified")
+
+
+def build_audio_encoder(model_dir=None, checkpoint=None, device=None):
+    validate_checkpoint_args(model_dir=model_dir, checkpoint=checkpoint)
+    if model_dir is not None and checkpoint is not None:
+        return Emotion2vecCheckpointEncoder.from_checkpoint(
+            model_dir=model_dir,
+            checkpoint=checkpoint,
+            device=device,
         )
     return Stage1AudioFeatureEncoder()
+
+
+def build_stage1_encoder(model_dir=None, checkpoint=None, device=None):
+    return build_audio_encoder(
+        model_dir=model_dir,
+        checkpoint=checkpoint,
+        device=device,
+    )
 
 
 def resolve_device(device):

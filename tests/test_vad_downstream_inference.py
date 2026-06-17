@@ -1,8 +1,11 @@
 import json
+import sys
 import tempfile
+import types
 import unittest
 import wave
 from pathlib import Path
+from unittest import mock
 
 import numpy as np
 import torch
@@ -31,6 +34,47 @@ class DummyEmotion2vecEncoder(nn.Module):
     ):
         batch_size = source.size(0)
         features = self.features.expand(batch_size, -1, -1)
+        feature_padding_mask = torch.zeros(
+            features.shape[:2], dtype=torch.bool, device=features.device
+        )
+        return {"x": features, "padding_mask": feature_padding_mask}
+
+
+class FakeFairseqEmotion2vec(nn.Module):
+    def __init__(self, frame_count=4):
+        super().__init__()
+        self.dummy = nn.Parameter(torch.zeros(()))
+        features = torch.linspace(
+            -0.5,
+            0.5,
+            frame_count * 768,
+            dtype=torch.float32,
+        ).view(1, frame_count, 768)
+        self.register_buffer("features", features)
+        self.to_calls = []
+        self.extract_calls = []
+
+    def to(self, *args, **kwargs):
+        self.to_calls.append((args, kwargs))
+        return super().to(*args, **kwargs)
+
+    def extract_features(
+        self,
+        source,
+        padding_mask=None,
+        mask=False,
+        remove_extra_tokens=True,
+    ):
+        self.extract_calls.append(
+            {
+                "source": source.detach().cpu().clone(),
+                "padding_mask": padding_mask,
+                "mask": mask,
+                "remove_extra_tokens": remove_extra_tokens,
+            }
+        )
+        batch_size = source.size(0)
+        features = self.features.to(source.device).expand(batch_size, -1, -1)
         feature_padding_mask = torch.zeros(
             features.shape[:2], dtype=torch.bool, device=features.device
         )
@@ -116,6 +160,120 @@ class VADDownstreamInferenceTest(unittest.TestCase):
                     ],
                     encoder_factory=lambda args: DummyEmotion2vecEncoder(),
                 )
+
+    def test_rejects_model_dir_without_checkpoint(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            wav_path = self._write_wav(tmp_dir)
+
+            with self.assertRaisesRegex(ValueError, "--checkpoint is required"):
+                inference.main(
+                    [
+                        "--wav",
+                        str(wav_path),
+                        "--model-dir",
+                        str(Path(tmp_dir) / "model"),
+                        "--target-dim",
+                        "2",
+                        "--allow-random-head",
+                        "--device",
+                        "cpu",
+                    ]
+                )
+
+    def test_rejects_checkpoint_without_model_dir(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            wav_path = self._write_wav(tmp_dir)
+
+            with self.assertRaisesRegex(ValueError, "--model-dir is required"):
+                inference.main(
+                    [
+                        "--wav",
+                        str(wav_path),
+                        "--checkpoint",
+                        str(Path(tmp_dir) / "checkpoint.pt"),
+                        "--target-dim",
+                        "2",
+                        "--allow-random-head",
+                        "--device",
+                        "cpu",
+                    ]
+                )
+
+    def test_build_audio_encoder_uses_stage1_placeholder_without_checkpoint_args(self):
+        encoder = inference.build_audio_encoder()
+
+        self.assertIsInstance(encoder, inference.Stage1AudioFeatureEncoder)
+
+    def test_main_uses_fake_fairseq_checkpoint_loader_and_writes_json(self):
+        torch.manual_seed(0)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            wav_path = self._write_wav(tmp_dir)
+            model_dir = Path(tmp_dir) / "emotion2vec"
+            checkpoint = Path(tmp_dir) / "checkpoint.pt"
+            output_path = Path(tmp_dir) / "prediction.json"
+            fake_model = FakeFairseqEmotion2vec()
+            import_user_modules = []
+            checkpoint_loads = []
+
+            def import_user_module(module):
+                import_user_modules.append(module)
+
+            def load_model_ensemble_and_task(paths):
+                checkpoint_loads.append(paths)
+                task = types.SimpleNamespace(
+                    cfg=types.SimpleNamespace(normalize=True)
+                )
+                return [fake_model], types.SimpleNamespace(), task
+
+            fake_fairseq = types.ModuleType("fairseq")
+            fake_fairseq.utils = types.SimpleNamespace(
+                import_user_module=import_user_module
+            )
+            fake_fairseq.checkpoint_utils = types.SimpleNamespace(
+                load_model_ensemble_and_task=load_model_ensemble_and_task
+            )
+
+            with mock.patch.dict(sys.modules, {"fairseq": fake_fairseq}):
+                payload = inference.main(
+                    [
+                        "--wav",
+                        str(wav_path),
+                        "--model-dir",
+                        str(model_dir),
+                        "--checkpoint",
+                        str(checkpoint),
+                        "--target-dim",
+                        "2",
+                        "--allow-random-head",
+                        "--output",
+                        str(output_path),
+                        "--device",
+                        "cpu",
+                    ]
+                )
+
+            raw_source = inference.load_wav_16khz_mono(wav_path).unsqueeze(0)
+            expected_source = torch.nn.functional.layer_norm(
+                raw_source, raw_source.shape
+            )
+            saved_payload = json.loads(output_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(payload, saved_payload)
+        self.assertEqual(saved_payload["labels"], ["valence", "arousal"])
+        self.assertEqual(set(saved_payload["prediction"]), {"valence", "arousal"})
+        self.assertIsNone(saved_payload["head_checkpoint"])
+        self.assertTrue(saved_payload["random_head"])
+        self.assertEqual(len(import_user_modules), 1)
+        self.assertEqual(import_user_modules[0].user_dir, str(model_dir))
+        self.assertEqual(checkpoint_loads, [[str(checkpoint)]])
+        self.assertFalse(fake_model.training)
+        self.assertEqual(fake_model.to_calls[0][0], (torch.device("cpu"),))
+        self.assertEqual(len(fake_model.extract_calls), 1)
+        extract_call = fake_model.extract_calls[0]
+        self.assertIsNone(extract_call["padding_mask"])
+        self.assertFalse(extract_call["mask"])
+        self.assertTrue(extract_call["remove_extra_tokens"])
+        torch.testing.assert_close(extract_call["source"], expected_source)
 
     def _write_wav(self, directory):
         path = Path(directory) / "sample.wav"

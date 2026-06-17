@@ -14,8 +14,10 @@ Current minimal modules:
 - `model.py`: defines a padded frame-level `VADRegressionHead` and an optional
   `Emotion2vecVADModel` wrapper for waveform-to-regression experiments.
 - `training.py`: provides CCC loss and a one-epoch training helper.
-- `inference.py`: provides the Stage 1 WAV-to-VA/VAD JSON wiring check. Without
-  a head checkpoint, it only runs when `--allow-random-head` is set.
+- `inference.py`: provides WAV-to-VA/VAD JSON inference. It keeps the Stage 1
+  placeholder path and can also load a real emotion2vec checkpoint when both
+  `--model-dir` and `--checkpoint` are provided. Without a head checkpoint, it
+  only runs when `--allow-random-head` is set.
 
 ## WAV to VA/VAD staged plan
 
@@ -34,14 +36,15 @@ If `--head-checkpoint` is omitted, the command fails by default. Passing
 marks the output with `"random_head": true`. These numbers are not research
 results.
 
-Stage 1 does not load a real emotion2vec checkpoint. `--model-dir` and
-`--checkpoint` are reserved for Stage 2 and currently raise a clear error when
-used with the built-in Stage 1 placeholder encoder.
+When `--model-dir` and `--checkpoint` are both omitted, inference uses the Stage
+1 placeholder encoder.
 
-Stage 2 will connect the same command surface to real emotion2vec checkpoint
-loading, following `scripts/extract_features.py`: fairseq user module import,
-checkpoint loading, WAV normalization, and device selection. The intended WAV
-contract is 16kHz mono.
+Stage 2 is implemented as an optional real emotion2vec checkpoint path. When
+both `--model-dir` and `--checkpoint` are provided, inference follows
+`scripts/extract_features.py`: fairseq user module import, checkpoint loading,
+`task.cfg.normalize`-controlled WAV normalization, and device selection. If only
+one of the two arguments is provided, the command raises a clear `ValueError`.
+The WAV contract remains 16kHz mono.
 
 Stage 3 will train `VADRegressionHead` from `.npy/.lengths/.vad`, save a head
 checkpoint, load it through `--head-checkpoint`, and add validation/evaluation
@@ -150,7 +153,6 @@ The first implementation should stay small:
 
 - VAD-assisted categorical classifier.
 - emotion2vec fine-tuning.
-- Real emotion2vec checkpoint loading in `inference.py`.
 - Head checkpoint saving and full validation/evaluation workflow.
 - Full scheduler and experiment logging.
 - WAV-path dataset for training.

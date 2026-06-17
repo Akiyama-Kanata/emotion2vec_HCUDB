@@ -3,8 +3,17 @@
 This directory is for downstream experiments that use emotion2vec frame-level
 features with continuous Valence/Arousal/Dominance style labels.
 
-This README defines the first data contract only. It does not add a data loader,
-model, training loop, fine-tuning code, or dataset-specific preprocessing.
+This README defines the data contract and tracks the current minimal
+implementation. The implemented path is precomputed emotion2vec frame features
+to VA/VAD regression with CCC loss. It does not yet include fine-tuning code,
+dataset-specific preprocessing, or a full validation/checkpoint workflow.
+
+Current minimal modules:
+
+- `data.py`: loads `<prefix>.npy`, `<prefix>.lengths`, and `<prefix>.vad`.
+- `model.py`: defines a padded frame-level `VADRegressionHead` and an optional
+  `Emotion2vecVADModel` wrapper for waveform-to-regression experiments.
+- `training.py`: provides CCC loss and a one-epoch training helper.
 
 ## Required files
 
@@ -107,9 +116,10 @@ The first implementation should stay small:
 
 ## Not implemented in this step
 
-- VAD or VA regression model.
 - VAD-assisted categorical classifier.
 - emotion2vec fine-tuning.
+- Full validation loop, scheduler, checkpoint saving, and experiment logging.
+- WAV-path dataset or real checkpoint loading for the whole model.
 - IEMOCAP mixed training or Japanese dataset preprocessing.
 - Conversion scripts from raw annotation files.
 - Changes to `requirements.txt`.

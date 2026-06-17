@@ -17,6 +17,10 @@
     <a href="https://github.com/ddlBoJack/emotion2vec"><img src="https://img.shields.io/badge/License-MIT-red.svg" alt="mit"></a>
 </div>
 
+<p align="center">
+  <a href="README.md">English</a> | <a href="README_ja.md">日本語</a>
+</p>
+
 # News
 - [Oct. 2024] 🔧 We update the usage in the FunASR interface with source selection. "ms" or "modelscope" for China mainland users; "hf" or "huggingface" for other overseas users. **We recommend using FunASR interface for a smooth landing.**
 - [Jun. 2024] 🔧 We fix a bug in emotion2vec+. Please re-pull the latest code. 

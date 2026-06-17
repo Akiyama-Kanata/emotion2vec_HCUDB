@@ -41,6 +41,11 @@ emotion2vec/
 │       ├── emotion2vec_speech_features.py   # バッチ特徴抽出スクリプト（TSV形式入力）
 │       ├── iemocap_manifest_and_labels.sh   # IEMOCAPのmanifest生成シェルラッパー
 │       └── iemocap_manifest.py              # IEMOCAPのmanifest・ラベル生成
+├── vad_downstream/     # VA/VAD連続値回帰の下流タスク
+│   ├── README.md            # .npy/.lengths/.vad のデータ契約
+│   ├── data.py              # VAD/VA用データローダー
+│   ├── model.py             # 回帰headとemotion2vec込み全体モデル
+│   └── training.py          # CCC lossと最小学習ループ
 ├── scripts/            # 汎用特徴抽出スクリプト
 │   ├── extract_features.py  # 単一WAVファイルから特徴抽出
 │   ├── extract_features.sh  # 上記のシェルラッパー
@@ -171,6 +176,35 @@ emotion2vec/
 
 ### iemocap_downstream/scripts/iemocap_manifest.py / iemocap_manifest_and_labels.sh
 **役割**: IEMOCAPの生データからfairseq形式のTSVマニフェストと感情ラベルファイル (`.emo`) を生成。
+
+---
+
+### vad_downstream/README.md
+**役割**: VA/VAD回帰用の中間データ契約を定義。
+
+- `<prefix>.npy`: frame-level emotion2vec特徴量 `(total_frames, 768)`
+- `<prefix>.lengths`: 1発話1行のフレーム数
+- `<prefix>.vad`: `utterance_id<TAB>valence<TAB>arousal` または dominance 付き
+- ラベル値域は正規化済み `[-1.0, 1.0]`
+
+### vad_downstream/data.py
+**役割**: `.npy`、`.lengths`、`.vad` を読み込み、padding済みbatchへ変換。
+
+- `load_vad_dataset()`: 特徴量、発話長、VA/VAD target、utterance_idを読み込む
+- `VADSpeechDataset`: `net_input.feats`、`net_input.padding_mask`、`target` を返す
+
+### vad_downstream/model.py
+**役割**: VA/VAD連続値回帰モデルを定義。
+
+- `VADRegressionHead`: frame-level特徴量をmasked mean poolingし、VA/VADを出力
+- `Emotion2vecVADModel`: 音声波形テンソルからemotion2vec特徴抽出を経て同じheadで回帰
+
+### vad_downstream/training.py
+**役割**: VA/VAD回帰の最小学習単位を定義。
+
+- `concordance_correlation_coefficient()`: target次元ごとのCCCを計算
+- `ccc_loss()`: `1 - mean(CCC)` を学習lossとして返す
+- `train_one_epoch()`: README準拠batchを1epoch学習する
 
 ---
 

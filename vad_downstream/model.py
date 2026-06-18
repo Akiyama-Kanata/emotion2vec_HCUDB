@@ -84,6 +84,7 @@ class VADRegressionHead(nn.Module):
 
         self.target_dim = target_dim
         self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
         self.pre_net = nn.Linear(input_dim, hidden_dim)
         self.post_net = nn.Linear(hidden_dim, target_dim)
         self.activate = nn.ReLU()

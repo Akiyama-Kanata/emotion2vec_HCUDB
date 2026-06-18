@@ -45,8 +45,9 @@ emotion2vec/
 │   ├── README.md            # .npy/.lengths/.vad のデータ契約
 │   ├── data.py              # VAD/VA用データローダー
 │   ├── model.py             # 回帰headとemotion2vec込み全体モデル
-│   ├── training.py          # CCC lossと最小学習ループ
-│   └── inference.py         # WAV→VA/VAD JSON出力のStage 1/2 CLI
+│   ├── training.py          # CCC loss、学習、評価、head checkpoint保存
+│   ├── train_head.py        # .npy/.lengths/.vadから回帰headを学習・保存するCLI
+│   └── inference.py         # WAV→VA/VAD JSON出力のStage 1/2/3 CLI
 ├── scripts/            # 汎用特徴抽出スクリプト
 │   ├── extract_features.py  # 単一WAVファイルから特徴抽出
 │   ├── extract_features.sh  # 上記のシェルラッパー
@@ -201,20 +202,32 @@ emotion2vec/
 - `Emotion2vecVADModel`: 音声波形テンソルからemotion2vec特徴抽出を経て同じheadで回帰
 
 ### vad_downstream/training.py
-**役割**: VA/VAD回帰の最小学習単位を定義。
+**役割**: VA/VAD回帰の学習・評価・head保存を定義。
 
 - `concordance_correlation_coefficient()`: target次元ごとのCCCを計算
 - `ccc_loss()`: `1 - mean(CCC)` を学習lossとして返す
 - `train_one_epoch()`: README準拠batchを1epoch学習する
+- `evaluate()`: 全batchのprediction/targetを結合してglobal CCCとlossを返す
+- `save_head_checkpoint()`: `head_state_dict`、`target_dim`、`input_dim`、`hidden_dim`、`metadata`を保存する
+
+### vad_downstream/train_head.py
+**役割**: 事前抽出済みemotion2vec特徴から`VADRegressionHead`を学習・保存するCLI。
+
+- 実行形式: `python -m vad_downstream.train_head`
+- 入力: `--train-prefix` と任意の `--valid-prefix`
+- Optimizer: `torch.optim.AdamW`
+- 検証prefixがある場合は`mean_ccc`最大epochのheadを保存
+- 検証prefixがない場合は最終epochのheadを保存
+- stdoutに最終summary JSONを出力
 
 ### vad_downstream/inference.py
 **役割**: WAVからVA/VAD JSONを出す段階実装CLI。
 
 - Stage 1: `--allow-random-head` 指定時だけ未学習headでJSON出力まで通す疎通確認
 - Stage 2: `--model-dir` と `--checkpoint` 指定時に実emotion2vec checkpointをfairseq経由で読み込む
+- Stage 3: `--head-checkpoint` で学習済みheadを読み込み、checkpoint内の`target_dim`をCLI指定値と検証
 - 出力JSON: `labels`、`prediction`、`head_checkpoint`、`random_head`
 - `--head-checkpoint` がない場合は原則エラー
-- 学習済みheadの保存・評価はStage 3で追加予定
 
 ---
 

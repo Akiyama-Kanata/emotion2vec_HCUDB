@@ -2,81 +2,91 @@
 
 ## 最終更新
 
-2026-06-17
+2026-06-18
 
 ## 現在地
 
-Stage 1「WAV→VA/VAD JSON疎通CLI」は実装済みで、正規WSL/Ubuntuコマンドによるunittestも成功した。
+VAD downstream の Stage 3「head学習・保存・CCC評価」は実装済み。
 
-Stage 2「実emotion2vec checkpoint loader」も実装済み。`--model-dir` と `--checkpoint` の両方を指定した場合のみfairseq経由で実checkpointを読み込む。片方だけ指定された場合は `ValueError`。両方未指定の場合はStage 1 placeholder encoderを維持する。
+`vad_downstream.train_head` で `.npy/.lengths/.vad` から `VADRegressionHead` を学習し、Stage 3 形式 checkpoint を保存できる。`vad_downstream.inference` は `--head-checkpoint` 指定時に `--allow-random-head` なしで保存済み head を読み込める。checkpoint に `target_dim` がある場合は CLI の `--target-dim` と照合する。
 
-Stage 3のhead学習・保存・CCC評価は未実装で、次の別作業。
+実 emotion2vec checkpoint path は未提供。実 checkpoint integration は未実行で、path が得られた場合だけ任意確認として扱う。
 
 ## 完了したこと
 
-- `vad_downstream/inference.py` に `Emotion2vecCheckpointEncoder` を追加。
-- fairseq importを実checkpoint loader使用時だけの遅延importにした。
-- `fairseq.utils.import_user_module(UserDirModule(model_dir))` と `fairseq.checkpoint_utils.load_model_ensemble_and_task([checkpoint])` で読み込むようにした。
-- loaded modelを `eval()` にし、指定deviceへ移動するようにした。
-- `task.cfg.normalize` がtrueの場合、`F.layer_norm(source, source.shape)` を適用するようにした。
-- `extract_features(source, padding_mask=None, mask=False, remove_extra_tokens=True)` 互換で既存 `Emotion2vecVADModel` に渡すようにした。
-- `--head-checkpoint` なし、`--allow-random-head` なしの拒否挙動は維持。
-- JSON形式は `wav`, `target_dim`, `labels`, `prediction`, `head_checkpoint`, `random_head` を維持。
-- fake fairseq loaderを使うunit testを追加し、実checkpointなしでimport/load/normalize/device/JSON生成を確認できるようにした。
-- `vad_downstream/README.md` と `FILE_MAP.md` をStage 2実装済み表記に更新。
-- `archive/logs/2026-06-17-work-log.md` にStage 2作業ログ、明示依頼によるログ作成記録、次回は環境設定から始める方針を追記。
-- 本ファイルを次チャット引き継ぎとして更新。
+- `vad_downstream/training.py`
+  - `evaluate()` を追加。全 batch の prediction/target を結合して global CCC を返す。
+  - `save_head_checkpoint()` を追加。`head_state_dict`, `target_dim`, `input_dim`, `hidden_dim`, `metadata` を保存する。
+- `vad_downstream/train_head.py`
+  - 新規 CLI を追加。
+  - `python -m vad_downstream.train_head` で実行。
+  - `AdamW` で head-only 学習。
+  - validation がある場合は `mean_ccc` 最大 epoch、ない場合は最終 epoch を保存。
+  - train/valid `target_dim` mismatch は `ValueError`。
+  - stdout に summary JSON を出す。
+- `vad_downstream/inference.py`
+  - Stage 3 checkpoint の `target_dim` 検証を追加。
+  - 旧 state_dict 互換は維持。
+- `vad_downstream/model.py`
+  - `VADRegressionHead.hidden_dim` を保持。
+- tests
+  - `train_head` CLI 保存テストを追加。
+  - inference の Stage 3 checkpoint 読み込みテストを追加。
+  - checkpoint `target_dim` mismatch テストを追加。
+  - `evaluate()` の VA/VAD metrics テストを追加。
+  - train/valid `target_dim` mismatch テストを追加。
+- docs
+  - `vad_downstream/README.md`, `FILE_MAP.md`, `TESTING.md` を更新。
+- logs
+  - `archive/logs/2026-06-18-work-log.md` を作成。
+  - 本ファイルを更新。
 
 ## 未完了 / 次の最小ステップ
 
-次回はStage 3実装へ直行せず、まず環境設定・実行条件の確認から始める。
+次の最小ステップは review または commit。
 
-推奨順序:
-
-1. WSL/Ubuntuの見え方を整理する。
-   - `wsl -l -v`
-   - 通常sandbox内実行と承認付きsandbox外実行で差がある理由を確認する。
-2. 正規Python環境を確認する。
-   - `/home/akiyama/miniforge/envs/emotion2vec-py310/bin/python`
-   - `torch`, `fairseq`, `soundfile` などがimportできるか確認する。
-3. fairseq user module importを確認する。
-   - `upstream/` を `--model-dir` として読み込めるか確認する。
-4. 実emotion2vec checkpointの場所を確定する。
-   - workspace内には `*.pt`, `*.pth`, `*.ckpt` が見つかっていない。
-5. 実checkpointが利用可能になったら、`scripts/test.wav` でCPU疎通を確認する。
+実 checkpoint path が提供された場合のみ、追加で CPU 疎通を確認する。
 
 ```powershell
 wsl -d Ubuntu --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec -e /home/akiyama/miniforge/envs/emotion2vec-py310/bin/python -m vad_downstream.inference --wav scripts/test.wav --model-dir <MODEL_DIR> --checkpoint <CHECKPOINT> --target-dim 2 --device cpu --allow-random-head
 ```
 
-その後の本筋はStage 3:
-
-- `.npy/.lengths/.vad` から `VADRegressionHead` を学習する。
-- head checkpointを保存する。
-- `inference.py --head-checkpoint` で保存済みheadを読み込む。
-- `--allow-random-head` なしで推論できる状態にする。
-- validation/evaluation helperを追加し、target次元ごとのCCCとmean CCCを返す。
-
 ## 重要な前提
 
-- 実emotion2vec checkpoint pathはコードに固定していない。
-- WAV入力契約は16kHz monoのみ。resamplingやstereo mixdownは未実装。
-- `--allow-random-head` を使う出力は疎通確認であり、研究結果ではない。
-- 学習済みVAD/VA head checkpointは現時点では存在しない前提。
-- Stage 3は今回未実装。
+- 実 emotion2vec checkpoint path はまだ未提供。
+- WAV 入力契約は 16kHz mono のまま。resampling / stereo mixdown は未実装。
+- `--allow-random-head` は疎通確認用で、研究結果ではない。
+- `TESTING.md` には作業開始前から既存変更があり、巻き戻していない。
+- Windows 側 `python` は PATH になかった。正規検証は WSL/Ubuntu の `/home/akiyama/miniforge/envs/emotion2vec-py310/bin/python`。
 
 ## 変更ファイル
 
+- `vad_downstream/training.py`
+- `vad_downstream/train_head.py`
 - `vad_downstream/inference.py`
+- `vad_downstream/model.py`
+- `tests/test_vad_downstream_training.py`
 - `tests/test_vad_downstream_inference.py`
+- `tests/test_vad_downstream_train_head.py`
 - `vad_downstream/README.md`
 - `FILE_MAP.md`
-- `archive/logs/2026-06-17-work-log.md`
+- `TESTING.md`
+- `archive/logs/2026-06-18-work-log.md`
 - `archive/logs/next-chat-handoff.md`
 
 ## 検証状況
 
-通常sandbox内で実行した正規コマンド:
+環境 import check:
+
+```powershell
+wsl -d Ubuntu --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec -e /home/akiyama/miniforge/envs/emotion2vec-py310/bin/python -c "import torch, fairseq, soundfile, hydra, numpy; print('ok')"
+```
+
+結果:
+
+- `ok`
+
+最終 unittest:
 
 ```powershell
 wsl -d Ubuntu --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec -e /home/akiyama/miniforge/envs/emotion2vec-py310/bin/python -m unittest discover -s tests
@@ -84,14 +94,10 @@ wsl -d Ubuntu --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec -e /home/akiyama
 
 結果:
 
-- `Wsl/Service/WSL_E_DISTRO_NOT_FOUND`
-
-承認付きsandbox外で同じ正規コマンドを実行:
-
-- `Ran 27 tests in 3.579s`
+- `Ran 32 tests in 6.130s`
 - `OK`
 
-追加確認:
+空白検査:
 
 ```powershell
 git diff --check
@@ -99,15 +105,15 @@ git diff --check
 
 結果:
 
-- 空白エラーなし。
-- CRLF警告のみ。
+- exit 0
+- CRLF warning のみ
 
-任意integration:
+未実行:
 
-- `rg --files -g *.pt -g *.pth -g *.ckpt` でcheckpoint候補は見つからなかった。
-- 実checkpointを使う `scripts/test.wav` 疎通は未実行。
+- 実 emotion2vec checkpoint を使う integration。checkpoint path 未提供のため。
 
 ## 注意点
 
-- `git status` 実行時に `C:\Users\RD004/.config/git/ignore` のpermission denied warningが出る。
-- Stage 2 loaderはfake fairseq unit testでは確認済みだが、実checkpointでの疎通はcheckpoint入手後に確認が必要。
+- `git status` 実行時に `C:\Users\RD004/.config/git/ignore` の permission denied warning が出る。
+- `git diff --stat` は未追跡ファイルを含まないため、`vad_downstream/train_head.py` と `tests/test_vad_downstream_train_head.py` は `git status --untracked-files=all` で確認すること。
+- 今回の作業は未コミット。

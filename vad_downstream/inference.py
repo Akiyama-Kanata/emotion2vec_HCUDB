@@ -204,7 +204,12 @@ def run_inference(
     model.eval()
 
     if head_checkpoint is not None:
-        load_head_checkpoint(model.head, head_checkpoint, torch_device)
+        load_head_checkpoint(
+            model.head,
+            head_checkpoint,
+            torch_device,
+            target_dim=target_dim,
+        )
 
     with torch.no_grad():
         prediction = model(wav.unsqueeze(0)).squeeze(0).cpu()
@@ -281,10 +286,25 @@ def load_wav_16khz_mono(path):
     return torch.from_numpy(audio).float()
 
 
-def load_head_checkpoint(head, checkpoint_path, device):
+def load_head_checkpoint(head, checkpoint_path, device, target_dim=None):
     checkpoint = torch.load(checkpoint_path, map_location=device)
+    validate_head_checkpoint_target_dim(checkpoint, target_dim)
     state_dict = extract_head_state_dict(checkpoint)
     head.load_state_dict(state_dict)
+
+
+def validate_head_checkpoint_target_dim(checkpoint, target_dim=None):
+    if target_dim is None:
+        return
+    if not isinstance(checkpoint, dict) or "target_dim" not in checkpoint:
+        return
+
+    checkpoint_target_dim = int(checkpoint["target_dim"])
+    if checkpoint_target_dim != int(target_dim):
+        raise ValueError(
+            f"head checkpoint target_dim ({checkpoint_target_dim}) does not match "
+            f"requested target_dim ({int(target_dim)})"
+        )
 
 
 def extract_head_state_dict(checkpoint):

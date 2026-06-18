@@ -5,19 +5,24 @@ features with continuous Valence/Arousal/Dominance style labels.
 
 This README defines the data contract and tracks the current minimal
 implementation. The implemented path is precomputed emotion2vec frame features
-to VA/VAD regression with CCC loss. It does not yet include fine-tuning code,
-dataset-specific preprocessing, or a full validation/checkpoint workflow.
+to VA/VAD regression with CCC loss, validation CCC metrics, and head checkpoint
+save/load. It does not yet include fine-tuning code or dataset-specific
+preprocessing.
 
 Current minimal modules:
 
 - `data.py`: loads `<prefix>.npy`, `<prefix>.lengths`, and `<prefix>.vad`.
 - `model.py`: defines a padded frame-level `VADRegressionHead` and an optional
   `Emotion2vecVADModel` wrapper for waveform-to-regression experiments.
-- `training.py`: provides CCC loss and a one-epoch training helper.
+- `training.py`: provides CCC loss, a one-epoch training helper, validation
+  metrics, and head checkpoint saving.
+- `train_head.py`: trains `VADRegressionHead` from `<prefix>.npy`,
+  `<prefix>.lengths`, and `<prefix>.vad`.
 - `inference.py`: provides WAV-to-VA/VAD JSON inference. It keeps the Stage 1
   placeholder path and can also load a real emotion2vec checkpoint when both
-  `--model-dir` and `--checkpoint` are provided. Without a head checkpoint, it
-  only runs when `--allow-random-head` is set.
+  `--model-dir` and `--checkpoint` are provided. It can load Stage 3 head
+  checkpoints through `--head-checkpoint`. Without a head checkpoint, it only
+  runs when `--allow-random-head` is set.
 
 ## WAV to VA/VAD staged plan
 
@@ -46,9 +51,41 @@ both `--model-dir` and `--checkpoint` are provided, inference follows
 one of the two arguments is provided, the command raises a clear `ValueError`.
 The WAV contract remains 16kHz mono.
 
-Stage 3 will train `VADRegressionHead` from `.npy/.lengths/.vad`, save a head
-checkpoint, load it through `--head-checkpoint`, and add validation/evaluation
-helpers such as CCC metrics.
+Stage 3 is implemented for head-only training. It trains `VADRegressionHead`
+from `.npy/.lengths/.vad`, optionally evaluates on a validation prefix with
+global CCC metrics, saves the best validation `mean_ccc` head when validation is
+provided, and loads that checkpoint through `--head-checkpoint`. Stage 3
+checkpoints include `target_dim`, `input_dim`, `hidden_dim`, and metadata; during
+inference, `target_dim` is checked against the CLI value.
+
+## Minimal commands
+
+Train a head from precomputed frame features:
+
+```bash
+python -m vad_downstream.train_head \
+  --train-prefix data/vad/train \
+  --valid-prefix data/vad/valid \
+  --output runs/vad_head.pt \
+  --epochs 10 \
+  --batch-size 32 \
+  --device auto
+```
+
+Run WAV inference with the trained head:
+
+```bash
+python -m vad_downstream.inference \
+  --wav scripts/test.wav \
+  --target-dim 2 \
+  --head-checkpoint runs/vad_head.pt \
+  --output prediction.json \
+  --device cpu
+```
+
+Add `--model-dir <MODEL_DIR> --checkpoint <CHECKPOINT>` to the inference command
+when a real emotion2vec checkpoint is available. If those arguments are omitted,
+the Stage 1 placeholder encoder is used for wiring checks only.
 
 ## Required files
 
@@ -153,7 +190,6 @@ The first implementation should stay small:
 
 - VAD-assisted categorical classifier.
 - emotion2vec fine-tuning.
-- Head checkpoint saving and full validation/evaluation workflow.
 - Full scheduler and experiment logging.
 - WAV-path dataset for training.
 - IEMOCAP mixed training or Japanese dataset preprocessing.

@@ -12,6 +12,8 @@ import torch
 from torch import nn
 
 from vad_downstream import inference
+from vad_downstream.model import VADRegressionHead
+from vad_downstream.training import save_head_checkpoint
 
 
 class DummyEmotion2vecEncoder(nn.Module):
@@ -155,6 +157,63 @@ class VADDownstreamInferenceTest(unittest.TestCase):
                         str(wav_path),
                         "--target-dim",
                         "2",
+                        "--device",
+                        "cpu",
+                    ],
+                    encoder_factory=lambda args: DummyEmotion2vecEncoder(),
+                )
+
+    def test_loads_stage3_head_checkpoint_without_random_head_flag(self):
+        torch.manual_seed(0)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            wav_path = self._write_wav(tmp_dir)
+            head_checkpoint = Path(tmp_dir) / "head.pt"
+            output_path = Path(tmp_dir) / "prediction.json"
+            save_head_checkpoint(
+                VADRegressionHead(target_dim=2),
+                head_checkpoint,
+                target_dim=2,
+            )
+
+            payload = inference.main(
+                [
+                    "--wav",
+                    str(wav_path),
+                    "--target-dim",
+                    "2",
+                    "--head-checkpoint",
+                    str(head_checkpoint),
+                    "--output",
+                    str(output_path),
+                    "--device",
+                    "cpu",
+                ],
+                encoder_factory=lambda args: DummyEmotion2vecEncoder(),
+            )
+
+        self.assertEqual(payload["labels"], ["valence", "arousal"])
+        self.assertEqual(payload["head_checkpoint"], str(head_checkpoint))
+        self.assertFalse(payload["random_head"])
+
+    def test_rejects_stage3_head_checkpoint_target_dim_mismatch(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            wav_path = self._write_wav(tmp_dir)
+            head_checkpoint = Path(tmp_dir) / "head.pt"
+            save_head_checkpoint(
+                VADRegressionHead(target_dim=3),
+                head_checkpoint,
+                target_dim=3,
+            )
+
+            with self.assertRaisesRegex(ValueError, "target_dim .*does not match"):
+                inference.main(
+                    [
+                        "--wav",
+                        str(wav_path),
+                        "--target-dim",
+                        "2",
+                        "--head-checkpoint",
+                        str(head_checkpoint),
                         "--device",
                         "cpu",
                     ],

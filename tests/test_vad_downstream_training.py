@@ -12,6 +12,7 @@ from vad_downstream.model import Emotion2vecVADModel, VADRegressionHead
 from vad_downstream.training import (
     ccc_loss,
     concordance_correlation_coefficient,
+    evaluate,
     train_one_epoch,
 )
 
@@ -36,6 +37,23 @@ class DummyEmotion2vecEncoder(nn.Module):
             "x": self.features,
             "padding_mask": self.feature_padding_mask,
         }
+
+
+class FixedPredictionModel(nn.Module):
+    def __init__(self, prediction):
+        super().__init__()
+        self.register_buffer("prediction", prediction)
+        self.offset = 0
+
+    def eval(self):
+        self.offset = 0
+        return super().eval()
+
+    def forward(self, features, padding_mask=None):
+        batch_size = features.size(0)
+        prediction = self.prediction[self.offset : self.offset + batch_size]
+        self.offset += batch_size
+        return prediction.to(features.device)
 
 
 class VADDownstreamTrainingTest(unittest.TestCase):
@@ -127,6 +145,55 @@ class VADDownstreamTrainingTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             train_one_epoch(model, optimizer, [], torch.device("cpu"))
 
+    def test_evaluate_returns_global_va_and_vad_ccc_metrics(self):
+        va_target = torch.tensor(
+            [
+                [-1.0, -0.5],
+                [0.0, 0.5],
+                [1.0, 1.0],
+            ],
+            dtype=torch.float32,
+        )
+        va_batches = [
+            self._batch(va_target[:2]),
+            self._batch(va_target[2:]),
+        ]
+
+        va_metrics = evaluate(
+            FixedPredictionModel(va_target),
+            va_batches,
+            torch.device("cpu"),
+        )
+
+        self.assertAlmostEqual(va_metrics["loss"], 0.0, places=6)
+        self.assertAlmostEqual(va_metrics["valence_ccc"], 1.0, places=6)
+        self.assertAlmostEqual(va_metrics["arousal_ccc"], 1.0, places=6)
+        self.assertAlmostEqual(va_metrics["mean_ccc"], 1.0, places=6)
+        self.assertEqual(va_metrics["num_samples"], 3)
+        self.assertEqual(va_metrics["num_batches"], 2)
+        self.assertNotIn("dominance_ccc", va_metrics)
+
+        vad_target = torch.tensor(
+            [
+                [-1.0, -0.5, 0.0],
+                [0.0, 0.5, -1.0],
+                [1.0, 1.0, 1.0],
+            ],
+            dtype=torch.float32,
+        )
+
+        vad_metrics = evaluate(
+            FixedPredictionModel(vad_target),
+            [self._batch(vad_target)],
+            torch.device("cpu"),
+        )
+
+        self.assertAlmostEqual(vad_metrics["valence_ccc"], 1.0, places=6)
+        self.assertAlmostEqual(vad_metrics["arousal_ccc"], 1.0, places=6)
+        self.assertAlmostEqual(vad_metrics["dominance_ccc"], 1.0, places=6)
+        self.assertAlmostEqual(vad_metrics["mean_ccc"], 1.0, places=6)
+        self.assertEqual(vad_metrics["num_samples"], 3)
+
     def _write_dataset(self, directory):
         prefix = Path(directory) / "sample"
         lengths = [2, 3, 1]
@@ -149,6 +216,15 @@ class VADDownstreamTrainingTest(unittest.TestCase):
             handle.write("utt2\t0.5\t-0.5\n")
 
         return str(prefix)
+
+    def _batch(self, target):
+        return {
+            "net_input": {
+                "feats": torch.zeros(target.size(0), 2, 768),
+                "padding_mask": torch.zeros(target.size(0), 2, dtype=torch.bool),
+            },
+            "target": target,
+        }
 
 
 if __name__ == "__main__":

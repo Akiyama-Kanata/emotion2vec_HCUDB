@@ -3,7 +3,13 @@ import unittest
 import torch
 from torch import nn
 
-from vad_downstream.model import Emotion2vecVADModel, VADRegressionHead
+from vad_downstream.model import (
+    Emotion2vecVADMediatedClassifier,
+    Emotion2vecVADModel,
+    VADClassificationHead,
+    VADMediatedEmotionClassifier,
+    VADRegressionHead,
+)
 
 
 class DummyEmotion2vecEncoder(nn.Module):
@@ -46,6 +52,72 @@ class Emotion2vecVADModelTest(unittest.TestCase):
         output = head(features, padding_mask=padding_mask)
 
         self.assertEqual(tuple(output.shape), (2, 2))
+
+    def test_vad_classification_head_returns_class_logits(self):
+        head = VADClassificationHead(target_dim=3, num_classes=4)
+        vad = torch.randn(2, 3)
+
+        logits = head(vad)
+
+        self.assertEqual(tuple(logits.shape), (2, 4))
+
+    def test_vad_classification_head_rejects_wrong_vad_dim(self):
+        head = VADClassificationHead(target_dim=3, num_classes=4)
+
+        with self.assertRaises(ValueError):
+            head(torch.randn(2, 2))
+
+    def test_vad_mediated_classifier_returns_logits_and_vad(self):
+        model = VADMediatedEmotionClassifier(
+            target_dim=3,
+            num_classes=4,
+            hidden_dim=8,
+        )
+        features = torch.randn(2, 4, 768)
+        padding_mask = torch.tensor(
+            [
+                [False, False, False, True],
+                [False, False, False, False],
+            ]
+        )
+
+        output = model(features, padding_mask=padding_mask, return_vad=True)
+
+        self.assertEqual(set(output), {"vad", "logits"})
+        self.assertEqual(tuple(output["vad"].shape), (2, 3))
+        self.assertEqual(tuple(output["logits"].shape), (2, 4))
+        self.assertTrue(
+            torch.allclose(model.classifier(output["vad"]), output["logits"])
+        )
+
+    def test_vad_mediated_classifier_default_forward_returns_logits(self):
+        model = VADMediatedEmotionClassifier(
+            target_dim=3,
+            num_classes=4,
+            hidden_dim=8,
+        )
+        features = torch.randn(2, 4, 768)
+
+        logits = model(features)
+
+        self.assertEqual(tuple(logits.shape), (2, 4))
+
+    def test_vad_mediated_audio_classifier_returns_logits_and_vad(self):
+        encoder = DummyEmotion2vecEncoder(torch.randn(2, 4, 768))
+        model = Emotion2vecVADMediatedClassifier(
+            encoder=encoder,
+            target_dim=3,
+            num_classes=4,
+            hidden_dim=8,
+        )
+        source = torch.randn(2, 16000)
+
+        output = model(source, return_vad=True)
+
+        self.assertEqual(tuple(output["vad"].shape), (2, 3))
+        self.assertEqual(tuple(output["logits"].shape), (2, 4))
+        self.assertIs(encoder.last_source, source)
+        self.assertFalse(encoder.training)
 
     def test_va_model_returns_two_outputs_from_audio_input(self):
         encoder = DummyEmotion2vecEncoder(torch.randn(2, 4, 768))

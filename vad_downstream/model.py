@@ -114,6 +114,106 @@ class VADRegressionHead(nn.Module):
         return self.post_net(x)
 
 
+class VADClassificationHead(nn.Module):
+    """Logistic-regression classifier over predicted VA/VAD values."""
+
+    def __init__(self, target_dim, num_classes):
+        super().__init__()
+        if target_dim not in (2, 3):
+            raise ValueError(f"target_dim must be 2 or 3, got {target_dim}")
+        if num_classes < 2:
+            raise ValueError(f"num_classes must be at least 2, got {num_classes}")
+
+        self.target_dim = target_dim
+        self.num_classes = num_classes
+        self.linear = nn.Linear(target_dim, num_classes)
+
+    def forward(self, vad):
+        if vad.dim() != 2:
+            raise ValueError(f"VAD input must be 2D [B, D], got {vad.shape}")
+        if vad.size(1) != self.target_dim:
+            raise ValueError(
+                f"VAD input dim must be {self.target_dim}, got {vad.size(1)}"
+            )
+
+        return self.linear(vad)
+
+
+class VADMediatedEmotionClassifier(nn.Module):
+    """Emotion classifier whose class logits depend only on predicted VA/VAD."""
+
+    def __init__(
+        self,
+        target_dim=3,
+        num_classes=4,
+        input_dim=768,
+        hidden_dim=256,
+    ):
+        super().__init__()
+        self.target_dim = target_dim
+        self.num_classes = num_classes
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
+        self.vad_head = VADRegressionHead(
+            target_dim=target_dim,
+            input_dim=input_dim,
+            hidden_dim=hidden_dim,
+        )
+        self.classifier = VADClassificationHead(
+            target_dim=target_dim,
+            num_classes=num_classes,
+        )
+
+    def forward(self, features, padding_mask=None, return_vad=False):
+        vad = self.vad_head(features, padding_mask=padding_mask)
+        logits = self.classifier(vad)
+        if return_vad:
+            return {
+                "vad": vad,
+                "logits": logits,
+            }
+        return logits
+
+
+class Emotion2vecVADMediatedClassifier(Emotion2vecVADModel):
+    """Whole classifier: audio waveform -> emotion2vec frames -> VAD -> logits."""
+
+    def __init__(
+        self,
+        encoder,
+        target_dim=3,
+        num_classes=4,
+        input_dim=768,
+        hidden_dim=256,
+        freeze_encoder=True,
+    ):
+        super().__init__(
+            encoder=encoder,
+            target_dim=target_dim,
+            input_dim=input_dim,
+            hidden_dim=hidden_dim,
+            freeze_encoder=freeze_encoder,
+        )
+        self.num_classes = num_classes
+        self.head = VADMediatedEmotionClassifier(
+            target_dim=target_dim,
+            num_classes=num_classes,
+            input_dim=input_dim,
+            hidden_dim=hidden_dim,
+        )
+
+    def forward(self, source, padding_mask=None, return_vad=False):
+        features, feature_padding_mask = self.extract_frame_features(
+            source,
+            padding_mask=padding_mask,
+        )
+        return self.head(
+            features,
+            padding_mask=feature_padding_mask,
+            return_vad=return_vad,
+        )
+
+
 def masked_mean_pooling(features, padding_mask):
     """Mean-pool frame features while ignoring padded frames."""
     if padding_mask.shape != features.shape[:2]:

@@ -11,11 +11,17 @@ preprocessing.
 
 Current minimal modules:
 
-- `data.py`: loads `<prefix>.npy`, `<prefix>.lengths`, and `<prefix>.vad`.
-- `model.py`: defines a padded frame-level `VADRegressionHead` and an optional
-  `Emotion2vecVADModel` wrapper for waveform-to-regression experiments.
+- `data.py`: loads pure VAD regression data and aligned
+  `<prefix>.npy/.lengths/.vad/.emo` VAD-emotion data.
+- `model.py`: defines a padded frame-level `VADRegressionHead`, a
+  VAD-mediated categorical classifier, and optional emotion2vec wrappers for
+  waveform-to-regression and waveform-to-VAD-mediated-classification
+  experiments.
 - `training.py`: provides CCC loss, a one-epoch training helper, validation
   metrics, and head checkpoint saving.
+- `emotion_training.py`: provides CCC + cross-entropy loss, joint validation
+  metrics, classification WA/UA/weighted F1, confusion matrix, and checkpoint
+  saving for VAD-mediated classification.
 - `train_head.py`: trains `VADRegressionHead` from `<prefix>.npy`,
   `<prefix>.lengths`, and `<prefix>.vad`.
 - `inference.py`: provides WAV-to-VA/VAD JSON inference. It keeps the Stage 1
@@ -23,6 +29,10 @@ Current minimal modules:
   `--model-dir` and `--checkpoint` are provided. It can load Stage 3 head
   checkpoints through `--head-checkpoint`. Without a head checkpoint, it only
   runs when `--allow-random-head` is set.
+- `train_vad_emotion.py`: trains `VADMediatedEmotionClassifier` from
+  `<prefix>.npy`, `<prefix>.lengths`, `<prefix>.vad`, and `<prefix>.emo`.
+- `infer_vad_emotion.py`: provides WAV-to-VAD-to-emotion JSON inference with
+  linear-weight contribution breakdowns.
 
 ## WAV to VA/VAD staged plan
 
@@ -87,6 +97,34 @@ Add `--model-dir <MODEL_DIR> --checkpoint <CHECKPOINT>` to the inference command
 when a real emotion2vec checkpoint is available. If those arguments are omitted,
 the Stage 1 placeholder encoder is used for wiring checks only.
 
+Train the VAD-mediated categorical classifier:
+
+```bash
+python -m vad_downstream.train_vad_emotion \
+  --train-prefix data/vad_emotion/train \
+  --valid-prefix data/vad_emotion/valid \
+  --output runs/vad_emotion.pt \
+  --epochs 10 \
+  --batch-size 32 \
+  --lambda-vad 1.0 \
+  --lambda-emo 1.0 \
+  --device auto
+```
+
+Run WAV-to-VAD-to-emotion inference:
+
+```bash
+python -m vad_downstream.infer_vad_emotion \
+  --wav scripts/test.wav \
+  --classifier-checkpoint runs/vad_emotion.pt \
+  --output vad_emotion_prediction.json \
+  --device cpu
+```
+
+Add `--model-dir <MODEL_DIR> --checkpoint <CHECKPOINT>` when a real emotion2vec
+checkpoint is available. If omitted, the Stage 1 placeholder encoder is used
+only for wiring checks.
+
 ## Required files
 
 Use one shared prefix for each split or dataset. For example, `train` means the
@@ -97,7 +135,7 @@ following files live next to each other:
 | `<prefix>.npy` | yes | Frame-level emotion2vec features concatenated over all utterances. Shape: `(total_frames, 768)`. |
 | `<prefix>.lengths` | yes | One integer per line. Each value is the frame count for one utterance. |
 | `<prefix>.vad` | yes | Continuous affect labels. Valence and Arousal are required; Dominance is optional. |
-| `<prefix>.emo` | no | Optional categorical emotion labels in the existing IEMOCAP-style format. |
+| `<prefix>.emo` | yes for VAD-mediated classification | Categorical emotion labels. Optional only for pure VA/VAD regression. |
 
 The `.npy` and `.lengths` files follow the existing `iemocap_downstream` feature
 layout: utterance feature matrices are stacked along the frame axis, and
@@ -144,7 +182,7 @@ Ses01F_impro01_F001	0.10	0.40	0.20
 
 ## Optional categorical labels
 
-When categorical emotion labels are needed, use the existing `.emo` format:
+When categorical emotion labels are needed, use this `.emo` format:
 
 ```text
 utterance_id<TAB>class
@@ -153,13 +191,84 @@ utterance_id<TAB>class
 Example:
 
 ```text
-Ses01F_impro01_F000	ang
-Ses01F_impro01_F001	neu
+Ses01F_impro01_F000	hap
+Ses01F_impro01_F001	sad
 ```
 
-The `.emo` file is optional for VA/VAD regression. It can be used later for a
-classification stage that combines continuous affect labels and categorical
-emotion labels.
+For the implemented VAD-mediated classifier, the canonical class order is:
+
+```text
+hap, sad, ang, dis
+```
+
+Japanese display names are:
+
+```text
+喜び, 悲しみ, 怒り, 嫌悪
+```
+
+Unknown labels are rejected. `exc -> hap` must be handled in preprocessing if
+needed; training data should not keep `exc`. Do not relabel `neu` as `dis`.
+
+## VAD-mediated categorical classification
+
+The selected explainable classification direction is:
+
+```text
+emotion2vec frame features
+  -> masked mean pooling
+  -> FNN
+  -> predicted valence/arousal/dominance
+  -> Linear(target_dim -> num_classes)
+  -> emotion class logits
+```
+
+The final linear layer is logistic regression over the predicted VA/VAD values.
+In this design, class logits depend on the predicted affect values rather than
+directly on the full 768-dimensional emotion2vec feature vector. This makes it
+possible to report both the predicted emotion class and the VAD values used as
+the classifier input.
+
+When training this model, the VAD regression loss should remain part of the
+objective. A practical objective is `CCC loss` for predicted VA/VAD plus
+`CrossEntropyLoss` for the categorical emotion label. Training only with
+classification loss would make the intermediate 2D/3D vector class-discriminative
+but not necessarily interpretable as VA/VAD.
+
+The implemented objective is:
+
+```text
+loss = lambda_vad * ccc_loss(predicted_vad, target_vad)
+     + lambda_emo * cross_entropy(logits, target_emotion)
+```
+
+The default is `lambda_vad = 1.0` and `lambda_emo = 1.0`.
+
+Validation reports both sides of the task:
+
+- VAD: valence/arousal/dominance CCC and mean CCC.
+- Emotion: WA, UA, weighted F1, and confusion matrix.
+
+For every class `c`, the explanation is exactly:
+
+```text
+logit_c = bias_c
+        + weight_c,valence * predicted_valence
+        + weight_c,arousal * predicted_arousal
+        + weight_c,dominance * predicted_dominance
+```
+
+`infer_vad_emotion.py` writes JSON with:
+
+- `prediction`: predicted class index, code, and Japanese name.
+- `probabilities`: softmax probabilities keyed by `hap/sad/ang/dis`.
+- `vad`: predicted valence/arousal/dominance used by the classifier.
+- `logits`: class logits.
+- `linear_weights`: class-specific bias and VAD weights.
+- `contributions`: class-specific bias and `weight * VAD` terms whose
+  `logit_sum` equals the corresponding logit.
+- `contrast_to_runner_up`: contribution differences against the second-ranked
+  class.
 
 ## Alignment requirements
 
@@ -177,18 +286,22 @@ The first data loader should assume:
 
 ## First data loader assumptions
 
-The first implementation should stay small:
+The pure VAD regression loader:
 
 - Load `<prefix>.npy`, `<prefix>.lengths`, and `<prefix>.vad`.
 - Return padded frame-level features, a padding mask, and normalized VA or VAD
   targets.
 - Detect whether the target dimensionality is 2 or 3 from the `.vad` file.
-- Treat categorical `.emo` labels as optional and leave classification-specific
-  logic for a later change.
+
+The VAD-mediated classification loader:
+
+- Loads `<prefix>.npy`, `<prefix>.lengths`, `<prefix>.vad`, and `<prefix>.emo`.
+- Requires row counts to match.
+- Requires `.vad` and `.emo` utterance IDs to match row by row.
+- Converts `hap/sad/ang/dis` to indices `0/1/2/3`.
 
 ## Not implemented in this step
 
-- VAD-assisted categorical classifier.
 - emotion2vec fine-tuning.
 - Full scheduler and experiment logging.
 - WAV-path dataset for training.

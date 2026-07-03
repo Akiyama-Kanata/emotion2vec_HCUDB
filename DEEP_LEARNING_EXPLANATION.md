@@ -12,6 +12,7 @@
 
 3. `vad_downstream/`  
    emotion2vec特徴量を使って、Valence / Arousal / Dominance の連続値を予測する回帰モデル。
+   さらに、予測したVADを経由して感情分類するモデルも扱う。
 
 基本的な流れは次の通りです。
 
@@ -80,6 +81,37 @@ VA:  valence, arousal
 VAD: valence, arousal, dominance
 ```
 
+### VAD経由分類モデル
+
+今後の分類方針は、感情分類の前にVADを明示的に通す形です。
+
+```text
+emotion2vec特徴量
+  ↓
+平均pooling
+  ↓
+FNN
+  ↓
+valence / arousal / dominance
+  ↓
+Linear(3 → 感情クラス数)
+  ↓
+感情分類
+```
+
+最後の `Linear(3 → 感情クラス数)` は、VADを入力にしたロジスティック回帰に相当します。
+分類器はemotion2vecの768次元特徴を直接見ず、予測されたVADだけを見て分類します。
+
+そのため、新しい音声に対して次のように説明できます。
+
+```text
+この音声は valence が低く、arousal が高いため、
+VADを入力にした分類器が angry の確率を高く出した。
+```
+
+この構造は、直接分類より性能が下がる可能性はありますが、
+「なぜその感情に分類されたのか」をVADで説明しやすいのが利点です。
+
 ## 活性化関数
 
 活性化関数は、ニューラルネットワークに非線形性を与える関数です。
@@ -93,6 +125,7 @@ VAD: valence, arousal, dominance
 |---|---|
 | IEMOCAP分類モデル | ReLU |
 | VA/VAD回帰head | ReLU |
+| VAD経由分類head | なし |
 | emotion2vec本体 | GELU |
 
 分類モデルの最後には `Softmax` は明示されていません。  
@@ -135,6 +168,25 @@ loss = 0
 ```
 
 になります。
+
+### VAD経由分類
+
+VADを分類根拠として使う場合は、学習時にVAD回帰の損失も残すのが重要です。
+分類損失だけで学習すると、中間の3次元が本当のVADではなく、
+分類しやすい任意の3次元表現になってしまう可能性があります。
+
+そのため、基本形は次のようにします。
+
+```text
+loss = VAD回帰loss + 感情分類loss
+```
+
+具体的には、次の組み合わせです。
+
+```text
+VAD回帰loss: CCC loss
+感情分類loss: CrossEntropyLoss
+```
 
 ## 勾配の扱い
 

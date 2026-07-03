@@ -16,8 +16,12 @@ feat_path=/path/to/feats
 fairseq_root=/path/to/fairseq_root
 model_path=../upstream # /path/to/emotion2vec/upstream
 
-# generate manifest and labels from raw dataset
+# generate standard ang/hap/neu/sad manifest and labels from raw dataset
 bash scripts/iemocap_manifest_and_labels.sh $IEMOCAP_ROOT $manifest_path
+
+# For hap/sad/ang/dis VAD-mediated classification, run this instead.
+# It uses real dis annotations and does not relabel neu as dis.
+# bash scripts/iemocap_manifest_and_labels.sh $IEMOCAP_ROOT $manifest_path vad4
 
 # generate features with emotion2vec
 bash scripts/emotion2vec_extract_features.sh $fairseq_root $manifest_path $model_path $checkpoint_path $feat_path

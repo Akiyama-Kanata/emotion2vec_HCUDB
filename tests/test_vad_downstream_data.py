@@ -5,7 +5,13 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from vad_downstream.data import VADSpeechDataset, load_vad_dataset
+from vad_downstream.data import (
+    EMOTION_CLASS_LABELS,
+    VADEmotionSpeechDataset,
+    VADSpeechDataset,
+    load_vad_dataset,
+    load_vad_emotion_dataset,
+)
 
 
 class VADDownstreamDataTest(unittest.TestCase):
@@ -116,6 +122,106 @@ class VADDownstreamDataTest(unittest.TestCase):
             )
         )
 
+    def test_loads_aligned_vad_emotion_targets(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            prefix, _ = self._write_dataset(
+                tmp_dir,
+                lengths=[2, 1, 3, 1],
+                vad_rows=[
+                    "utt0\t-0.5\t0.25\t0.0",
+                    "utt1\t1.0\t-1.0\t0.5",
+                    "utt2\t0.0\t0.0\t-0.5",
+                    "utt3\t0.25\t0.5\t1.0",
+                ],
+                emo_rows=[
+                    "utt0\thap",
+                    "utt1\tsad",
+                    "utt2\tang",
+                    "utt3\tdis",
+                ],
+            )
+
+            data = load_vad_emotion_dataset(prefix)
+
+        self.assertEqual(data["target_dim"], 3)
+        self.assertEqual(data["class_labels"], EMOTION_CLASS_LABELS)
+        self.assertEqual(data["utt_ids"], ["utt0", "utt1", "utt2", "utt3"])
+        np.testing.assert_array_equal(
+            data["emotion_targets"],
+            np.asarray([0, 1, 2, 3], dtype=np.int64),
+        )
+        self.assertEqual(data["emotion_labels"], ["hap", "sad", "ang", "dis"])
+        np.testing.assert_allclose(
+            data["vad_targets"],
+            np.asarray(
+                [
+                    [-0.5, 0.25, 0.0],
+                    [1.0, -1.0, 0.5],
+                    [0.0, 0.0, -0.5],
+                    [0.25, 0.5, 1.0],
+                ],
+                dtype=np.float32,
+            ),
+        )
+
+    def test_vad_emotion_collator_pads_features_and_labels(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            prefix, _ = self._write_dataset(
+                tmp_dir,
+                lengths=[2, 3],
+                vad_rows=[
+                    "utt0\t-0.5\t0.25\t0.0",
+                    "utt1\t1.0\t-1.0\t0.5",
+                ],
+                emo_rows=[
+                    "utt0\thap",
+                    "utt1\tdis",
+                ],
+            )
+            data = load_vad_emotion_dataset(prefix)
+            dataset = VADEmotionSpeechDataset(
+                data["feats"],
+                data["sizes"],
+                data["offsets"],
+                data["vad_targets"],
+                data["emotion_targets"],
+                data["utt_ids"],
+                data["emotion_labels"],
+            )
+
+            batch = dataset.collator([dataset[0], dataset[1]])
+
+        self.assertEqual(tuple(batch["net_input"]["feats"].shape), (2, 3, 768))
+        self.assertEqual(tuple(batch["vad_target"].shape), (2, 3))
+        self.assertEqual(tuple(batch["emotion_target"].shape), (2,))
+        self.assertEqual(batch["emotion_target"].tolist(), [0, 3])
+        self.assertEqual(batch["emotion_label"], ["hap", "dis"])
+        self.assertTrue(torch.allclose(batch["target"], batch["vad_target"]))
+
+    def test_rejects_unknown_emotion_label(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            prefix, _ = self._write_dataset(
+                tmp_dir,
+                lengths=[1],
+                vad_rows=["utt0\t0.0\t0.0\t0.0"],
+                emo_rows=["utt0\tneu"],
+            )
+
+            with self.assertRaisesRegex(ValueError, "unknown emotion label"):
+                load_vad_emotion_dataset(prefix)
+
+    def test_rejects_vad_emotion_id_mismatch(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            prefix, _ = self._write_dataset(
+                tmp_dir,
+                lengths=[1],
+                vad_rows=["utt0\t0.0\t0.0\t0.0"],
+                emo_rows=["other\thap"],
+            )
+
+            with self.assertRaisesRegex(ValueError, "utterance_id mismatch"):
+                load_vad_emotion_dataset(prefix)
+
     def test_rejects_vad_row_count_mismatch(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             prefix, _ = self._write_dataset(
@@ -184,6 +290,7 @@ class VADDownstreamDataTest(unittest.TestCase):
         directory,
         lengths,
         vad_rows,
+        emo_rows=None,
         feature_dim=768,
         total_frames=None,
     ):
@@ -203,6 +310,11 @@ class VADDownstreamDataTest(unittest.TestCase):
         with open(str(prefix) + ".vad", "w", encoding="utf-8") as handle:
             for row in vad_rows:
                 handle.write(row + "\n")
+
+        if emo_rows is not None:
+            with open(str(prefix) + ".emo", "w", encoding="utf-8") as handle:
+                for row in emo_rows:
+                    handle.write(row + "\n")
 
         return str(prefix), features
 

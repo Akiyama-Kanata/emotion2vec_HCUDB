@@ -83,6 +83,8 @@ VAD: valence, arousal, dominance
 
 ### VAD経由分類モデル
 
+![VAD媒介型感情分類モデル](src/vad_mediated_emotion_structure.svg)
+
 今後の分類方針は、感情分類の前にVADを明示的に通す形です。
 
 ```text

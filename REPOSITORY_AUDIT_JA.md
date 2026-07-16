@@ -1,6 +1,6 @@
 # emotion2vec リポジトリ監査レポート
 
-調査日: 2026-07-14  
+調査日: 2026-07-16
 対象: `REPOSITORY_GUIDE_JA.md`、環境設定、IEMOCAP 下流処理、VAD 下流処理、テスト  
 目的: 初めて利用する人が、安全かつ再現可能な方法で実験できるかを実装品質の観点から確認する
 
@@ -8,22 +8,22 @@
 
 このリポジトリは、事前抽出した emotion2vec 特徴から VAD 回帰や感情分類を試すための**研究プロトタイプ**としては構造が比較的分かりやすく、VAD 系には入力検証と単体テストも用意されています。一方、現状のまま第三者が環境を再構築し、得られた評価値を研究結果として比較するには不足があります。
 
-最優先の問題は次の4点です。
+残る最優先の問題は次の4点です。
 
-1. `.env` が Git の追跡対象であり、秘密情報やローカルパスを誤って共有する危険がある。
-2. `requirements.txt` が環境を固定しておらず、古い fairseq と任意の新しい PyTorch を組み合わせ得るため、再現性がない。
-3. IEMOCAP の検証データが発話単位のランダム分割で、同じ話者が学習と検証の両方に入る可能性がある。また、セッション件数と並び順をコードが暗黙に仮定している。
+1. `requirements.txt` が環境を固定しておらず、古い fairseq と任意の新しい PyTorch を組み合わせ得るため、再現性がない。
+2. IEMOCAP の検証データが発話単位のランダム分割で、同じ話者が学習と検証の両方に入る可能性がある。また、セッション件数と並び順をコードが暗黙に仮定している。
+3. 実emotion2vec encoderのCPU動作は確認できたが、学習済みVAD経由感情分類headがなく、実データでの分類性能は未検証である。
 4. VAD 経由分類の `weight × VAD` は線形分類器の logit を分解した値であり、因果的な説明や、VAD が音声判断の真の理由であることを証明するものではない。
 
 `REPOSITORY_GUIDE_JA.md` はこれらの一部を「制限」として正しく説明しています。ただし、注意書きがあることと、実験の再現性・妥当性が確保されていることは別です。
 
-### 1.1 このPCでの実行方針と現在地（2026-07-14追記）
+### 1.1 このPCでの実行方針と現在地（2026-07-16更新）
 
 このPCは Intel Iris Xe のみで NVIDIA CUDA を利用できないため、**WSL2 Ubuntu上でCPUを使い、emotion2vec encoderを凍結して感情/VAD headだけを学習する**構成を標準とする。Pythonのプロジェクト専用環境を用意すること自体は一般的であり、他プロジェクトとの依存衝突を避けるためにも維持する。ただし、利用者が長い環境依存コマンドを毎回入力しないよう、環境構築・単体テスト・E2Eテストはスクリプトへ集約する。
 
-既存のWSL専用環境 `/home/akiyama/miniforge/envs/emotion2vec-py310/bin/python` は利用可能で、主要importと単体テスト48件の成功を確認した。現在確認できた主要版は PyTorch `2.12.0+cu130`、NumPy `1.26.4` である。これは「現在の環境が単体テストを通る」証拠ではあるが、`requirements.txt` から同じ環境を再構築できる証拠ではない。また、Iris XeではCUDA buildを利用できないため、最終的な標準環境は実checkpointのCPU smoke testを通したCPU版PyTorchへ固定する。
+既存のWSL専用環境 `/home/akiyama/miniforge/envs/emotion2vec-py310/bin/python` は利用可能で、主要importと単体テスト48件の成功を確認した。現在確認できた主要版は PyTorch `2.12.0+cu130`、NumPy `1.26.4` である。さらに、この環境をCPU指定で使用し、公式 `emotion2vec_base.pt` と `scripts/test.wav` から分類JSONまでのスモークテストが成功した。これは「現在の環境で実encoderをロードして推論経路を通せる」証拠ではあるが、`requirements.txt` から同じ環境を再構築できる証拠ではない。また、インストール済みPyTorchはCUDA buildであり、Iris XeではCUDAを利用していないため、最終的な標準環境はCPU版PyTorchを含む再構築可能な定義へ固定する必要がある。
 
-実音声から意味のある感情分類結果を得るE2Eテストには、リポジトリ内の `scripts/test.wav` に加えて、信頼できるemotion2vec checkpointと学習済みVAD経由感情分類head checkpointが必要である。現時点では両checkpointがリポジトリ内にないため、実モデルE2Eは未完了である。
+公式の学習済みencoder checkpointは `artifacts/checkpoints/emotion2vec_base.pt` に取得済みで、ファイルサイズ `1,125,606,009` bytes、SHA-256 `4f14ddf7ba394bcafdd4bff6ae0f24ab2e4134260d4dd42c58ea791a201b02dd` を確認した。`REAL_EMOTION2VEC_SMOKE_TEST_JA.md` の手順により、実encoderと未学習のランダムVAD・分類headを使うCPU配線テストは完了している。意味のある感情分類結果を得る完全なE2Eテストには、引き続き学習済みVAD経由感情分類head checkpointが必要である。
 
 ### 1.2 このPCで今後行うこと
 
@@ -36,16 +36,16 @@
    - Python、pip、PyTorch、fairseq、NumPyを含む直接・推移依存の一覧を保存する。
    - OS、CPU実行、git revision、取得日時も一緒に記録する。
 3. **実モデルを用意する**
-   - 信頼できる出典からemotion2vec checkpointを用意する。
+   - 公式のemotion2vec encoder checkpointは取得・hash確認済み。
    - 学習後のVAD経由感情分類head checkpointを用意する。
-   - 各checkpointの出典、版、ライセンス、SHA-256を台帳へ記録する。
+   - encoder checkpointの出典・サイズ・SHA-256はスモークテスト手順に記録済み。今後のhead checkpointにも同等の台帳情報を残す。
 4. **特徴抽出のCPU対応を完成させる**
    - 特徴抽出コードの無条件な `.cuda()` を `.to(device)` へ変更する。
    - `--device auto/cpu/cuda` を追加し、このPCでは `--device cpu` を使用する。
-5. **実音声E2Eテストを作る**
-   - `scripts/test.wav` を実emotion2vec encoderと学習済み分類headへ入力する。
-   - VAD、`hap/sad/ang/dis` の分類、クラス確率をJSONへ出力する。
-   - 終了コード、有限値、確率和、ラベル集合、checkpoint hashを検証する。
+5. **実音声E2Eテストを完成させる**
+   - 実emotion2vec encoderとランダムheadを使うCPU配線テストは完了済み。
+   - `scripts/test.wav` を実emotion2vec encoderと学習済み分類headへ入力するテストを追加する。
+   - VAD、`hap/sad/ang/dis` の分類、クラス確率、有限値、確率和、ラベル集合、checkpoint hashを自動検証する。
 6. **動作確認済み環境を固定する**
    - Python 3.10、CPU版PyTorch、fairseq 0.12.2、NumPy、全推移依存を固定する。
    - `environment.yml` とlock/constraintsを用意し、新規環境から同じテスト結果を再現する。
@@ -59,9 +59,10 @@
 - [x] PyTorch `2.12.0+cu130`、NumPy `1.26.4`、fairseqのimportに成功した。
 - [x] 単体テスト48件が成功した。
 - [x] このPCではIntel Iris Xeを計算用GPUとして扱わず、CPU運用とする方針を決めた。
-- [ ] 実emotion2vec checkpointを用意し、CPUで読み込む。
+- [x] 公式emotion2vec checkpointを取得し、サイズとSHA-256を確認した。
+- [x] 実emotion2vec checkpointをCPUで読み込み、実音声から分類JSONまでの配線テストを成功させた。
 - [ ] 学習済みVAD経由感情分類headを用意する。
-- [ ] 実音声から分類JSONまでのCPU E2Eテストを成功させる。
+- [ ] 学習済みheadを使う実音声CPU E2Eテストを成功させる。
 - [ ] 動作確認済み依存を固定し、新規環境から再構築する。
 
 ## 2. モデル構造を初心者向けに整理
@@ -110,17 +111,17 @@
 
 | 重要度 | 問題 | 根拠 | 改善案 |
 |---|---|---|---|
-| 重大 | `.env` が Git 追跡対象 | `git ls-files .env` で追跡を確認した。監査では値を出力・転載せず、変数名と追跡状態だけを記録した。現在確認できる用途はデータパス設定だが、将来トークン等が追加される危険もある。 | `.env` を追跡対象から外し、`.gitignore` に追加する。値を空にした `.env.example` だけを管理する。過去に秘密値を入れた可能性があれば履歴と資格情報を確認・更新する。 |
+| 解消 | `.env` が Git 追跡対象 | 2026-07-14に追跡対象から外し、`.gitignore` と値を空にした `.env.example` を導入した。履歴上も秘密情報らしい値は検出されなかった。 | 現在の対策を維持し、実値を含む `.env` を再追加しない。 |
 | 高 | 依存環境が固定されない | `requirements.txt:4-12` は `torch>=1.13`、`numpy<2`、バージョンなしの `soundfile` 等を許す。推移依存も固定されない。pip 公式も再現可能なインストールには直接・推移依存の固定を推奨している。 | 検証済みの Python、PyTorch、CUDA/CPU、全依存を lock/constraints ファイルへ固定し、CPU版とCUDA版を分ける。OS・GPUドライバ条件も記録する。 |
 | 高 | 古い fairseq に対して PyTorch の上限がない | fairseq 0.12.2 は2022年公開で、PyPIの配布 wheel は CPython 3.6～3.8向けのみ。リポジトリは2026-03-20に archive 済みである。一方 `torch>=1.13` は将来版まで許す。 | 実際に通った組み合わせを厳密に固定する。例としてガイドが想定する Python 3.10 / pip 24.0 / NumPy 1.26.4 に加え、PyTorch の完全な版とCUDA buildも固定してCIで再構築する。 |
 | 高 | PyTorch/CUDA の導入方法が曖昧 | PyTorch 1.13でも CPU、CUDA 11.6、CUDA 11.7は異なる配布物である。単なる `pip install -r requirements.txt` では使用するCUDA buildが明示されない。 | NVIDIA driver、CUDA runtime、PyTorch wheel indexを含むコマンドを記載する。CPU確認用とGPU本番用の2系統を用意する。 |
 | 中 | `pip<24.1` が手順依存 | requirements自身ではpipを制御できず、先に手作業でdowngレードする必要がある。新規利用者が見落とすとfairseqのbuild/metadataで失敗し得る。 | bootstrap scriptまたはconda環境定義にpip版を含め、クリーン環境からのCIを追加する。 |
 | 中 | `numpy<2` は安全側だが完全固定ではない | NumPy 2.0 はABIを破壊するため上限には根拠がある。しかし1.x内の任意版を許すため、同一環境は再現しない。 | 検証済みの `numpy==1.26.4` をlock側で固定する。NumPy公式も2.0で1.x向けバイナリとの非互換が起きると説明している。 |
 | 中 | WSLと個人環境への依存 | `TESTING.md:7,20` が distribution名 `Ubuntu` と `/home/akiyama/...` を固定する。別ユーザー・別distributionではそのまま動かない。Docker/native Windowsも対象外。 | `environment.yml` またはコンテナを用意し、ユーザー名に依存しない `python -m ...` を標準にする。WSL distributionと環境パスは変数化する。 |
-| 中 | `.gitignore` が不足 | `.gitignore:1-3` は3種類しか除外せず、`.env`、checkpoint、Hydra出力、学習ログ、`.pytest_cache`、大規模特徴量などを除外しない。 | 秘密ファイルと生成物を用途別に除外し、必要な小規模fixtureだけを明示的に管理する。 |
-| 中 | 外部資産の取得と同一性確認が不足 | checkpoint、IEMOCAP、VADラベルは同梱されない。URL、利用条件、期待ファイル名、hash、版、前処理の完全な手順が1か所に揃っていない。 | 資産台帳を作り、出典・ライセンス・SHA-256・前処理コマンド・期待件数を記録する。IEMOCAPは配布条件上、自動ダウンロードではなく配置検証を用意する。 |
+| 中 | `.gitignore` の生成物除外が部分的 | `.env`、`/artifacts/checkpoints/`、`/outputs/` は除外済み。一方、Hydra出力、学習ログ、`.pytest_cache`、大規模特徴量などの包括的な方針はまだない。 | 残る生成物を用途別に除外し、必要な小規模fixtureだけを明示的に管理する。 |
+| 中 | 外部資産の取得と同一性確認が部分的 | 公式emotion2vec checkpointは配布元、期待ファイル名、サイズ、SHA-256、確認コマンドを `REAL_EMOTION2VEC_SMOKE_TEST_JA.md` に記録済み。一方、IEMOCAP、VADラベル、将来の分類headについては利用条件、hash、版、前処理が1か所に揃っていない。 | 資産台帳を作り、未整理の外部データと学習済みheadにも出典・ライセンス・SHA-256・前処理コマンド・期待件数を記録する。IEMOCAPは配布条件上、自動ダウンロードではなく配置検証を用意する。 |
 
-#### 対応状況（2026-07-14）
+#### 対応状況（2026-07-16更新）
 
 重大項目「`.env` が Git 追跡対象」には対応済みである。
 
@@ -130,7 +131,7 @@
 - `git check-ignore .env`、追跡ファイル一覧、雛形の空値を確認した。履歴上も秘密情報らしい値は検出されなかったため、履歴書き換えと資格情報ローテーションは行っていない。
 - 制限付き実行ではユーザー登録のWSLが見えなかったが、許可付きで既存の `Ubuntu` と専用Pythonを使用できた。主要importと単体テスト48件は成功した。今回の変更は設定管理と文書だけで、Python APIやCLIの挙動は変更していない。
 
-なお、中項目「`.gitignore` が不足」のうち `.env` は解消したが、checkpoint、特徴量、Hydra出力、ログ、cacheの包括的な除外は未対応であり、項目全体としては継続課題である。
+2026-07-16時点では、`.gitignore` に `/artifacts/checkpoints/` と `/outputs/` も追加され、取得済みcheckpointとスモークテストJSONが誤ってGitへ入る経路は抑えられた。ただし、特徴量、Hydra出力、学習ログ、cacheの包括的な除外は未対応であり、項目全体としては継続課題である。
 
 外部根拠:
 
@@ -147,8 +148,16 @@
 | 高 | 単一WAV特徴抽出が失敗を成功のように終了し得る | `scripts/extract_features.py:55-66` の裸の `except:` は、例外オブジェクトを作るだけでraiseもログ出力もしない。出力がなくても終了コード0になり得る。 | 捕捉対象を限定し、元例外を付けて再送出する。出力は一時ファイルへ保存後に置換し、成功時にshapeと保存先を表示する。 |
 | 高 | 公式由来の特徴抽出はGPUを強制 | `scripts/extract_features.py:42,51` と `iemocap_downstream/scripts/emotion2vec_speech_features.py:51,68` が無条件に `.cuda()` を呼ぶ。後者は大量処理中の再開機構もない。 | `--device auto/cpu/cuda` を共通化し、modelとtensorを `.to(device)` へ移す。CPU smoke testを追加する。 |
 | 中 | 入力形式検証に `assert` を使用 | `scripts/extract_features.py:47-48` 等。Pythonを最適化モードで実行するとassertは無効化できる。またWAV以外では `wav` が未定義のまま進む。 | 拡張子・存在・sample rate・channel・dtype・空音声を明示的な例外で検証し、必要ならresample/downmix方針を選択可能にする。 |
-| 中 | checkpoint読込の信頼境界が未説明 | 複数箇所で `torch.load` を使用する。PyTorch checkpointは信頼できる出典のファイルだけを読む必要がある。 | 許可した配布元とhashを文書化し、対応可能なPyTorch版ではweight-only読込を検討する。checkpoint schema/versionも検証する。 |
+| 中 | checkpoint読込の信頼境界が部分的にしか説明されない | `REAL_EMOTION2VEC_SMOKE_TEST_JA.md` は公式配布元、SHA-256、`TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1` によるpickle読込リスクを明記している。一方、他のcheckpoint経路すべてに同じ出典・schema検証が適用されるわけではない。 | 許可した配布元とhashの台帳を全checkpointへ広げ、対応可能なPyTorch版ではweight-only読込を検討する。checkpoint schema/versionも検証する。 |
 | 低 | placeholder経路が本推論と同じCLIにある | VAD推論は引数を省略すると配線確認用encoderを利用できる。random head/modelには明示フラグが必要な点は良いが、生成JSONが実験成果へ混入する余地は残る。 | placeholderを独立したsmoke-testコマンドへ分離し、出力に大きな警告とmodel provenanceを必須化する。 |
+
+#### CPUスモークテスト対応状況（2026-07-16）
+
+- `artifacts/checkpoints/emotion2vec_base.pt` のサイズとSHA-256を実測し、公式配布物の期待値と一致した。
+- `vad_downstream.infer_vad_emotion` は `--device cpu`、実checkpoint、`scripts/test.wav` で完走し、`outputs/real_emotion2vec_smoke.json` を生成した。
+- JSONの `random_model=true`、`target_dim=3`、VAD 3値、4クラス、`classifier_checkpoint=null`、確率和 `1.00000004470348` を確認した。
+- この成功は実encoderのロードと推論配線を保証するが、ランダムheadのVAD値・クラス予測・確率に感情推定上の意味はない。
+- `scripts/extract_features.py` とIEMOCAP一括特徴抽出に残る `.cuda()` 強制は、この推論CLIの成功によって解消されたわけではない。
 
 ### 3.3 IEMOCAP のデータ分割と評価
 
@@ -186,7 +195,7 @@ IEMOCAPが5組・10名の話者から成る根拠は、[USCのIEMOCAP原論文](
 - IEMOCAPのセッション数・件数がハードコードされ、`dataset.fold` と `test_ratio` が未使用。
 - placeholder/random modelは研究上の意味を持たない。
 - end-to-end fine-tuning、データセット固有VAD前処理、実験追跡等が未実装。
-- 外部checkpoint、IEMOCAP、VADラベルが必要で、実データは同梱されない。
+- 公式encoder checkpointはローカルに取得済みだがGitには含めない。学習済み分類head、IEMOCAP、VADラベルは引き続き必要で、実データは同梱されない。
 
 ### 修正または補足すべき記述
 
@@ -195,6 +204,7 @@ IEMOCAPが5組・10名の話者から成る根拠は、[USCのIEMOCAP原論文](
 - VAD寄与度は「説明」より「線形logitの分解」と表現する方が正確である。
 - `TESTING.md` の期待値 `Ran 32 tests` は古い。2026-07-14時点の静的集計では `tests/` に48個の `test_*` メソッドがある。実際のdiscover件数は実行環境で確認すべきである。
 - `data/` は空であるというガイドの説明と現状は一致した。
+- 実encoderを使うCPU配線テストの目的と制約は `REAL_EMOTION2VEC_SMOKE_TEST_JA.md` に分離して記載されている。これは学習済みheadの性能検証ではない。
 
 ## 5. テストと検証状態
 
@@ -206,7 +216,9 @@ IEMOCAPが5組・10名の話者から成る根拠は、[USCのIEMOCAP原論文](
 - 現行テストメソッドの静的集計: **48件**
 - 指定されたWSL import確認: **成功**（PyTorch `2.12.0+cu130`、NumPy `1.26.4`、fairseqを含む）
 - 指定されたWSL unit test: **48件成功**（`Ran 48 tests ... OK`）
-- 実checkpointを使うCPU特徴抽出・感情分類E2E: **未検証**
+- 公式checkpointを使う実encoder CPU配線テスト: **成功**（2026-07-16、ランダムVAD・分類head）
+- 公式checkpointのサイズ・SHA-256: **確認済み**
+- 学習済みVAD経由分類headを使うCPU E2E: **未検証**
 - CUDA/GPU推論: **このPCでは対象外**（Intel Iris Xeのみ）
 - IEMOCAP/VAD実データによる学習・評価: **未検証**
 
@@ -221,23 +233,25 @@ wsl -d Ubuntu `
   -m unittest discover -s tests
 ```
 
-なお現行テストは、VADデータ検証、pooling、CCC、checkpoint、CLI、寄与度計算を広く単体検証しており、追加実装の退行防止として有用である。一方、実fairseq checkpoint、実IEMOCAP、音声から分類JSONまでの実モデルE2E、環境の新規構築、話者独立splitの妥当性を保証する統合テストではない。
+なお現行テストは、VADデータ検証、pooling、CCC、checkpoint、CLI、寄与度計算を広く単体検証しており、追加実装の退行防止として有用である。これに加え、手動スモークテストで実fairseq checkpointから分類JSONまでの配線を確認した。一方、学習済みheadの性能、実IEMOCAPによる学習・評価、環境の新規構築、話者独立splitの妥当性を保証する統合テストではない。
 
 ## 6. 推奨する改善順
 
 ### 優先度1: 秘密情報と成果物の保護
 
 1. [x] `.env` を追跡対象から外し、`.env.example` を導入する（2026-07-14対応）。
-2. [ ] `.gitignore` にcheckpoint、特徴量、Hydra出力、ログ、cacheを追加する。
-3. [ ] 外部checkpointとデータの出典・hash・利用条件を台帳化する。
+2. [x] `.gitignore` にcheckpointと推論出力を追加する（2026-07-16対応）。
+3. [ ] `.gitignore` に特徴量、Hydra出力、学習ログ、cacheを追加する。
+4. [ ] 外部データと学習済みheadの出典・hash・利用条件を台帳化する。公式encoder checkpointの配布元・サイズ・SHA-256は記録済み。
 
 ### 優先度2: 再構築可能な環境
 
 1. [x] 既存のWSL専用環境で主要importと単体テスト48件を実行する（2026-07-14確認）。
-2. [ ] 現在の環境一覧を退避し、実checkpointのCPU smoke testを通す。
-3. [ ] Python 3.10、pip、CPU版PyTorch、NumPy、fairseq、全推移依存をlock/constraintsへ固定する。
-4. [ ] `environment.yml` とbootstrapスクリプトを用意し、新規環境から1コマンドで再構築する。
-5. [ ] WSL distribution名とPython絶対パスをスクリプト設定へ集約し、個人名依存を利用者から隠す。
+2. [x] 公式checkpointのCPU smoke testを通す（2026-07-16確認）。
+3. [ ] 現在の環境一覧を退避する。
+4. [ ] Python 3.10、pip、CPU版PyTorch、NumPy、fairseq、全推移依存をlock/constraintsへ固定する。
+5. [ ] `environment.yml` とbootstrapスクリプトを用意し、新規環境から1コマンドで再構築する。
+6. [ ] WSL distribution名とPython絶対パスをスクリプト設定へ集約し、個人名依存を利用者から隠す。
 
 ### 優先度3: 評価リークの排除
 
@@ -249,9 +263,10 @@ wsl -d Ubuntu `
 
 1. 裸の`except`を修正し、失敗時は非0終了にする。
 2. `scripts/extract_features.py` とIEMOCAP特徴抽出の `.cuda()` を `--device auto/cpu/cuda` と `.to(device)` へ変更する。
-3. `scripts/test.wav`、実emotion2vec checkpoint、学習済み分類headを使い、CPUでWAV入力から分類JSONまでを検証するE2Eテストを追加する。
-4. E2EではVAD/logit/確率の有限性、確率和、ラベル集合、model/checkpoint hash、非0終了を検証する。
-5. 入力、出力shape、checkpoint schema、特徴抽出の途中再開を検証する。
+3. [x] `scripts/test.wav` と実emotion2vec checkpointを使い、ランダムheadまでのCPU配線テストを通す（2026-07-16確認）。
+4. 学習済み分類headを使い、CPUでWAV入力から分類JSONまでを検証するE2Eテストを追加する。
+5. E2EではVAD/logit/確率の有限性、確率和、ラベル集合、model/checkpoint hash、非0終了を自動検証する。
+6. 入力、出力shape、checkpoint schema、特徴抽出の途中再開を検証する。
 
 ### 優先度5: モデル評価と説明の検証
 
@@ -273,6 +288,6 @@ wsl -d Ubuntu `
 
 ## 8. 総合評価
 
-現状は「VADを中間表現にするアイデアを実装し、単体テストで配線を確認できる段階」である。特にVAD系の入力検証、masked mean pooling、checkpoint metadata、random modelの明示フラグは良い基盤である。
+現状は「VADを中間表現にするアイデアを実装し、単体テストに加えて実emotion2vec encoderのCPU配線まで確認できた段階」である。特にVAD系の入力検証、masked mean pooling、checkpoint metadata、random modelの明示フラグ、公式checkpointのhash確認手順は良い基盤である。
 
-ただし、環境固定、秘密ファイル管理、データ分割、実データ統合試験が不足しているため、まだ「第三者が同じ結果を再現できる完成した研究パイプライン」とは評価できない。モデルを複雑化する前に、環境とsplitを固定し、直接分類baselineとVAD忠実度を同じ条件で比較することが最も効果的である。
+ただし、環境固定、話者独立データ分割、学習済みhead、実データ統合評価が不足しているため、まだ「第三者が同じ結果を再現できる完成した研究パイプライン」とは評価できない。秘密ファイルとcheckpoint・推論出力の誤コミット対策は前進した。次はモデルを複雑化する前に、環境とsplitを固定し、実データで直接分類baselineとVAD忠実度を同じ条件で比較することが最も効果的である。

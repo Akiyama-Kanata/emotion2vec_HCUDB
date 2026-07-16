@@ -2,121 +2,69 @@
 
 ## 最終更新
 
-2026-07-03
+2026-07-16
 
 ## 現在地
 
-VAD媒介型感情分類モデルの実装を追加済み。構造は `emotion2vec frame features -> masked mean pooling/FNN -> predicted VAD -> Linear(VAD -> emotion)`。
-
-最終分類器は予測VADだけを入力にし、推論JSONでLinear重み、bias、各VAD次元の寄与、2位クラスとの差分寄与を出す。
+公式の学習済み `emotion2vec_base.pt` を使ったCPUスモークテストが完走した。`scripts/test.wav` から実emotion2vec特徴を抽出し、ランダムVAD headとランダム4分類器を通して `outputs/real_emotion2vec_smoke.json` を生成できている。
 
 ## 完了したこと
 
-- `vad_downstream/data.py`
-  - `load_vad_emotion_dataset()` と `VADEmotionSpeechDataset` を追加。
-  - `.npy/.lengths/.vad/.emo` の同時読み込みに対応。
-  - `hap/sad/ang/dis` を `0/1/2/3` に変換。
-  - 未知ラベル、行数不一致、ID不一致、VAD範囲外を拒否。
-- `vad_downstream/emotion_training.py`
-  - `CCC loss + CrossEntropyLoss` の複合lossを追加。
-  - VAD CCC、WA、UA、weighted F1、confusion matrixを返す評価を追加。
-  - VAD媒介分類checkpoint保存を追加。
-- `vad_downstream/train_vad_emotion.py`
-  - precomputed featuresからVAD媒介分類器を学習するCLIを追加。
-- `vad_downstream/infer_vad_emotion.py`
-  - 既存WAV読み込み・emotion2vec checkpoint読み込み経路を再利用した分類推論CLIを追加。
-  - JSONに `prediction`, `probabilities`, `vad`, `logits`, `linear_weights`, `contributions`, `contrast_to_runner_up` を出す。
-- `iemocap_downstream/scripts/iemocap_manifest_and_labels.sh`
-  - デフォルトの標準4分類は維持。
-  - `vad4` 指定時に raw `dis` を使う `hap/sad/ang/dis` 抽出を追加。
-  - `neu -> dis` 置換はしていない。
-- READMEとテストを追加・更新。
-- `archive/logs/2026-07-03-work-log.md` を作成。
-- 本ファイルを更新。
+- `artifacts/checkpoints/emotion2vec_base.pt` のCPUロード。
+- `WAV -> emotion2vec -> VAD -> hap/sad/ang/dis -> JSON` の配線確認。
+- VAD 3値、4クラス確率、Linear重み、各VAD次元の寄与、2位との差分寄与の出力確認。
+- 4クラス確率の合計が約1であることを確認。
+- logit差と差分寄与の合計が整合することを確認。
+- 実行手順を `REAL_EMOTION2VEC_SMOKE_TEST_JA.md` に用意。
+- 詳細を `archive/logs/2026-07-16-work-log.md` に記録。
 
 ## 未完了 / 次の最小ステップ
 
-依存関係入りPython環境でテストを完走する。
+実用的な推論に進むには、実データでVAD媒介headを学習し、classifier checkpointを生成する。
 
-```powershell
-python -m unittest discover -s tests
-```
+開始前に以下を決める。
 
-対象を絞る場合:
-
-```powershell
-python -m unittest tests.test_vad_downstream_data tests.test_vad_downstream_emotion_training tests.test_vad_downstream_train_vad_emotion tests.test_vad_downstream_infer_vad_emotion tests.test_vad_downstream_model
-```
-
-その後、実データで `.emo` の `hap/sad/ang/dis` 件数、特に `dis` のfold内分布を確認する。
+- HCUDB1のvalence/arousalだけを使い、`target_dim=2` とするか。
+- 3次元VADを維持するため、dominance教師値を別途用意するか。
+- `hap/sad/ang/dis` の件数とfold内分布、特に `dis` の十分な件数があるか。
 
 ## 重要な前提
 
-- クラス順は `["hap", "sad", "ang", "dis"]`。
-- 日本語表示は `["喜び", "悲しみ", "怒り", "嫌悪"]`。
-- `exc -> hap` は前処理でのみ許可。
-- `neu -> dis` は禁止。
-- 推論時のVADは強制clipしない。
-- 依存入りPython環境が現在のWindows PATHから見つかっていない。
+- 現在の結果は `random_model: true`、`classifier_checkpoint: null`。
+- 今回の予測は `ang` だが、ランダムheadのため感情推定としての意味はない。
+- クラス順は `hap`, `sad`, `ang`, `dis`。
+- `exc -> hap` は前処理でのみ許可し、`neu -> dis` は禁止。
+- 古いfairseq checkpointのロードに `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1` を使用する。信頼できる公式checkpointだけに適用する。
 
 ## 変更ファイル
 
-- `DEEP_LEARNING_EXPLANATION.md`
-- `iemocap_downstream/README.md`
-- `iemocap_downstream/scripts/iemocap_manifest_and_labels.sh`
-- `tests/test_vad_downstream_data.py`
-- `tests/test_vad_downstream_model.py`
-- `tests/test_vad_downstream_emotion_training.py`
-- `tests/test_vad_downstream_infer_vad_emotion.py`
-- `tests/test_vad_downstream_train_vad_emotion.py`
-- `vad_downstream/README.md`
-- `vad_downstream/data.py`
-- `vad_downstream/model.py`
-- `vad_downstream/emotion_training.py`
-- `vad_downstream/infer_vad_emotion.py`
-- `vad_downstream/train_vad_emotion.py`
-- `archive/logs/2026-07-03-work-log.md`
-- `archive/logs/next-chat-handoff.md`
+`git status --short --untracked-files=all` で確認済み:
+
+- `.gitignore`: 変更済み
+- `REAL_EMOTION2VEC_SMOKE_TEST_JA.md`: 追加済み
+- `archive/logs/2026-07-16-work-log.md`: 今回追加
+- `archive/logs/next-chat-handoff.md`: 今回更新
+
+checkpointと `outputs/real_emotion2vec_smoke.json` はGit管理対象外。
 
 ## 検証状況
 
-構文チェック:
+成功:
 
-```powershell
-& 'C:\Users\RD004\AppData\Roaming\uv\python\cpython-3.11-windows-x86_64-none\python.exe' -m py_compile vad_downstream\data.py vad_downstream\emotion_training.py vad_downstream\train_vad_emotion.py vad_downstream\infer_vad_emotion.py tests\test_vad_downstream_data.py tests\test_vad_downstream_emotion_training.py tests\test_vad_downstream_train_vad_emotion.py tests\test_vad_downstream_infer_vad_emotion.py
-```
-
-結果:
-
-- exit 0
-
-空白検査:
-
-```powershell
-git diff --check
-```
-
-結果:
-
-- exit 0
-- CRLF warning のみ
-
-未完走:
-
-- `python -m pytest ...`: `python` が PATH になく失敗。
-- Python 3.11 unittest: `numpy` / `torch` 未インストールで失敗。
-- Python 3.13 unittest: `torch` 未インストールで失敗。
-- Bash構文チェック: WSLディストリビューション未導入で未実行相当。
+- 実emotion2vec checkpointを使うCPU推論。
+- `outputs/real_emotion2vec_smoke.json` の生成。
+- `random_model=true`、`target_dim=3`、VAD 3値、4クラス確率、`classifier_checkpoint=null` の確認。
+- 確率合計 `1.00000004470348`。
 
 未実行:
 
-- PyTorch依存テストの完走。
-- 実emotion2vec checkpoint推論。
-- 実IEMOCAP `vad4` 件数監査。
-- 実 `.vad/.emo` prefix での学習。
+- 学習済みVAD・分類headによる推論。
+- 実HCUDB1データを使ったhead学習。
+- 実データでの分類性能評価。
 
 ## 注意点
 
-- `git status` 実行時に `C:\Users\RD004/.config/git/ignore` の permission denied warning が出る。
-- `git diff --stat` は未追跡ファイルを含まないため、新規ファイルは `git status --short --untracked-files=all` で確認すること。
-- 今回の作業は未コミット。
+- `tensorboardX` の案内は今回の推論を妨げない。
+- `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD` のwarningは今回の指定に伴う想定内の表示。
+- ランダムheadのVAD値、分類確率、Linear重みを研究結果として扱わない。
+- `git status` ではユーザー環境のglobal ignoreに対するpermission warningが表示される場合がある。

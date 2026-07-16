@@ -1,5 +1,7 @@
 # emotion2vecリポジトリの学習構造まとめ
 
+最終更新: 2026-07-16
+
 ## 全体像
 
 このリポジトリは、大きく分けて次の3つの部分で構成されています。
@@ -62,7 +64,7 @@ Linear(256 → 4)
 angry / happy / neutral / sad
 ```
 
-### VA/VAD回帰モデル
+### VA/VAD回帰モデル（2層のニューラルネットワーク）
 
 ```text
 平均pooling
@@ -74,6 +76,19 @@ ReLU
 Linear(hidden_dim → 2 or 3)
 ```
 
+既定値は `hidden_dim=256` なので、実際の形は次の通りです。
+
+```text
+Linear(768 → 256)
+  ↓
+ReLU
+  ↓
+Linear(256 → 2 or 3)
+```
+
+`Linear` は「リニア」と読み、日本語では「線形層」または「全結合層」と呼びます。
+この2層は、768次元のemotion2vec特徴をVA/VADの2次元または3次元へ変換する回帰headです。
+
 出力は次のどちらかです。
 
 ```text
@@ -81,11 +96,14 @@ VA:  valence, arousal
 VAD: valence, arousal, dominance
 ```
 
+学習用の正解VA/VADは `[-1, 1]` に正規化します。ただし、現在の回帰headの最終層には
+`tanh` などの範囲制約がないため、予測値が数学的に必ず `[-1, 1]` に収まるわけではありません。
+
 ### VAD経由分類モデル
 
 ![VAD媒介型感情分類モデル](src/vad_mediated_emotion_structure.svg)
 
-今後の分類方針は、感情分類の前にVADを明示的に通す形です。
+現在実装されているVAD媒介型分類は、感情分類の前にVA/VADを明示的に通す形です。
 
 ```text
 emotion2vec特徴量
@@ -94,15 +112,32 @@ emotion2vec特徴量
   ↓
 FNN
   ↓
-valence / arousal / dominance
+valence / arousal (/ dominance)
   ↓
-Linear(3 → 感情クラス数)
+Linear(2 or 3 → 4)
   ↓
-感情分類
+hap / sad / ang / dis
 ```
 
-最後の `Linear(3 → 感情クラス数)` は、VADを入力にしたロジスティック回帰に相当します。
+最後の `Linear(2 or 3 → 4)` は、予測VA/VADを入力にした多クラスロジスティック回帰に相当します。
 分類器はemotion2vecの768次元特徴を直接見ず、予測されたVADだけを見て分類します。
+
+VAD回帰部分は2つのLinear層ですが、4クラス分類まで含めるとLinear層は合計3つです。
+
+```text
+第1層: Linear(768 → 256)
+第2層: Linear(256 → 2 or 3)
+第3層: Linear(2 or 3 → 4)
+```
+
+モデルは必要に応じて、次の両方を返せます。
+
+```text
+vad:    [valence, arousal] または [valence, arousal, dominance]
+logits: hap / sad / ang / dis の4つの分類スコア
+```
+
+`logits` はsoftmax適用前のスコアです。推論時にはsoftmaxを適用して4クラスの確率に変換します。
 
 そのため、新しい音声に対して次のように説明できます。
 
@@ -177,10 +212,11 @@ VADを分類根拠として使う場合は、学習時にVAD回帰の損失も�
 分類損失だけで学習すると、中間の3次元が本当のVADではなく、
 分類しやすい任意の3次元表現になってしまう可能性があります。
 
-そのため、基本形は次のようにします。
+そのため、現在の実装では次の複合損失を使います。
 
 ```text
-loss = VAD回帰loss + 感情分類loss
+loss = lambda_vad * VAD回帰loss
+     + lambda_emo * 感情分類loss
 ```
 
 具体的には、次の組み合わせです。
@@ -189,6 +225,8 @@ loss = VAD回帰loss + 感情分類loss
 VAD回帰loss: CCC loss
 感情分類loss: CrossEntropyLoss
 ```
+
+`lambda_vad` と `lambda_emo` の既定値はどちらも `1.0` です。
 
 ## 勾配の扱い
 
@@ -212,13 +250,20 @@ optimizer.step()
 | `loss.backward()` | 誤差逆伝播で勾配を計算する |
 | `optimizer.step()` | 勾配を使って重みを更新する |
 
-VA/VADモデルでは、デフォルトで emotion2vec本体を固定します。
+波形入力を受けるVA/VADモデルでは、デフォルトでemotion2vec本体を固定します。
 
 ```text
 freeze_encoder=True
 ```
 
 つまり、emotion2vec本体の重みは更新せず、後ろに付けた回帰headだけを学習します。
+
+また、現在の主な学習CLIは事前抽出済みemotion2vec特徴を入力とするため、学習対象は
+VAD回帰headとVADから4クラスを出す分類headです。この状態は厳密には
+「emotion2vec本体のfine-tuning」ではなく「固定特徴上のhead tuning」です。
+
+`Emotion2vecVADModel` 自体は `freeze_encoder=False` も受け取れますが、実データを波形から読み、
+encoderまで更新する一連のfine-tuning用学習パイプラインは、現時点の主経路にはなっていません。
 
 このリポジトリ内では、明示的な gradient clipping は見当たりません。
 
@@ -260,6 +305,18 @@ freeze_encoder=True
 | optimizer | AdamW |
 | `target_dim` | 2 or 3 |
 
+### VAD媒介型4クラス分類
+
+| パラメータ | 値 |
+|---|---:|
+| `input_dim` | 768 |
+| `hidden_dim` | 256 |
+| `target_dim` | 2 or 3 |
+| `num_classes` | 4 |
+| クラス順 | `hap, sad, ang, dis` |
+| `lambda_vad` | 1.0 |
+| `lambda_emo` | 1.0 |
+
 ## まとめ
 
 このリポジトリの基本思想は、次のようにまとめられます。
@@ -268,6 +325,17 @@ freeze_encoder=True
 大きなemotion2vec本体で音声特徴を抽出し、
 小さな下流モデルで分類や回帰を行う
 ```
+
+現在のVAD媒介型モデルを一行で表すと、次のようになります。
+
+```text
+音声 → emotion2vec特徴 → 平均pooling → 2層のVAD回帰head
+     → 予測VA/VAD → 1層の4クラス分類head → hap/sad/ang/dis
+```
+
+この構造の特徴は、最終分類器が768次元特徴を直接使わず、2次元または3次元の
+予測VA/VADだけを使う点です。情報を圧縮するため直接分類より性能が下がる可能性はありますが、
+各クラスのlogitを `bias + weight * VAD` に分解でき、分類根拠を説明しやすくなります。
 
 初心者が読むなら、まずは以下の順番がおすすめです。
 

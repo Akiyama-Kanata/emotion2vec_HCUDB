@@ -30,6 +30,68 @@ frame-level features: [時間, 768]
 感情分類 または VA/VAD回帰
 ```
 
+## 現在の実験・評価設定
+
+旧スライドでは「emotion2vecのfine-tuning」と表現していましたが、現在の主な学習対象は
+**固定したemotion2vec特徴の上に置く下流head**です。したがって、現段階の実験は厳密には
+emotion2vec本体のfine-tuningではなく、`head tuning`です。
+
+### 1. Head tuning設定
+
+#### 実験1：VA回帰
+
+```text
+固定emotion2vec特徴 [時間, 768]
+  → masked mean pooling
+  → Linear(768 → 256)
+  → ReLU
+  → Linear(256 → 2)
+  → Valence / Arousal
+```
+
+初期比較では、HCUDBに合わせて `target_dim=2` とし、Valence / Arousalを予測します。
+Dominanceは教師ラベルを用意できた場合の将来拡張であり、現時点の初期比較には含めません。
+
+#### 実験2：VA媒介型4クラス感情分類
+
+```text
+固定emotion2vec特徴 [時間, 768]
+  → masked mean pooling
+  → 2層のVA回帰head
+  → 予測Valence / Arousal
+  → Linear(2 → 4)
+  → hap / sad / ang / dis
+```
+
+最終分類層は線形ですが、モデル全体は「768次元特徴から直接4クラスを出す線形分類head」ではありません。
+予測VAを経由して分類し、`CCC loss + CrossEntropyLoss` の複合損失で下流headを学習します。
+比較評価では、固定embeddingから直接感情を分類するheadもベースラインとして扱う計画です。
+
+### 2. 評価方法
+
+話者独立評価を基本とし、同一話者が学習データと評価データにまたがらないように分割します。
+LOSOを用いる場合は、テスト話者だけでなくモデル選択に使う検証話者も学習話者から分離する
+`nested LOSO` を採用し、split IDを保存します。
+
+ただし、現在の `vad_downstream` の学習CLIは、あらかじめ作成したtrain/validationデータを受け取る段階であり、
+LOSO分割を自動生成する実験runnerはまだ実装されていません。また、HCUDBの既存splitを利用するか、
+話者単位で新たにsplitを作るかも、実データのメタデータ確認後に確定します。
+
+### 3. 評価指標
+
+| 対象 | 現在の主な指標 | 補助的に保存する指標 |
+|---|---|---|
+| 実験1：VA回帰 | Valence CCC、Arousal CCC、mean CCC | 次元別の予測・誤差分析 |
+| 実験2：4クラス感情分類 | WA（accuracy）、Macro-F1 | UA、weighted F1、confusion matrix、class support |
+
+回帰の主指標は単純な相関係数ではなく、相関に加えて平均値と分散のずれも評価するCCCです。
+Dominance CCCは、Dominanceを含む3次元設定を実施する段階で追加します。
+なお、現行コードが標準で算出する分類指標はWA・UA・weighted F1・confusion matrixであり、
+Macro-F1とclass supportの標準保存は比較評価runnerで追加する計画です。
+
+実データによるhead学習と性能評価はまだ完了していないため、現時点で主張できるのは
+モデル構造と評価設計までです。
+
 ## モデルは何層か
 
 emotion2vec本体は、主に以下の構成です。

@@ -175,6 +175,110 @@ class VADMediatedEmotionClassifier(nn.Module):
         return logits
 
 
+class IndependentRegressionHead(nn.Module):
+    """One scalar affect head kept independent from every other task head."""
+
+    def __init__(self, input_dim=768, hidden_dim=256):
+        super().__init__()
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
+        self.pre_net = nn.Linear(input_dim, hidden_dim)
+        self.activate = nn.ReLU()
+        self.post_net = nn.Linear(hidden_dim, 1)
+
+    def forward(self, pooled_features):
+        return self.post_net(self.activate(self.pre_net(pooled_features)))
+
+
+class ParallelEmotionVADClassifier(nn.Module):
+    """Independent emotion and V/A/D heads over one masked pooled feature."""
+
+    target_dim = 3
+
+    def __init__(self, num_classes=4, input_dim=768, hidden_dim=256):
+        super().__init__()
+        if num_classes < 2:
+            raise ValueError(f"num_classes must be at least 2, got {num_classes}")
+        self.num_classes = num_classes
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
+        self.emotion_head = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, num_classes),
+        )
+        self.valence_head = IndependentRegressionHead(input_dim, hidden_dim)
+        self.arousal_head = IndependentRegressionHead(input_dim, hidden_dim)
+        self.dominance_head = IndependentRegressionHead(input_dim, hidden_dim)
+
+    def forward(self, features, padding_mask=None):
+        if features.dim() != 3:
+            raise ValueError(
+                f"emotion2vec features must be 3D [B, T, C], got {features.shape}"
+            )
+        if features.size(-1) != self.input_dim:
+            raise ValueError(
+                f"emotion2vec feature dim must be {self.input_dim}, got "
+                f"{features.size(-1)}"
+            )
+        if padding_mask is None:
+            padding_mask = torch.zeros(
+                features.shape[:2], dtype=torch.bool, device=features.device
+            )
+        else:
+            padding_mask = padding_mask.to(device=features.device, dtype=torch.bool)
+
+        pooled = masked_mean_pooling(features, padding_mask)
+        vad = torch.cat(
+            [
+                self.valence_head(pooled),
+                self.arousal_head(pooled),
+                self.dominance_head(pooled),
+            ],
+            dim=1,
+        )
+        return {"logits": self.emotion_head(pooled), "vad": vad}
+
+    def task_parameters(self, include_dominance=True):
+        """Return optimizer parameters, optionally excluding all D parameters."""
+        modules = [self.emotion_head, self.valence_head, self.arousal_head]
+        if include_dominance:
+            modules.append(self.dominance_head)
+        return [parameter for module in modules for parameter in module.parameters()]
+
+
+class Emotion2vecParallelEmotionVADClassifier(Emotion2vecVADModel):
+    """Frozen waveform encoder followed by independent parallel task heads."""
+
+    def __init__(
+        self,
+        encoder,
+        num_classes=4,
+        input_dim=768,
+        hidden_dim=256,
+        freeze_encoder=True,
+    ):
+        super().__init__(
+            encoder=encoder,
+            target_dim=3,
+            input_dim=input_dim,
+            hidden_dim=hidden_dim,
+            freeze_encoder=freeze_encoder,
+        )
+        self.num_classes = num_classes
+        self.head = ParallelEmotionVADClassifier(
+            num_classes=num_classes,
+            input_dim=input_dim,
+            hidden_dim=hidden_dim,
+        )
+
+    def forward(self, source, padding_mask=None):
+        features, feature_padding_mask = self.extract_frame_features(
+            source, padding_mask=padding_mask
+        )
+        return self.head(features, padding_mask=feature_padding_mask)
+
+
 class Emotion2vecVADMediatedClassifier(Emotion2vecVADModel):
     """Whole classifier: audio waveform -> emotion2vec frames -> VAD -> logits."""
 

@@ -2,69 +2,54 @@
 
 ## 最終更新
 
-2026-07-16
+2026-07-19
 
 ## 現在地
 
-公式の学習済み `emotion2vec_base.pt` を使ったCPUスモークテストが完走した。`scripts/test.wav` から実emotion2vec特徴を抽出し、ランダムVAD headとランダム4分類器を通して `outputs/real_emotion2vec_smoke.json` を生成できている。
+英語感情認識性能を維持しながら日本語性能を向上させるため、emotion2vec-base、emotion2vec+ large、下流感情分類head、VAD回帰head、本体の日本語部分fine-tuningの位置づけを検討中。
+
+現在の主要実装は、固定したemotion2vecの事前抽出特徴からVAD回帰headと感情分類headを学習するもの。本体は更新していないため、現段階の実験は厳密にはemotion2vecのfine-tuningではなくhead training / head tuningである。
 
 ## 完了したこと
 
-- `artifacts/checkpoints/emotion2vec_base.pt` のCPUロード。
-- `WAV -> emotion2vec -> VAD -> hap/sad/ang/dis -> JSON` の配線確認。
-- VAD 3値、4クラス確率、Linear重み、各VAD次元の寄与、2位との差分寄与の出力確認。
-- 4クラス確率の合計が約1であることを確認。
-- logit差と差分寄与の合計が整合することを確認。
-- 実行手順を `REAL_EMOTION2VEC_SMOKE_TEST_JA.md` に用意。
-- 詳細を `archive/logs/2026-07-16-work-log.md` に記録。
+- 本体固定、部分FT、全層FTの用語を整理した。
+- HCUDBで本体上位1～2層を部分FTする二段階案を整理した。
+- emotion2vec+ largeはbaseとは別に部分FTする必要があると確認した。
+- VADを感情分類の必須経路、並列補助タスク、比較用ボトルネックのどれとして扱うか整理した。
+- 本体部分FTに必要な入力、ラベル、暫定GPU目安を整理した。
 
 ## 未完了 / 次の最小ステップ
 
-実用的な推論に進むには、実データでVAD媒介headを学習し、classifier checkpointを生成する。
+次のどちらを研究の中心にするか決める。
 
-開始前に以下を決める。
+1. 分類精度中心：emotion2vec特徴から感情を直接分類し、VADは並列補助出力または比較条件にする。
+2. 説明可能性中心：`emotion2vec特徴 -> VAD -> 感情`を主経路として、直接分類との性能差を検証する。
 
-- HCUDB1のvalence/arousalだけを使い、`target_dim=2` とするか。
-- 3次元VADを維持するため、dominance教師値を別途用意するか。
-- `hap/sad/ang/dis` の件数とfold内分布、特に `dis` の十分な件数があるか。
+決定後、比較表を確定し、各データセットの感情カテゴリ、実測VADラベル、話者分割を一覧化する。
 
 ## 重要な前提
 
-- 現在の結果は `random_model: true`、`classifier_checkpoint: null`。
-- 今回の予測は `ang` だが、ランダムheadのため感情推定としての意味はない。
-- クラス順は `hap`, `sad`, `ang`, `dis`。
-- `exc -> hap` は前処理でのみ許可し、`neu -> dis` は禁止。
-- 古いfairseq checkpointのロードに `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1` を使用する。信頼できる公式checkpointだけに適用する。
+- 本体固定＋新規head学習は「emotion2vecのfine-tuning」ではなく「下流head training」。
+- 本体上位層まで更新した場合は「partial fine-tuning」と呼べる。
+- emotion2vec+ largeの付属9クラス分類headへVADを単純挿入することはできない。VAD媒介型では付属headを新規headへ置き換え、native 9-class headは参考条件として残す。
+- VAD教師値なしで分類lossだけから3次元中間表現を学習した場合、それを実測VADと同等に扱わない。
+- HCUDBで本体を適応する場合、test話者を適応学習へ混ぜない。
 
 ## 変更ファイル
 
-`git status --short --untracked-files=all` で確認済み:
-
-- `.gitignore`: 変更済み
-- `REAL_EMOTION2VEC_SMOKE_TEST_JA.md`: 追加済み
-- `archive/logs/2026-07-16-work-log.md`: 今回追加
-- `archive/logs/next-chat-handoff.md`: 今回更新
-
-checkpointと `outputs/real_emotion2vec_smoke.json` はGit管理対象外。
+- `archive/logs/2026-07-19-work-log.md`：今回新規作成。
+- `archive/logs/next-chat-handoff.md`：今回の検討内容へ更新。
+- `DEEP_LEARNING_EXPLANATION.md`：既存の未コミット変更あり。今回未変更。
 
 ## 検証状況
 
-成功:
-
-- 実emotion2vec checkpointを使うCPU推論。
-- `outputs/real_emotion2vec_smoke.json` の生成。
-- `random_model=true`、`target_dim=3`、VAD 3値、4クラス確率、`classifier_checkpoint=null` の確認。
-- 確率合計 `1.00000004470348`。
-
-未実行:
-
-- 学習済みVAD・分類headによる推論。
-- 実HCUDB1データを使ったhead学習。
-- 実データでの分類性能評価。
+- リポジトリ内のモデル構造と公式のemotion2vec+ largeモデル情報を確認済み。
+- 学習、VRAM計測、精度評価は未実行。
+- コード変更とテスト実行は未実施。
 
 ## 注意点
 
-- `tensorboardX` の案内は今回の推論を妨げない。
-- `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD` のwarningは今回の指定に伴う想定内の表示。
-- ランダムheadのVAD値、分類確率、Linear重みを研究結果として扱わない。
-- `git status` ではユーザー環境のglobal ignoreに対するpermission warningが表示される場合がある。
+- base上位1～2層の部分FTはVRAM 12～16GBが最低候補、24GBが暫定推奨だが、実測前の目安。
+- +large上位1～2層の部分FTは24GBが最低候補、40～48GBが暫定推奨だが、実測前の目安。
+- PC購入前にクラウドGPUで最長クラスの音声を使ったforward/backwardスモークテストを行う。
+- IEMOCAPなどを外部クラウドへ置く前に、利用規約と大学の研究データ管理規程を確認する。

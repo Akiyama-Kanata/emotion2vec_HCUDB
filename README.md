@@ -1,3 +1,9 @@
+> Downstream update: fixed 768-D emotion2vec features now support direct
+> VA/VAD regression, VAD-mediated emotion classification, and independent
+> parallel emotion plus V/A/D prediction. See
+> [vad_downstream/README.md](vad_downstream/README.md) for mixed-D masks,
+> configurable class order, checkpoint status, and single-WAV JSON inference.
+
 <div align="center">
     <h1>
     EMOTION2VEC

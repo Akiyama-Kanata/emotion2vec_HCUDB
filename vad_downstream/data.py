@@ -45,12 +45,25 @@ def load_vad_dataset(prefix, min_length=1, max_length=None):
     }
 
 
-def load_vad_emotion_dataset(prefix, min_length=1, max_length=None, class_labels=None):
+def load_vad_emotion_dataset(
+    prefix,
+    min_length=1,
+    max_length=None,
+    class_labels=None,
+    masked_vad=True,
+):
     """Load frame-level features with aligned VAD and categorical emotion labels."""
     class_labels = _normalize_class_labels(class_labels)
     feats, lengths = _load_features_and_lengths(prefix)
 
-    vad_utt_ids, vad_targets, target_dim = _load_vad_labels(prefix + ".vad")
+    if masked_vad:
+        vad_utt_ids, vad_targets, vad_target_masks = _load_masked_vad_labels(
+            prefix + ".vad"
+        )
+        target_dim = 3
+    else:
+        vad_utt_ids, vad_targets, target_dim = _load_vad_labels(prefix + ".vad")
+        vad_target_masks = np.ones_like(vad_targets, dtype=np.bool_)
     if len(vad_utt_ids) != len(lengths):
         raise ValueError(
             f"number of VAD rows ({len(vad_utt_ids)}) does not match lengths "
@@ -86,6 +99,7 @@ def load_vad_emotion_dataset(prefix, min_length=1, max_length=None, class_labels
     sizes = sizes_all[keep]
     offsets = offsets_all[keep]
     vad_targets = vad_targets[keep]
+    vad_target_masks = vad_target_masks[keep]
     emotion_targets = emotion_targets[keep]
     utt_ids = [vad_utt_ids[i] for i in keep]
     emotion_labels = [emotion_labels[i] for i in keep]
@@ -102,6 +116,8 @@ def load_vad_emotion_dataset(prefix, min_length=1, max_length=None, class_labels
         "offsets": offsets,
         "targets": vad_targets,
         "vad_targets": vad_targets,
+        "vad_target_masks": vad_target_masks,
+        "vad_label_counts": vad_target_masks.sum(axis=0).astype(np.int64),
         "emotion_targets": emotion_targets,
         "emotion_labels": emotion_labels,
         "utt_ids": utt_ids,
@@ -194,8 +210,14 @@ class VADEmotionSpeechDataset(VADSpeechDataset):
         utt_ids=None,
         emotion_labels=None,
         class_labels=None,
+        vad_target_masks=None,
     ):
         super().__init__(feats, sizes, offsets, vad_targets, utt_ids=utt_ids)
+        if vad_target_masks is None:
+            vad_target_masks = np.ones_like(self.targets, dtype=np.bool_)
+        self.vad_target_masks = np.asarray(vad_target_masks, dtype=np.bool_)
+        if self.vad_target_masks.shape != self.targets.shape:
+            raise ValueError("vad_target_masks must have the same shape as vad_targets")
         self.class_labels = _normalize_class_labels(class_labels)
         self.emotion_targets = np.asarray(emotion_targets, dtype=np.int64)
         if len(self.emotion_targets) != len(self.sizes):
@@ -217,6 +239,9 @@ class VADEmotionSpeechDataset(VADSpeechDataset):
     def __getitem__(self, index):
         sample = super().__getitem__(index)
         sample["vad_target"] = sample["target"]
+        sample["vad_target_mask"] = torch.from_numpy(
+            self.vad_target_masks[index].copy()
+        ).bool()
         sample["emotion_target"] = torch.tensor(
             int(self.emotion_targets[index]),
             dtype=torch.long,
@@ -230,6 +255,9 @@ class VADEmotionSpeechDataset(VADSpeechDataset):
             return batch
 
         batch["vad_target"] = batch["target"]
+        batch["vad_target_mask"] = torch.stack(
+            [sample["vad_target_mask"] for sample in samples]
+        )
         batch["emotion_target"] = torch.LongTensor(
             [int(sample["emotion_target"]) for sample in samples]
         )
@@ -340,6 +368,45 @@ def _load_vad_labels(path):
         raise ValueError(f"{path} has no VAD rows")
 
     return utt_ids, np.stack(targets).astype(np.float32), target_dim
+
+
+def _load_masked_vad_labels(path):
+    """Load mixed VA/VAD rows into fixed [N, 3] targets and boolean masks."""
+    utt_ids = []
+    targets = []
+    masks = []
+    with open(path, "r", encoding="utf-8") as handle:
+        for line_no, line in enumerate(handle, start=1):
+            text = line.rstrip("\r\n")
+            if not text:
+                raise ValueError(f"empty VAD row at {path}:{line_no}")
+            parts = text.split("\t")
+            if len(parts) not in (3, 4):
+                raise ValueError(
+                    f"VAD row at {path}:{line_no} must have 3 or 4 tab-separated "
+                    f"columns, got {len(parts)}"
+                )
+            if not parts[0]:
+                raise ValueError(f"empty utterance_id at {path}:{line_no}")
+            try:
+                values = [float(value) for value in parts[1:]]
+            except ValueError as exc:
+                raise ValueError(f"invalid VAD value at {path}:{line_no}") from exc
+            if np.any(np.asarray(values) < -1.0) or np.any(np.asarray(values) > 1.0):
+                raise ValueError(
+                    f"VAD values at {path}:{line_no} must be in [-1.0, 1.0]"
+                )
+            has_dominance = len(values) == 3
+            utt_ids.append(parts[0])
+            targets.append(values if has_dominance else values + [0.0])
+            masks.append([True, True, has_dominance])
+    if not utt_ids:
+        raise ValueError(f"{path} has no VAD rows")
+    return (
+        utt_ids,
+        np.asarray(targets, dtype=np.float32),
+        np.asarray(masks, dtype=np.bool_),
+    )
 
 
 def _load_emotion_labels(path, class_labels=None):

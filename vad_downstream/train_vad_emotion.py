@@ -241,6 +241,15 @@ def validate_target_dim(data, target_dim, split_name):
             f"{split_name} target_dim ({int(data['target_dim'])}) does not match "
             f"requested target_dim ({int(target_dim)})"
         )
+    # The legacy VAD-mediated comparison model requires a uniformly complete
+    # target. Mixed/missing D supervision belongs to the parallel model CLI.
+    if int(target_dim) == 3 and "vad_target_masks" in data:
+        dominance_count = int(data["vad_target_masks"][:, 2].sum())
+        if dominance_count != int(data["num"]):
+            raise ValueError(
+                f"{split_name} target_dim (VA with missing dominance) does not "
+                "match requested target_dim (3)"
+            )
 
 
 def set_seed(seed):
@@ -273,6 +282,7 @@ def build_data_loader(
         min_length=min_length,
         max_length=max_length,
         class_labels=EMOTION_CLASS_LABELS,
+        masked_vad=False,
     )
     if data["num"] == 0:
         raise ValueError(f"{split_name} dataset has no samples after length filtering")

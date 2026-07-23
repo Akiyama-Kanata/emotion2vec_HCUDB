@@ -33,6 +33,42 @@ Current minimal modules:
   `<prefix>.npy`, `<prefix>.lengths`, `<prefix>.vad`, and `<prefix>.emo`.
 - `infer_vad_emotion.py`: provides WAV-to-VAD-to-emotion JSON inference with
   linear-weight contribution breakdowns.
+- `train_parallel_emotion_vad.py`: trains independent categorical and V/A/D
+  heads with utterance-level D masking.
+- `infer_parallel_emotion_vad.py`: restores class order and Dominance status
+  from a checkpoint and always emits three VAD values.
+
+## Three supported model structures
+
+1. `VADRegressionHead`: direct VA or VAD regression after masked pooling.
+2. `VADMediatedEmotionClassifier`: predicted VAD feeds the emotion classifier;
+   this remains available as the comparison model.
+3. `ParallelEmotionVADClassifier`: masked pooling feeds independent emotion,
+   Valence, Arousal, and Dominance heads. Emotion logits never depend on VAD,
+   and every VAD head is `Linear -> ReLU -> Linear(1)`.
+
+```bash
+python -m vad_downstream.train_parallel_emotion_vad \
+  --train-prefix data/vad_emotion/train \
+  --valid-prefix data/vad_emotion/valid \
+  --output runs/parallel_emotion_vad.pt \
+  --class-labels hap sad ang dis
+
+python -m vad_downstream.infer_parallel_emotion_vad \
+  --wav scripts/test.wav \
+  --classifier-checkpoint runs/parallel_emotion_vad.pt \
+  --output parallel_prediction.json
+```
+
+The class order defaults to `hap sad ang dis` only when `--class-labels` is not
+given. Checkpoints preserve this order, per-dimension `vad_label_counts`, and
+`supervised_dimensions`.
+
+Dominance status is `trained` when the current train split has D labels,
+`untrained` for a newly initialized head without D labels, and
+`retained_from_checkpoint` when VA-only continued training freezes a previously
+trained D head. An `untrained` numeric output is schema-compatible only and is
+not a learned Dominance estimate.
 
 ## WAV to VA/VAD staged plan
 
@@ -160,11 +196,12 @@ utterance_id<TAB>valence<TAB>arousal<TAB>dominance
 Rules:
 
 - `valence` and `arousal` are always required.
-- `dominance` is optional. If present, it must be present for every row in the
-  same file.
+- `dominance` is optional and may be present for only some rows in the same
+  file for parallel training. The loader creates fixed three-dimensional
+  targets and a boolean `vad_target_mask`; missing D uses a masked dummy value.
 - Label values must be normalized to `[-1.0, 1.0]`.
 - Raw 1-to-5 ratings must be normalized with `(raw - 3.0) / 2.0`.
-- Missing values are not part of the first supported format.
+- Valence and Arousal cannot be missing.
 
 Example:
 

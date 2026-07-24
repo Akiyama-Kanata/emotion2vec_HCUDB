@@ -199,6 +199,11 @@ def save_parallel_checkpoint(
     lambda_vad=1.0,
     lambda_emo=1.0,
     metadata=None,
+    column_config=None,
+    vad_normalization=None,
+    encoder_info=None,
+    training_history=None,
+    evaluation_metrics=None,
 ):
     if dominance_status not in DOMINANCE_STATUSES:
         raise ValueError(f"invalid dominance_status: {dominance_status}")
@@ -222,6 +227,18 @@ def save_parallel_checkpoint(
         "lambda_emo": float(lambda_emo),
         "metadata": {} if metadata is None else metadata,
     }
+    # Notebook metadata is additive so checkpoints produced by the existing CLI
+    # and older checkpoint readers remain fully compatible.
+    if column_config is not None:
+        checkpoint["column_config"] = dict(column_config)
+    if vad_normalization is not None:
+        checkpoint["vad_normalization"] = dict(vad_normalization)
+    if encoder_info is not None:
+        checkpoint["encoder_info"] = dict(encoder_info)
+    if training_history is not None:
+        checkpoint["training_history"] = list(training_history)
+    if evaluation_metrics is not None:
+        checkpoint["evaluation_metrics"] = dict(evaluation_metrics)
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(checkpoint, path)

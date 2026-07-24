@@ -1,5 +1,8 @@
 # VAD downstream data contract
 
+モデル構造、勾配経路、条件付きDominance学習の詳しい図解は
+[`MODEL_ARCHITECTURES_JA.md`](MODEL_ARCHITECTURES_JA.md)を参照してください。
+
 This directory is for downstream experiments that use emotion2vec frame-level
 features with continuous Valence/Arousal/Dominance style labels.
 

@@ -3,6 +3,8 @@
 > parallel emotion plus V/A/D prediction. See
 > [vad_downstream/README.md](vad_downstream/README.md) for mixed-D masks,
 > configurable class order, checkpoint status, and single-WAV JSON inference.
+> A detailed Japanese architecture guide is available at
+> [vad_downstream/MODEL_ARCHITECTURES_JA.md](vad_downstream/MODEL_ARCHITECTURES_JA.md).
 
 <div align="center">
     <h1>
@@ -238,6 +240,32 @@ We provide training scripts for IEMOCAP dataset in the `iemocap_downstream` fold
 
 ## Testing
 See [TESTING.md](TESTING.md) for the supported test command. This repository is tested with the dedicated WSL/Ubuntu `emotion2vec-py310` environment, not the Windows-side `python` command.
+
+## Audio-to-emotion/VAD Notebook (WSL)
+
+The single user-facing entry point for training and folder inference is
+[`notebooks/audio_to_emotion_vad.ipynb`](notebooks/audio_to_emotion_vad.ipynb).
+Edit its first configuration cell and run all cells; no training or inference
+CLI is required. It infers emotion labels from one annotation CSV, performs a
+speaker-disjoint split, caches frozen emotion2vec features, trains independent
+emotion/V/A/D heads, evaluates them, and writes artifacts under
+`runs/notebooks/` (ignored by Git).
+
+In VS Code on Windows:
+
+1. Open the repository with **WSL: Open Folder in WSL**.
+2. In the WSL terminal, activate the Python 3.10 environment and run
+   `python -m pip install -r requirements-notebook.txt` followed by
+   `python -m ipykernel install --user --name emotion2vec-py310 --display-name "Python (emotion2vec-py310 / WSL)"`.
+3. Open the notebook and choose that WSL kernel from **Select Kernel**.
+4. Leave `DEMO_MODE = True` for a CPU-only synthetic end-to-end check. For
+   research data set it to `False`, fill in the audio/CSV/inference paths,
+   encoder checkpoint, and column names, then use **Run All**.
+
+All referenced training and inference WAVs must be 16 kHz mono. If the CSV has
+no Dominance column, the notebook still emits a numeric D-head output for a
+stable schema, but marks it `untrained` and warns that it must not be used as a
+research result. Demo outputs carry the same explicit non-research warning.
 
 ## Contributors
 |  Institution | Contribution |

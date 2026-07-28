@@ -3,6 +3,12 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+"""
+emotion2vec 本体モデル（Data2VecMultiModel）の定義。
+音声モダリティエンコーダ + Transformer ブロック群で構成される事前学習モデルで、
+特徴量抽出（extract_features）と学習時のフォワードパス（forward）を提供する。
+"""
+
 import logging
 from functools import partial
 import numpy as np
@@ -22,6 +28,10 @@ logger = logging.getLogger(__name__)
 
 @register_model("data2vec_multi", dataclass=Data2VecMultiConfig)
 class Data2VecMultiModel(BaseFairseqModel):
+    """
+    emotion2vec の本体モデル。音声モダリティエンコーダと Transformer ブロック群から構成される。
+    data2vec2 をベースに感情認識向けに拡張したマルチモーダル事前学習モデル。
+    """
 
     def __init__(self, cfg: Data2VecMultiConfig, task=None):
         super().__init__()
@@ -33,6 +43,7 @@ class Data2VecMultiModel(BaseFairseqModel):
         )
 
         def make_block(drop_path, dim=None, heads=None):
+            """ALiBi対応のTransformerブロックを生成するファクトリ関数。"""
             return AltBlock(
                 cfg.embed_dim if dim is None else dim,
                 cfg.num_heads if heads is None else heads,
@@ -48,8 +59,10 @@ class Data2VecMultiModel(BaseFairseqModel):
                 ffn_targets=not cfg.end_of_block_targets,
             )
 
+        # ALiBi位置バイアスのキャッシュ（系列長・ヘッド数をキーとして保持）
         self.alibi_biases = {}
         self.modality_encoders = nn.ModuleDict()
+        # 音声モダリティエンコーダ（CNN特徴抽出 + 相対位置エンコーダ）を登録する
         mod_cfg = getattr(cfg.modalities, 'audio')
         enc = AudioEncoder(
             mod_cfg,
@@ -62,7 +75,7 @@ class Data2VecMultiModel(BaseFairseqModel):
         )
         self.modality_encoders['AUDIO'] = enc
 
-        self.ema = None
+        self.ema = None  # EMAティーチャー（事前学習時に使用、推論時は不要）
 
         self.average_top_k_layers = cfg.average_top_k_layers
         self.loss_beta = cfg.loss_beta
@@ -70,8 +83,8 @@ class Data2VecMultiModel(BaseFairseqModel):
 
         self.dropout_input = nn.Dropout(cfg.dropout_input)
 
+        # 各Transformerブロックに線形増加するDrop Path率を割り当てる
         dpr = np.linspace(cfg.start_drop_path_rate, cfg.end_drop_path_rate, cfg.depth)
-
         self.blocks = nn.ModuleList([make_block(dpr[i]) for i in range(cfg.depth)])
 
         self.norm = None
@@ -83,6 +96,7 @@ class Data2VecMultiModel(BaseFairseqModel):
         for mod_enc in self.modality_encoders.values():
             mod_enc.reset_parameters()
 
+        # バイアス項・1次元パラメータは weight decay を適用しない
         for pn, p in self.named_parameters():
             if len(p.shape) == 1 or pn.endswith(".bias") or "alibi_scale" in pn:
                 p.optim_overrides = {"optimizer": {"weight_decay_scale": 0}}
@@ -108,11 +122,19 @@ class Data2VecMultiModel(BaseFairseqModel):
         precomputed_mask=None,
         **kwargs,
     ):
+        """
+        モデルのフォワードパス。事前学習時と特徴量抽出時で挙動が異なる。
 
+        Args:
+            source: 入力音声波形 (B, T)
+            features_only: True のとき損失計算をスキップして特徴量のみ返す
+            remove_extra_tokens: True のとき CLS等の余分なトークンを除去する
+        """
         feature_extractor = self.modality_encoders['AUDIO']
 
         mask_seeds = None
 
+        # 音声モダリティエンコーダで局所特徴量を抽出し、マスク処理を適用する
         extractor_out = feature_extractor(
             source,
             padding_mask,
@@ -133,6 +155,7 @@ class Data2VecMultiModel(BaseFairseqModel):
             x = self.dropout_input(x)
 
         layer_results = []
+        # 各Transformerブロックを通過させる（layerdrop が設定されている場合は確率的にスキップ）
         for i, blk in enumerate(self.blocks):
             if (
                 not self.training
@@ -141,6 +164,7 @@ class Data2VecMultiModel(BaseFairseqModel):
             ):
                 ab = masked_alibi_bias
                 if ab is not None and alibi_scale is not None:
+                    # ALiBiバイアスにスケール係数を乗算する（学習可能スケールの場合）
                     scale = (
                         alibi_scale[i]
                         if alibi_scale.size(0) > 1
@@ -160,6 +184,7 @@ class Data2VecMultiModel(BaseFairseqModel):
             x = self.norm(x)
 
         if features_only:
+            # 余分なトークン（CLS等）を先頭から除去する
             if remove_extra_tokens:
                 x = x[:, feature_extractor.modality_cfg.num_extra_tokens :]
                 if masked_padding_mask is not None:
@@ -177,6 +202,7 @@ class Data2VecMultiModel(BaseFairseqModel):
     def extract_features(
         self, source, mode=None, padding_mask=None, mask=False, remove_extra_tokens=True
     ):
+        """推論用ラッパー。mask=False で forward を呼び出して特徴量を返す。"""
         res = self.forward(
             source,
             mode=mode,

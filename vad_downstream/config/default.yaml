@@ -1,0 +1,25 @@
+common:
+  seed: 42
+
+model:
+  input_dim: 768
+  hidden_dim: 256
+  dropout: 0.1
+
+training:
+  epochs: 30
+  lr: 1.0e-3
+  batch_size: 32
+  num_workers: 0
+
+dataset:
+  csv_path: tests/fixtures/vad_dummy/vad_labels_dummy.csv
+  audio_dir: null
+  cache_dir: tests/fixtures/vad_dummy/cache
+  split_mode: auto
+  test_session: null
+  val_ratio: 0.1
+  test_ratio: 0.1
+
+output:
+  dir: outputs/vad

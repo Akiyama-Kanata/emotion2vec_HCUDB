@@ -3,6 +3,12 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+"""
+モダリティ共通エンコーダの基底クラス（ModalitySpecificEncoder）と
+ALiBi位置バイアス生成ユーティリティを定義するモジュール。
+マスク処理・位置エンコード・コンテキスト化特徴量の生成を担う。
+"""
+
 import logging
 import math
 import numpy as np
@@ -24,35 +30,38 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class D2vModalityConfig:
+    """モダリティ共通のハイパーパラメータ設定（マスク処理・位置エンコード・prenet 等）。"""
     type: Modality = MISSING
-    prenet_depth: int = 4
+    prenet_depth: int = 4      # モダリティ専用 prenet Transformer の深さ
     prenet_layerdrop: float = 0
     prenet_dropout: float = 0
     start_drop_path_rate: float = 0
     end_drop_path_rate: float = 0
 
-    num_extra_tokens: int = 0
+    num_extra_tokens: int = 0  # 先頭に付加する特殊トークン数（CLS 等）
     init_extra_token_zero: bool = True
 
+    # マスク処理の設定（事前学習時に入力の一部を隠すための設定）
     mask_noise_std: float = 0.01
     mask_prob_min: Optional[float] = None
-    mask_prob: float = 0.7
+    mask_prob: float = 0.7      # マスクするフレームの割合
     inverse_mask: bool = False
     mask_prob_adjust: float = 0
     keep_masked_pct: float = 0
 
-    mask_length: int = 5
+    mask_length: int = 5        # 連続マスクするフレームの長さ
     add_masks: bool = False
     remove_masks: bool = False
     mask_dropout: float = 0.0
-    encoder_zero_mask: bool = True
+    encoder_zero_mask: bool = True  # True のとき、マスク位置をゼロで埋める
 
-    mask_channel_prob: float = 0.0
+    mask_channel_prob: float = 0.0   # チャネル方向のマスク確率
     mask_channel_length: int = 64
 
     ema_local_encoder: bool = False  # used in data2vec_multi
-    local_grad_mult: float = 1.0
+    local_grad_mult: float = 1.0     # ローカルエンコーダへの勾配スケール係数
 
+    # ALiBi位置バイアスの設定
     use_alibi_encoder: bool = False
     alibi_scale: float = 1.0
     learned_alibi: bool = False
@@ -68,10 +77,18 @@ class D2vModalityConfig:
 
 
 MaskSeed = namedtuple("MaskSeed", ["seed", "update", "ids"])
+# x_unmasked: マスク後の非マスクトークン, mask: マスクフラグ (B, T),
+# ids_restore: 元の順序に戻すインデックス, ids_keep: 非マスクトークンのインデックス
 MaskInfo = namedtuple("MaskInfo", ["x_unmasked", "mask", "ids_restore", "ids_keep"])
 
 
 class ModalitySpecificEncoder(nn.Module):
+    """
+    モダリティ共通エンコーダの基底クラス。
+    局所エンコーダ → 位置エンコーダ → マスク処理 → prenet Transformer の処理パイプラインを提供する。
+    AudioEncoder などのモダリティ専用クラスがこのクラスを継承する。
+    """
+
     def __init__(
         self,
         modality_cfg: D2vModalityConfig,
@@ -100,6 +117,7 @@ class ModalitySpecificEncoder(nn.Module):
 
         self.extra_tokens = None
         if modality_cfg.num_extra_tokens > 0:
+            # CLS などの特殊トークンを系列先頭へ追加できるよう、学習可能パラメータとして保持する。
             self.extra_tokens = nn.Parameter(
                 torch.zeros(1, modality_cfg.num_extra_tokens, embed_dim)
             )
@@ -110,6 +128,8 @@ class ModalitySpecificEncoder(nn.Module):
 
         self.alibi_scale = None
         if self.get_alibi_bias is not None:
+            # ALiBi の強さを固定値または学習可能な係数として用意する。
+            # per-layer/per-head 設定に応じて broadcast しやすい形状で保持する。
             self.alibi_scale = nn.Parameter(
                 torch.full(
                     (
@@ -130,6 +150,7 @@ class ModalitySpecificEncoder(nn.Module):
             )
 
         if modality_cfg.learned_alibi and self.get_alibi_bias is not None:
+            # learned_alibi=True の場合は、事前計算した相対位置バイアス自体を学習対象にする。
             assert modality_cfg.alibi_max_pos is not None
             alibi_bias = self.get_alibi_bias(
                 batch_size=1,
@@ -145,6 +166,7 @@ class ModalitySpecificEncoder(nn.Module):
             )
 
     def upgrade_state_dict_named(self, state_dict, name):
+        """古いチェックポイントの ALiBi scale 形状を現在の実装に合わせて補正する。"""
         k = f"{name}.alibi_scale"
         if k in state_dict and state_dict[k].dim() == 4:
             state_dict[k] = state_dict[k].unsqueeze(0)
@@ -152,9 +174,14 @@ class ModalitySpecificEncoder(nn.Module):
         return state_dict
 
     def convert_padding_mask(self, x, padding_mask):
+        """モダリティ固有の長さ変換がない場合は、入力マスクをそのまま返す。"""
         return padding_mask
 
     def decoder_input(self, x, mask_info: MaskInfo):
+        """
+        デコーダへ渡す入力系列を組み立てる。
+        マスク除去済みの系列にノイズトークンを戻し、必要に応じて位置情報を加算する。
+        """
         inp_drop = self.modality_cfg.decoder.input_dropout
         if inp_drop > 0:
             x = F.dropout(x, inp_drop, training=self.training, inplace=True)
@@ -162,6 +189,7 @@ class ModalitySpecificEncoder(nn.Module):
         num_extra = self.modality_cfg.num_extra_tokens
 
         if mask_info is not None:
+            # エンコーダ側で取り除いたマスク位置を、ノイズで初期化したトークンとして復元する。
             num_masked = mask_info.ids_restore.shape[1] - x.shape[1] + num_extra
 
             mask_tokens = x.new_empty(
@@ -171,6 +199,7 @@ class ModalitySpecificEncoder(nn.Module):
             ).normal_(0, self.modality_cfg.mask_noise_std)
 
             x_ = torch.cat([x[:, num_extra:], mask_tokens], dim=1)
+            # ids_restore を使い、非マスクトークンとマスクトークンを元の時間順に戻す。
             x = torch.gather(x_, dim=1, index=mask_info.ids_restore)
 
             if self.modality_cfg.decoder.add_positions_masked:
@@ -187,14 +216,17 @@ class ModalitySpecificEncoder(nn.Module):
         return x, mask_info
 
     def local_features(self, features):
+        """局所エンコーダ（CNN等）で特徴量を抽出し、embed_dim に射影して返す。"""
         if self.local_grad_mult > 0:
             if self.local_grad_mult == 1.0:
                 x = self.local_encoder(features)
             else:
+                # local_grad_mult < 1.0 のとき、局所エンコーダへの勾配を減衰させる
                 x = GradMultiply.apply(
                     self.local_encoder(features), self.local_grad_mult
                 )
         else:
+            # local_grad_mult = 0 のとき、局所エンコーダは勾配なしで実行する
             with torch.no_grad():
                 x = self.local_encoder(features)
 
@@ -211,6 +243,14 @@ class ModalitySpecificEncoder(nn.Module):
         mask_seeds: Optional[torch.Tensor] = None,
         precomputed_mask=None,
     ):
+        """
+        位置エンコード・マスク処理・prenet Transformer を順に適用してコンテキスト表現を返す。
+
+        Args:
+            x: 局所エンコーダ出力 (B, T, D)
+            mask: True のとき学習時マスクを適用する
+            remove_masked: True のときマスクされたトークンを除去する
+        """
 
         if padding_mask is not None:
             padding_mask = self.convert_padding_mask(x, padding_mask)
@@ -229,6 +269,7 @@ class ModalitySpecificEncoder(nn.Module):
 
         if mask:
             if clone_batch > 1:
+                # 同じ入力を複製し、複製ごとに異なるマスクを作ることでデータ拡張として使う。
                 x = x.repeat_interleave(clone_batch, 0)
                 if mask_seeds is not None:
                     clone_hash = [
@@ -256,10 +297,12 @@ class ModalitySpecificEncoder(nn.Module):
             )
 
         if self.relative_positional_encoder is not None:
+            # 相対位置エンコーダはマスク処理後の系列長に合わせて計算する。
             x_pos = self.relative_positional_encoder(x)
 
         masked_padding_mask = padding_mask
         if mask and remove_masked:
+            # MAE/data2vec 系の事前学習では、マスクされたトークンをエンコーダ入力から除外して計算量を削減する。
             x = mask_info.x_unmasked
             if x_pos is not None:
                 x = x + gather_unmasked(x_pos, mask_info)
@@ -278,6 +321,7 @@ class ModalitySpecificEncoder(nn.Module):
         alibi_scale = self.alibi_scale
 
         if self.get_alibi_bias is not None:
+            # ALiBi は Attention のスコアに加える相対位置バイアスで、系列長に応じてキャッシュから取得する。
             alibi_bias = self.get_alibi_bias(
                 batch_size=pre_mask_B,
                 time_steps=orig_T,
@@ -299,6 +343,7 @@ class ModalitySpecificEncoder(nn.Module):
                 alibi_bias = masked_alibi(alibi_bias, mask_info)
 
         if self.extra_tokens is not None:
+            # 特殊トークンを先頭に連結し、padding mask と ALiBi 行列も同じ分だけ拡張する。
             num = self.extra_tokens.size(1)
             x = torch.cat([self.extra_tokens.expand(x.size(0), -1, -1), x], dim=1)
             if masked_padding_mask is not None:
@@ -338,6 +383,7 @@ class ModalitySpecificEncoder(nn.Module):
         mask_seeds: Optional[torch.Tensor] = None,
         precomputed_mask=None,
     ):
+        """局所特徴量抽出からコンテキスト化までをまとめて実行する。"""
         x = self.local_features(features)
         return self.contextualized_features(
             x,
@@ -350,6 +396,7 @@ class ModalitySpecificEncoder(nn.Module):
         )
 
     def reset_parameters(self):
+        """サブクラスで必要に応じてパラメータ初期化を実装するためのフック。"""
         pass
 
     def compute_mask(
@@ -360,7 +407,9 @@ class ModalitySpecificEncoder(nn.Module):
         apply,
         precomputed_mask,
     ):
+        """設定に従って時間方向のマスクを作成し、必要なら入力特徴量へ適用する。"""
         if precomputed_mask is not None:
+            # DataLoader 側で事前計算されたマスクを使う場合は、ここでは MaskInfo へ変換するだけにする。
             mask = precomputed_mask
             mask_info = self.make_maskinfo(x, mask)
         else:
@@ -378,6 +427,7 @@ class ModalitySpecificEncoder(nn.Module):
 
             if mask_prob > 0:
                 if cfg.mask_length == 1:
+                    # 1フレーム単位のランダムマスクは MAE 形式の実装を使う。
                     mask_info = random_masking(x, mask_prob, mask_seed)
                 else:
                     if self.modality_cfg.inverse_mask:
@@ -410,6 +460,10 @@ class ModalitySpecificEncoder(nn.Module):
         return x, mask_info
 
     def make_maskinfo(self, x, mask, shape=None):
+        """
+        Booleanマスクから、非マスク要素の抽出と元順序復元に必要なインデックス情報を作る。
+        mask は 1 がマスク、0 が保持を表す。
+        """
         if shape is None:
             B, T, D = x.shape
         else:
@@ -440,20 +494,24 @@ class ModalitySpecificEncoder(nn.Module):
         return mask_info
 
     def apply_mask(self, x, mask_info):
+        """時間方向マスクとチャネル方向マスクを実際の特徴量テンソルへ反映する。"""
         cfg = self.modality_cfg
         B, T, C = x.shape
 
         if mask_info is not None:
             mask = mask_info.mask
             if cfg.encoder_zero_mask:
+                # encoder_zero_mask=True では、マスク位置をゼロ化して情報を隠す。
                 x = x * (1 - mask.type_as(x).unsqueeze(-1))
             else:
+                # False の場合はゼロではなくガウスノイズで置き換える。
                 num_masks = mask.sum().item()
                 masks = x.new_empty(num_masks, x.size(-1)).normal_(
                     0, cfg.mask_noise_std
                 )
                 x = index_put(x, mask, masks)
         if cfg.mask_channel_prob > 0:
+            # チャネル方向の連続マスクを追加し、特定特徴次元への依存を抑える。
             mask_channel = compute_mask_indices(
                 (B, C),
                 None,
@@ -470,11 +528,13 @@ class ModalitySpecificEncoder(nn.Module):
         return x
 
     def remove_pretraining_modules(self, keep_decoder=False):
+        """下流タスクや特徴量抽出で不要な事前学習用デコーダを取り外す。"""
         if not keep_decoder:
             self.decoder = None
 
 
 def get_annealed_rate(start, end, curr_step, total_steps):
+    """学習ステップに応じて start から end へ線形に近づく値を返す。"""
     if curr_step >= total_steps:
         return end
     r = end - start
@@ -484,6 +544,7 @@ def get_annealed_rate(start, end, curr_step, total_steps):
 
 # adapted from MAE
 def random_masking(x, mask_ratio, mask_seed: Optional[MaskSeed]):
+    """MAE形式のランダムマスクを作り、保持トークンと復元用インデックスを返す。"""
     N, L, D = x.shape  # batch, length, dim
     len_keep = int(L * (1 - mask_ratio))
 
@@ -497,7 +558,7 @@ def random_masking(x, mask_ratio, mask_seed: Optional[MaskSeed]):
 
     noise = torch.rand(N, L, generator=generator, device=x.device)  # noise in [0, 1]
 
-    # sort noise for each sample
+    # 各サンプル内で乱数を昇順ソートし、小さい位置を保持、大きい位置をマスク対象にする。
     ids_shuffle = noise.argsort(dim=1)  # ascend: small is keep, large is remove
     ids_restore = ids_shuffle.argsort(dim=1)
 
@@ -520,6 +581,7 @@ def random_masking(x, mask_ratio, mask_seed: Optional[MaskSeed]):
 
 
 def gather_unmasked(x: torch.Tensor, mask_info: MaskInfo) -> torch.Tensor:
+    """MaskInfo の ids_keep を使って、非マスクトークンだけを特徴量テンソルから取り出す。"""
     return torch.gather(
         x,
         dim=1,
@@ -528,6 +590,7 @@ def gather_unmasked(x: torch.Tensor, mask_info: MaskInfo) -> torch.Tensor:
 
 
 def gather_unmasked_mask(x: torch.Tensor, mask_info: MaskInfo) -> torch.Tensor:
+    """特徴次元を持たない padding mask から、非マスク位置に対応する要素だけを取り出す。"""
     return torch.gather(
         x,
         dim=1,
@@ -541,7 +604,9 @@ def get_alibi(
     dims: int = 1,
     distance: str = "manhattan",
 ):
+    """指定系列長・ヘッド数に対する ALiBi 相対位置バイアス行列を生成する。"""
     def get_slopes(n):
+        """Attention head ごとに異なる距離ペナルティの傾きを作る。"""
         def get_slopes_power_of_2(n):
             start = 2 ** (-(2 ** -(math.log2(n) - 3)))
             ratio = start
@@ -565,9 +630,7 @@ def get_alibi(
     slopes = torch.Tensor(get_slopes(attn_heads))
 
     if dims == 1:
-        # prepare alibi position linear bias. Note that wav2vec2 is non
-        # autoregressive model so we want a symmetric mask with 0 on the
-        # diagonal and other wise linear decreasing valuees
+        # 音声モデルは非自己回帰なので、対角を0、距離が離れるほど負になる対称バイアスを使う。
         pos_bias = (
             torch.abs(
                 torch.arange(maxpos).unsqueeze(0) - torch.arange(maxpos).unsqueeze(1)
@@ -575,6 +638,7 @@ def get_alibi(
             * -1
         )
     elif dims == 2:
+        # 画像など2次元トークン列向けに、格子上の距離からバイアスを作る。
         if distance == "manhattan":
             df = lambda x1, y1, x2, y2: abs(x1 - x2) + abs(y1 - y2)
         elif distance == "euclidean":
@@ -614,6 +678,10 @@ def get_alibi_bias(
     dims=1,
     distance="manhattan",
 ):
+    """
+    ALiBiバイアスをキャッシュ付きで取得する。
+    必要な batch/head/系列長/dtype/device を満たさない場合だけ再生成する。
+    """
     cache_key = f"{dims}_{heads}_{distance}"
 
     buffered = alibi_biases.get(cache_key, None)
@@ -651,6 +719,7 @@ def _learned_alibi_bias(
     dtype,
     device,
 ):
+    """学習可能 ALiBi パラメータを現在の batch size と系列長に合わせて切り出す。"""
     assert alibi_bias.size(1) == heads, alibi_bias.shape
     assert alibi_bias.dtype == dtype, alibi_bias.dtype
     assert alibi_bias.device == device, alibi_bias.device
@@ -664,6 +733,7 @@ def _learned_alibi_bias(
 
 
 def masked_alibi(alibi_bias, mask_info):
+    """マスク除去後のトークン列に合わせて、ALiBi 行列の行・列も同じ位置だけ抽出する。"""
     H = alibi_bias.size(1)
 
     orig_bias = alibi_bias

@@ -1,0 +1,502 @@
+=== PAGE 1 ===
+emotion2vec: Self-Supervised Pre-Training
+for Speech Emotion Representation
+ZiyangMa1,ZhishengZheng1,JiaxinYe2,JinchaoLi3,
+ZhifuGao4,ShiliangZhang4,XieChen1†
+1 ShanghaiJiaoTongUniversity,2 FudanUniversity,
+3 TheChineseUniversityofHongKong,4 Alibaba
+Abstract et al. (2021) explore no fine-tuning, partial fine-
+tuning,andentirefine-tuningwithsomeSSLmod-
+Weproposeemotion2vec, auniversalspeech
+elsforSERontheIEMOCAPdataset(Bussoetal.,
+emotion representation model. emotion2vec
+2008),andgivesomeempiricalconclusions. While
+ispre-trainedonopen-sourceunlabeledemo-
+tiondatathroughself-supervisedonlinedistilla- this is an ad-hoc solution, on the one hand, fine-
+tion,combiningutterance-levellossandframe- tuningSSLmodelsrequiresalargecomputational
+levellossduringpre-training. emotion2vecout- cost, on the other hand, these conclusions may
+performsstate-of-the-artpre-traineduniversal be data-specific or model-constrained. Recently,
+modelsandemotionspecialistmodelsbyonly
+Chenetal.(2023a)proposedanSERmodelnamed
+training linear layers for the speech emotion
+Vesper, which is obtained by model distillation
+recognitiontaskonthemainstreamIEMOCAP
+fromWavLM-large(Chenetal.,2022)withemo-
+dataset. Inaddition,emotion2vecshowscon-
+tiondata. VesperisdesignedtoperformtheSER
+sistentimprovementsamong10differentlan-
+guagesofspeechemotionrecognitiondatasets. task,whoseuniversalrepresentationcapabilitystill
+emotion2vec also shows excellent results on needstobedemonstrated. Accordingly,auniver-
+other emotion tasks, such as song emotion salspeech-basedemotionrepresentationmodelis
+recognition, emotion prediction in conversa- urgentlyneededinthefield.
+tion,andsentimentanalysis. Comparisonex-
+Hereweproposeemotion2vec,auniversalemo-
+periments,ablationexperiments,andvisualiza-
+tion representation model that can be used to ex-
+tioncomprehensivelydemonstratetheuniver-
+tract speech features for diverse emotion tasks.
+salcapabilityoftheproposedemotion2vec. To
+thebestofourknowledge,emotion2vecisthe Self-supervisedpre-trainingisperformedon262
+firstuniversalrepresentationmodelinvarious hoursofopen-sourceemotiondatawithanonline
+emotion-relatedtasks,fillingagapinthefield.1 distillationparadigmtoobtainemotion2vec. Con-
+sideringthatbothwhole-playinformationandlocal
+1 Introduction
+detailsconveyemotion,weproposeapre-training
+Extractingemotionalrepresentationfromspeechis strategycombiningutterance-levellossandframe-
+anessentialstepofvariousemotionaltaskssuchas levelloss. OnthemainstreamIEMOCAPdataset,
+speechemotionrecognition(SER)andsentiment thedownstreamlinearmodeltrainedwithfeatures
+analysis. TraditionalmethodsemployFilterBanks extracted from emotion2vec outperforms all the
+(FBanks)orMelFrequencyCepstrumCoefficients mainstream SSL models and the latest specialist
+(MFCCs)asspeechfeatures. Thesefeaturesarenot models. emotion2vec is tested on 13 datasets in-
+rich in semantic information, resulting in limited cluding 10 languages, and the results show that
+performance on emotional tasks. Popular meth- emotion2vecexhibitslanguagegeneralizationabil-
+ods utilize features extracted from speech-based ity. Moreover,inadditiontotheSERtask,wealso
+self-supervisedlearning(SSL)pre-trainedmodels, experimentedwithemotion2vecfeaturesonsong
+leadingtoasignificantperformanceimprovement. emotionrecognition,emotionpredictioninconver-
+Onepotentialchallengeblockingfurtherperfor- sation,andsentimentanalysis. Theresultsindicate
+manceimprovementisthattheseSSLmodelsare thatemotion2vechasexcellenttaskgeneralization
+not entirely suitable for emotional tasks. Wang ability. Extensive ablation experiments and visu-
+alizationanalysisdemonstratetheeffectivenessof
+†Correspondingauthor
+ourpre-trainingmethodsandtheversatilityofthe
+1Code,checkpoints,andextractedfeaturesareavailableat
+https://github.com/ddlBoJack/emotion2vec proposedemotion2vecmodel.
+15747
+FindingsoftheAssociationforComputationalLinguistics:ACL2024,pages15747–15760
+August11-16,2024©2024AssociationforComputationalLinguistics
+=== PAGE 2 ===
+2 RelatedWork WavLM(Ioannidesetal.,2023),eitherfine-tuning
+or not. A recent work (Ma et al., 2023a) found
+2.1 Speech-basedSSL
+that data2vec features also have a good represen-
+Self-supervisedlearninghasachievedremarkable tation ability for SER task. For speech emotion
+success in the field of representation learning, representationinotheremotiontasks,suchasmul-
+showcasing its efficacy across natural language timodalemotionrecognition,popularpractice(Li
+processing (Devlin et al., 2019; Liu et al., 2019; etal.,2023a)issimilartowhatismentionedabove.
+Radford et al., 2019; Brown et al., 2020), com-
+3 Methods
+putervision(Grilletal.,2020;Heetal.,2020;Bao
+Herewemainlyintroducetheself-supervisedpre-
+et al., 2021; He et al., 2022), as well as speech
+trainingmethodoftheproposedemotion2vec,for
+processing(Baevskietal.,2020;Hsuetal.,2021;
+whichthecoreistotrainthemodelwithUtterance-
+Chenetal.,2022;Baevskietal.,2022). Forspeech
+levelLossandFrame-levelLossusingOnlineDis-
+representation learning, all SSL models can be
+tillationparadigm. Combiningutterance-leveland
+classifiedintotwocategoriesaccordingtotheself-
+frame-levellossisinspiredbyourobservationthat
+supervisedtargetsutilizedduringpre-training(Ma
+bothglobalandlocalinformationconveyemotion
+etal.,2023b): 1)Offlinetargets. 2)Onlinetargets.
+inspeech. Moreover,initializingwithpre-trained
+Models employing offline targets often require a
+modelsfortheteacher-studentnetworkwarm-ups
+well-trainedteachermodelbeforethepre-training
+the online distillation process, providing a good
+stage, to extract self-supervised targets. Repre-
+representationforthesubsequentself-supervised
+sentative models of this type are HuBERT (Hsu
+bootstraplearning.
+et al., 2021), WavLM (Chen et al., 2022) using
+K-meanstargets,andPBERT(Wangetal.,2022), 3.1 ModelPipeline
+MonoBERT&PolyBERT(Maetal.,2023c)using AsshowninFigure1,emotion2veccontainstwo
+phoneme-based targets. Models using online tar- networksinthepre-trainingphase,whicharethe
+gets do not need a pre-trained teacher model in teachernetwork andthestudentnetwork . Both
+T S
+advance, whiletheteachermodelsareconstantly modelssharethesamemodelarchitecture,includ-
+updatedduringthepre-trainingphase,withanon- ingafeatureextractor composedofmulti-layer
+F
+linedistillationparadigm. Representativemodels convolutionalneuralnetworksandabackbonenet-
+of this type are data2vec (Baevski et al., 2022), work composed of multi-layer Transformers.
+B
+data2vec 2.0 (Baevski et al., 2023) using frame- Thesemodulescanbeconfiguredwithdifferentar-
+levelmasklanguagemodel(MLM)loss,andCA- chitectures,whichwillbedescribedinSection4.1.
+DINO (Han et al., 2023) using utterance-level Given a raw audio utterance X = [x , ,x ],
+1
+···
+Nx
+cross-entropyloss. emotion2vecispre-trainedcom- theTeacher andtheStudent respectivelyuti-
+T S
+bining both utterance-level loss and frame-level lize feature extractors and to obtain the
+T S
+F F
+loss,leadingtoasuperiorspeechemotionrepresen- downsampledfeaturesZ = [z , ,z ],which
+0 1
+···
+Nz
+tationmodel. canbewrittenas:
+2.2 SpeechEmotionRepresentation Z 0T =
+F
+T (X), (1)
+Therehavebeenworksontextemotionrepresenta- Z 0S =
+F
+S (X). (2)
+tion(Felboetal.,2017;Wangetal.,2020b;Wang
+Fortheteachernetwork ,thedownsampledfea-
+andZong,2021),however,speechemotionrepre- T
+turesZ aredirectlyfedintothebackbonenetwork
+0T
+sentationisinthenightbeforedawn. Wepresent
+. Forthestudentnetwork ,thedownsampled
+T
+the first universal speech emotion representation B S
+featuresZ aremaskedlconsecutiveframeswith
+0S
+model,whilemostofthepreviousworksdirectly
+probability p for each frame as the start. Then
+employspeechpre-trainingmodels(Pepinoetal.,
+learnableutteranceembeddingU = [u , ,u ]
+2021;Lietal.,2022),orfine-tunethepre-training
+1
+···
+Nu
+isplacedinthefrontbeforebeingfedintotheback-
+models on their specific emotional data with spe-
+bonenetwork . Theformulacanbewrittenas
+S
+cificemotionaltasks(mostlySER)(Moraisetal., B
+follows:
+2022;ChenandRudnicky,2023),toextractspeech
+emotionrepresentation. Aseriesofworksinvesti-
+Z iT = BiT (Z iT
+−
+1 ), (3)
+n
+1
+gateSERperformanceofwav2vec2.0(Wangetal.,
+2021), HuBERT (Wang et al., 2021), as well as
+Y T =
+k
+Z iT , (4)
+i=n k+1
+X−
+15748
+=== PAGE 3 ===
+Utterance-level
+Loss
+Frame-level 😶 😄 😭 😡 😮 😱 😆
+Loss
+… … 🔥
+//
+Teacher Student Student
+Utterance Embedding ❄
+Backbone EMA Backbone Backbone
+Unmasked Embedding
+Network Network Network
+Masked Embedding
+… …
+🔥 Trainable
+❄ Frozen Feature Copy Feature Feature
+// Stop Gradient Extractor Extractor Extractor
+Figure 1: The overall framework of emotion2vec. During the pre-training phase (left), emotion2vec conducts
+onlinedistillationwithateachernetworkandastudentnetwork,andtheparametersofbothnetworksareinitialized
+employingthesamepre-trainedweights. Whenaspecificdownstreamtaskisperformed(right),thepre-trained
+emotion2vecisfrozenandalightweightdownstreammodelistrained.
+U S ;Y S =
+B
+S (U;Mask(Z 0S )), (5) Utterance-level
+Loss (Token)
+where Y is the average of the output embed-
+T
+dingofthetopk outofnTransformerBlock .
+BiT
+Utterance-leveloutputembeddingU andframe-
+S
+Utterance-level
+leveloutputembeddingY aretheoutputsofthe
+S Loss (Chunk)
+studentbackbonenetwork . Mask istheapply-
+S
+B
+ingmaskoperation. Y ,Y andU arethesame …
+T S S
+inthehiddenlayerdimensions,whereY andY
+T S
+Utterance-level
+havethesameN temporaldimensions,whileU
+z S Loss (Global)
+hasN temporaldimensions,respectively.
+u
+3.2 Utterance-levelLoss
+Figure 2: Different ways to compute utterance-level
+Utterance-levellossconstructsanutterance-level
+lossbetweentheteachernetworkoutputs(Left)andthe
+pretext task to learn the global emotion. We use
+studentnetworkoutputs(Right)inpre-training.
+mean squared error (MSE) to calculate the loss,
+whichcanbewrittenas:
+TokenEmbedding. Tokenembeddingemploys
+L Utt = (Y¯ T U¯ S )2, (6) a single token to represent global emotion infor-
+−
+mation encoded by the student network . More
+where S
+1 Nz explicitly,wesetN u to1inthelearnableutterance
+Y¯ T =
+N
+Y iT , (7) embeddingU = [u 1 ,
+···
+,u Nu ].
+z
+i=1
+X ChunkEmbedding. Chunkembeddingemploys
+1
+Nu
+multipletokenstorepresentglobalemotioninfor-
+U¯ S =
+N
+U iS , (8)
+mation. Inthiscase,moreglobalinformationcan
+u
+i=1
+X beaggregatedwithinthechunk.
+whichmeansthatutterance-levellossL iscom-
+Utt
+putedbytemporalpoolingresultsofY T andU S . Global Embedding. In the case of utilizing
+Hereweproposethreewaystocomputeutterance- globalembedding,noadditionalutterancetokens
+levelloss,whichwecalltokenembedding,chunk areadded. Weusetemporalpoolingofframe-level
+embedding,andglobalembedding,asshownin output embedding Y
+S
+instead of U
+S
+to compute
+Figure2. theloss.
+15749
+=== PAGE 4 ===
+3.3 Frame-levelLoss different backbone network designs. The feature
+extractor isa7-layer1-Dconvolutionalneural
+Frame-level loss constructs a frame-wise pretext
+F
+network with kernel sizes (5,2,2,2,2,2,2) and
+task to learn the context emotion. We only com-
+strides(10,3,3,3,3,2,2),resultingin320xdown-
+putethelossonthemaskedpart,whichisthecom-
+sampling. GiventherawaudioinputX ata16000
+monpracticeforamasklanguagemodeling(MLM)
+Hzsamplerate,theoutputrepresentationsZ are50
+pretext task. The frame-level loss L can be
+Frm
+Hzwithdimension512. Thenalinearprojection
+expressedas:
+fordimensiontransformationfrom512to768isap-
+1 plied,followedbythemaskoperationtoconstruct
+L Frm =
+M
+(Y iT
+−
+Y iS )2, (9)
+theinputforthebackbonenetwork . AppendixA
+i X∈ M brieflyintroducesdifferentbackbo B nenetworksin
+whereMdenotestheindexsequenceofframe-level
+data2vecanddata2vec2.0.
+output embedding Y being masked, and M de-
+S
+notesthetotalnumberoftokensbeingmasked. 4.2 TrainingDetails
+Self-supervisedPre-training. Inthepre-training
+3.4 OnlineDistillation
+phase,wetrainemotion2vecwith262hoursofun-
+Online distillation is a self-supervised learning
+labeled emotion data shown in Figure 1 with dif-
+strategy for teacher-student learning, where the
+ferent initial models. For the training overhead,
+student network updates parameters by back- Thepre-trainingisconductedon4NVIDIAA10
+propagation and the teacher network updates pa- TensorCoreGPUs,andwesimulate16GPUsby
+rameters with an exponentially moving average setting the update frequency to 4. We train emo-
+(EMA)(Grilletal.,2020). Forthestudentnetwork tion2vecfor100epochs,eachofwhichtakesabout
+,thetotallossLforbackpropagationisacombi-
+37 minutes. We use a dynamic batchsize, where
+S
+nationofframe-levellossL Frm andutterance-level themaximumnumberoftokensis1 106. Forthe
+lossL ,donatedas: ×
+Utt optimizingstrategy,weuseAdamwithalearning
+rateof7.5 10 5 andaweightdecayof1 10 2.
+L = L Frm +αL Utt , (10) × − × −
+Wetrainemotion2vecusingacosinelearningrate
+withatunableweightα. Fortheteachernetwork scheduler,with5%proportionoflinearwarm-up.
+, The parameters θ are initialized as the same For the student model, each time step of the in-
+T
+0T
+parameters of the student network θ , and then put has a probability of p = 0.5 to be the start
+0S
+areupdatedwithEMAwithineachmini-batch,do- index, and the subsequent l = 5 time steps are
+natedas: masked. The hyperparameter α that controls the
+lossweightissetto1. Fortheteachermodel,we
+θ tT+1 = τθ tT +(1
+−
+τ)θ tS+1 . (11) use the average of the top k = 8 blocks of the
+transformerlayeroutputsforprovidingthetraining
+whereτ isaparameterthatincreaseslinearlydur-
+targets. Weapplyalinearlyincreasingstrategyfor
+ing pre-training. In practice, within each mini-
+τ fromτ = 0.999toτ = 0.99999fortheteacher
+s e
+batch the parameters of teacher feature extractor
+parametersexponentiallymovingaverage.
+arecopieddirectlyfrom ,whiletheparam-
+T S
+F F
+etersofteacherbackbonenetwork areupdated Supervised Fine-tuning. All model architec-
+T
+B
+withEMAfrom and . turesofdiversedownstreamtasksaredesignedto
+T S
+B B
+beassimpleaspossible,todemonstratetherepre-
+4 ExperimentsSetup
+sentationability ofthe pretrainedmodel. For the
+4.1 InitialModel non-sequential task, following the common prac-
+tice of SUPERB (Yang et al., 2021), we use two
+Differentinitialmodelsleadtodifferentarchitec-
+linearlayerswithaReLUactivationfunctionsand-
+turesoffeatureextractors , backbonenetworks
+F wichedbetweenthem. Forthesequentialtask,we
+,andinitializationparametersθ . Hereweadopt
+0
+B twomodels,data2vec2 anddata2vec2.03,bothof use two layers of gated recurrent units (GRU) to
+makepredictions.
+which have the same feature extractor design but
+2https://dl.fbaipublicfiles.com/fairseq/ 4.3 Datasets
+data2vec/audio_base_ls.pt
+Asummaryofthedatasetsemployedinourexper-
+3https://dl.fbaipublicfiles.com/fairseq/
+data2vec2/base_libri.pt imentsispresentedinTable1. Thereare18emo-
+15750
+=== PAGE 5 ===
+Table1: Thedatasetsataglanceforemotion2vecpre-traininganddownstreamtasks.
+Dataset Pretrain Downstream Source Emo Spk Lang #Utts #Hours
+IEMOCAP(Bussoetal.,2008) ✓ ✓ Act 5 10 English 5531 7.0
+MELD(Poriaetal.,2019) ✓ ✓ FriendsTV 7 407 English 13847 12.2
+CMU-MOSEI(Zadehetal.,2018) ✓ ✓ YouTube 7 1000 English 44977 91.9
+MEAD(Wangetal.,2020a) ✓ ✗ Act 8 60 English 31792 37.3
+MSP-Podcast(V1.8)(Martinez-Lucasetal.,2020) ✓ ✗ Podcast 8 10000+ English 72969 113.5
+Total ✓ – – – – English 169053 262.0
+CMU-MOSI(Zadehetal.,2016) ✗ ✓ YouTube 7 89 English 2199 2.6
+RAVDESS-Speech(LivingstoneandRusso,2018) ✗ ✓ Act 8 24 English 1440 1.5
+RAVDESS-Song(LivingstoneandRusso,2018) ✗ ✓ Act 8 23 English 1012 1.3
+SAVEE(JacksonandHaq,2014) ✗ ✓ Act 7 4 English 480 0.5
+M3ED(Zhaoetal.,2022) ✗ ✓ TVs 7 626 Mandarin 24449 9.8
+EmoDB(Burkhardtetal.,2005) ✗ ✓ Act 7 10 German 535 0.4
+EMOVO(Costantinietal.,2014) ✗ ✓ Act 7 10 Italian 588 0.5
+CaFE(Gournayetal.,2018) ✗ ✓ Act 7 12 French 936 1.2
+SUBESCO(Sultanaetal.,2021) ✗ ✓ Act 7 20 Bangla 7000 7.8
+ShEMO(MohamadNezamietal.,2019) ✗ ✓ Act 6 87 Persian 3000 3.4
+URDU(Latifetal.,2018) ✗ ✓ Talkshows 4 38 Urdu 400 0.3
+AESDD(Vryzasetal.,2018) ✗ ✓ Act 5 5 Greek 604 0.7
+RESD(Lubenetsetal.) ✗ ✓ Act 7 200 Russian 1396 2.3
+tionaldatasetsincluding10differentlanguages: 9 models,andthelatestspecialistmodelsdesigned
+inEnglish,and1inMandarin,Bangla,French,Ger- for SER tasks. We follow the SUPERB (Yang
+man, Greek, Italian, Persian, Russian, and Urdu. et al., 2021) evaluation, freezing the pre-trained
+Foreachdataset,itcanbecategorizedintermsof modelandtrainingdownstreamlinearlayerswith
+Pretrain(i.e.,whetherusedduringthepre-training thehiddendimensionalsetto256. Ascanbeseen
+phase), Downstream (i.e., whether tested in the fromthetable,emotion2vecoutperformsallexist-
+downstreamtask),Source(i.e.,wheresamplescol- ingSSLpre-trainedmodels, acrossallbasemod-
+lected),Emo(i.e.,numberofemotioncategories), elswithsimilarparametersandlargemodelswith
+Spk (i.e., number of speakers), Lang, (i.e., Lan- greaterparameters. ComparedwithVersper-12,an
+guage), #Utts (i.e., number of utterances), and SERmodelobtainedbydistillationfromWavLM-
+#Hours (i.e., total duration of samples). Speech large,emotion2vecworksbetterwithfewerparam-
+dataisextractedfromthesedatasetsanduniformly eters. TIM-NET(Yeetal.,2023),MSTR(Lietal.,
+processed into a single channel of 16k Hz. Dif- 2023b),andDST(Chenetal.,2023b)arethelatest
+ferentdatasetsandconfigurationsareusedforpre- SERspecialistmodels,respectively,whichusedif-
+traininganddownstreamtasks. Ifnotspecified,re- ferentscalesofupstreamfeaturesanddownstream
+sultsareobtainedusingtherandomleave-one-out networks. Theproposedemotion2vecmodelout-
+cross-validation(CV)unlessthedatasetprovidesa performs or performs on par with these models
+setpartition. RefertoAppendixBformoredetails. with only linear layers, while their downstream
+networks have 2x, 135x, and 114x more parame-
+5 Results
+ters than emotion2vec, respectively. We provide
+5.1 EvaluationMetrics
+theresultsofleave-one-session-outfive-foldcross-
+We apply commonly used evaluation metrics,
+validationandleave-one-speaker-outten-foldcross-
+weighted accuracy (WA), unweighted accuracy
+validationforreference.
+(UA), and weighted average F1 (WF1), to eval-
+We also conduct experiments on other main-
+uatetheperformanceofspeechemotiontasks. WA
+stream English datasets to prove the generaliza-
+correspondstotheoverallaccuracyandUAcorre-
+tionofemotion2vecinTable3. MELDisanoisy
+sponds to the average class-wise accuracy. WF1
+dataset used to test the SER performance of the
+is a comprehensive evaluation, especially for the
+modelincomplexenvironments. RAVDESSand
+situationofsampleimbalance.
+SAVEEareout-of-domaindatasets. Experimental
+5.2 MainResults
+resultsshowthatemotion2vecexhibitsstate-of-the-
+The results are shown in Table 2, where we com- art performance on different datasets in different
+pare different SSL pre-trained models on IEMO- environments,deliveringpowerfulscenariogener-
+CAP dataset, as well as larger-scale pre-trained alizationability.
+15751
+=== PAGE 6 ===
+Table 2: SER task performance of different SSL pre-trained models on the IEMOCAP dataset. The setting of
+thedownstreammodelsfollowsSUPERB(Yangetal.,2021)touselinearlayerstotesttherepresentationability
+ofdifferentupstreammodels. “LS-960"meansLibriSpeech960hours,“LL-60k"meansLibriLight60khours,
+and “Mix-94k" means 94k hours of data including LibriLight, VoxPopuli, and GigaSpeech. For emotion data,
+“LSSED-206"meansLSSED206hours,and“Emo-262"referstothe262hoursofpre-trainingdatainTable1.
+Modelsaretestedusingleave-one-session-outfive-foldcross-validationwith20%fromthetrainingsetusedasthe
+validationsetforeachsession. Modelswithunderlineareleave-one-speaker-outten-foldcross-validationwith8
+speakersfortraining,1speakerforvalidation,and1speakerfortestingwithineachfold. Modelswith*implythe
+samefoldforbothvalidationandtesting,forafaircomparisonassomeworkusesthisprinciple. Wealsocompare
+withlarger-scalepre-trainedmodelsandthelatestspecialistmodelsdesignedforSERtasks.
+Model Pre-trainingCorpus Upstream #UpstreamParams Downstream #DownstreamParams WA(%)
+↑
+Self-supervisedModel
+smallsize
+wav2vec(Schneideretal.,2019) 32.54M 0.13M 59.79
+LS-960 Proposed Linear
+vq-wav2vec(Baevskietal.,2019) 34.15M 0.20M 58.24
+basesize
+wav2vec2.0(Baevskietal.,2020) LS-960 95.04M 0.20M 63.43
+HuBERT(Hsuetal.,2021) LS-960 94.68M 0.20M 64.92
+WavLM(Chenetal.,2022) LS-960 94.70M 0.20M 65.94
+WavLM+(Chenetal.,2022) Mix-94k 94.70M 0.20M 67.98
+data2vec(Baevskietal.,2022) LS-960 93.75M 0.20M 67.38
+data2vec2.0(Baevskietal.,2023) LS-960 93.78M 0.20M 68.58
+Proposed Linear
+Vesper-4(Chenetal.,2023a) Mix-94k+LSSED-206 63.52M 0.26M 68.40
+Vesper-12(Chenetal.,2023a) Mix-94k+LSSED-206 164.29M 0.26M 70.70
+emotion2vec LS-960+Emo-262 93.79M 0.20M 71.79
+emotion2vec* LS-960+Emo-262 93.79M 0.20M 74.48
+emotion2vec LS-960+Emo-262 93.79M 0.20M 72.94
+emotion2vec* LS-960+Emo-262 93.79M 0.20M 77.64
+largesize
+wav2vec2.0(Baevskietal.,2020) LL-60k 317.38M 65.64
+HuBERT(Hsuetal.,2021) LL-60k Proposed 316.61M Linear 0.26M 67.62
+WavLM(Chenetal.,2022) Mix-94k 316.62M 70.03
+SupervisedModel
+TIM-Net(Yeetal.,2023) MFCC - CNN(TIM-Net) 0.40M 68.29
+MSTR(Lietal.,2023b) - HuBERT-large 316.61M Transformer(MSTR) 27.00M 70.03
+DST(Chenetal.,2023b) WavLM-large 316.62M Transformer(DST) 22.78M 71.80
+Table3: emotion2vecperformanceonmainstreamEnglishdatasets.
+WA(%) UA(%) WF1(%) WA(%) UA(%) WF1(%) WA(%) UA(%) WF1(%)
+Model ↑ ↑ ↑ ↑ ↑ ↑ ↑ ↑ ↑
+MELD RAVDESS SAVEE
+WavLM-base 46.95 16.34 35.16 37.01 37.11 36.08 42.08 38.46 38.93
+WavLM-base+ 43.78 16.75 34.60 38.89 38.40 37.75 43.54 39.27 42.19
+data2vec 45.75 24.98 43.59 69.58 69.70 69.25 82.50 82.26 82.37
+data2vec2.0 48.92 26.10 45.80 81.04 80.80 80.97 83.13 82.94 83.03
+emotion2vec 51.88 28.03 48.70 82.43 82.86 82.39 84.38 82.30 84.45
+Table4: emotion2vecperformanceondatasetsofotherlanguages.
+WA(%) UA(%) WF1(%) WA(%) UA(%) WF1(%) WF1(%) UA(%) WF1(%)
+Model ↑ ↑ ↑ ↑ ↑ ↑ ↑ ↑ ↑
+AESD(Gr) CAFE(Fr) RESD(Ru)
+WavLM-base 55.33 55.50 54.86 31.61 32.02 30.88 56.17 56.17 55.69
+WavLM-base+ 53.83 54.41 52.48 31.40 33.39 30.40 55.00 55.19 55.08
+data2vec 56.67 57.26 56.57 57.10 57.68 57.36 49.42 49.77 48.97
+data2vec2.0 71.33 70.20 70.93 71.51 72.98 71.50 64.08 64.33 64.17
+emotion2vec 72.33 72.27 71.57 74.52 75.26 74.53 64.75 65.04 64.53
+Model EmoDB(De) EMOVO(It) M3ED(Zh)
+WavLM-base 59.06 55.32 58.96 40.17 40.34 37.36 44.03 18.90 34.50
+WavLM-base+ 65.66 64.60 64.83 40.34 41.98 40.11 45.09 20.18 36.49
+data2vec 67.17 64.81 66.52 51.21 51.97 49.82 44.44 21.10 37.77
+data2vec2.0 83.77 83.07 83.93 60.69 61.27 60.79 47.50 24.12 41.74
+emotion2vec 84.34 84.85 84.32 61.21 62.97 60.89 49.15 26.98 44.38
+Model SUBESCO(Bn) ShEMO(Fa) URDU(Ur)
+WavLM-base 54.50 54.77 53.96 67.27 46.60 65.63 71.00 70.25 70.82
+WavLM-base+ 54.73 54.69 54.59 66.73 44.29 65.12 67.25 68.68 67.47
+data2vec 78.29 78.25 78.21 70.80 53.96 69.84 71.75 72.67 71.83
+data2vec2.0 87.91 87.95 87.90 77.90 62.03 76.96 77.50 78.42 77.12
+emotion2vec 90.91 90.96 90.91 79.97 66.04 79.56 81.50 81.87 81.60
+15752

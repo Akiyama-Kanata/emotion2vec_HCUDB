@@ -4,6 +4,12 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+"""
+emotion2vec モデルを使って音声ファイルから特徴量を抽出し .npy 形式で保存するスクリプト。
+TSVマニフェストに記載された全発話に対して特徴量抽出を行い、
+.npy（特徴量）と .lengths（フレーム数列）の2ファイルを出力する。
+"""
+
 import argparse
 import os
 import os.path as osp
@@ -20,6 +26,7 @@ import soundfile as sf
 
 
 def get_parser():
+    """コマンドライン引数のパーサーを返す。"""
     parser = argparse.ArgumentParser(
         description="extract emotion2vec features for downstream tasks"
     )
@@ -29,7 +36,7 @@ def get_parser():
     parser.add_argument('--split', help='which split to read', required=True)
     parser.add_argument('--checkpoint', type=str, help='checkpoint for emotion2vec model', required=True)
     parser.add_argument('--save-dir', help='where to save the output', required=True)
-    parser.add_argument('--layer', type=int, default=0, 
+    parser.add_argument('--layer', type=int, default=0,
                         help='which layer to use. Base: 0-11. ')
     # fmt: on
 
@@ -38,11 +45,15 @@ def get_parser():
 
 @dataclass
 class UserDirModule:
+    """fairseq がユーザー定義モジュールを読み込む際に必要なディレクトリ情報を保持するデータクラス。"""
     user_dir: str
 
 
 class Emotion2vecFeatureReader(object):
+    """emotion2vec モデルをロードし、音声ファイルから特徴量ベクトルを抽出するクラス。"""
+
     def __init__(self, model_file, checkpoint, layer):
+        # fairseq にユーザー定義モジュール（upstream/）を登録する
         model_path = UserDirModule(model_file)
         fairseq.utils.import_user_module(model_path)
         model, cfg, task = fairseq.checkpoint_utils.load_model_ensemble_and_task([checkpoint])
@@ -54,7 +65,7 @@ class Emotion2vecFeatureReader(object):
         self.layer = layer
 
     def read_audio(self, fname):
-        """Load an audio file and return PCM along with the sample rate"""
+        """音声ファイルを読み込み、16kHzモノラルであることを確認して波形配列を返す。"""
         wav, sr = sf.read(fname)
         channel = sf.info(fname).channels
         assert sr == 16e3, "Sample rate should be 16kHz, but got {}in file {}".format(sr, fname)
@@ -63,20 +74,24 @@ class Emotion2vecFeatureReader(object):
         return wav
 
     def get_feats(self, loc):
+        """音声ファイル1件から emotion2vec 特徴量テンソルを返す。shape: (T, D)"""
         x = self.read_audio(loc)
         with torch.no_grad():
             source = torch.from_numpy(x).float().cuda()
+            # タスク設定に normalize フラグがある場合は layer norm で正規化する
             if self.task.cfg.normalize:
                 source = F.layer_norm(source, source.shape)
-            source = source.view(1, -1)
+            source = source.view(1, -1)  # (1, T) に整形してモデルへ入力
 
             res = self.model.extract_features(source, padding_mask=None, remove_extra_tokens=True)
-            return res['x'].squeeze(0).cpu()
+            return res['x'].squeeze(0).cpu()  # (T, D) に戻してCPUへ転送
 
 def get_iterator(args):
+    """TSVマニフェストを読み込み、特徴量を逐次的に生成するイテレータを返す。"""
     with open(osp.join(args.data, args.split) + ".tsv", "r") as fp:
         lines = fp.read().split("\n")
-        root = lines.pop(0).strip()
+        root = lines.pop(0).strip()  # 1行目はルートディレクトリ
+        # 2行目以降の相対パスを root と結合し、実際に読み込むwavファイル一覧を作る。
         files = [osp.join(root, line.split("\t")[0])
                  for line in lines if len(line) > 0]
 
@@ -86,6 +101,7 @@ def get_iterator(args):
 
         def iterate():
             for fname in files:
+                # 1発話ずつ抽出して yield することで、大きなデータセットでもメモリ使用量を抑える。
                 d2v_feats = reader.get_feats(fname)
                 yield d2v_feats
 
@@ -93,13 +109,14 @@ def get_iterator(args):
 
 
 def main():
+    """特徴量抽出のメインエントリポイント。.npy と .lengths ファイルを出力する。"""
     parser = get_parser()
     args = parser.parse_args()
 
     os.makedirs(args.save_dir, exist_ok=True)
 
     def create_files(dest):
-
+        # 既存の .npy ファイルがあれば削除してから新規作成する
         if osp.exists(dest + ".npy"):
             os.remove(dest + ".npy")
         npaa = NpyAppendArray(dest + ".npy")
@@ -111,11 +128,13 @@ def main():
     generator, num = get_iterator(args)
     iterator = generator()
 
+    # .lengths には各発話のフレーム数を1行1件で記録する
     with open(save_path + ".lengths", "w") as l_f:
         for d2v_feats in tqdm.tqdm(iterator, total=num):
             print(len(d2v_feats), file=l_f)
 
             if len(d2v_feats) > 0:
+                # NpyAppendArray で発話ごとの可変長特徴量を1つの .npy に連結保存する。
                 npaa.append(d2v_feats.numpy())
 
 

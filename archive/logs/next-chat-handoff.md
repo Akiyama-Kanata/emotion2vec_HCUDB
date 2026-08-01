@@ -2,54 +2,58 @@
 
 ## 最終更新
 
-2026-07-19
+2026-08-01
 
 ## 現在地
 
-英語感情認識性能を維持しながら日本語性能を向上させるため、emotion2vec-base、emotion2vec+ large、下流感情分類head、VAD回帰head、本体の日本語部分fine-tuningの位置づけを検討中。
+研究の主目的は、固定emotion2vec特徴を用いた下流SERシステムによって日本語音声感情認識を改善し、英語音声感情認識性能を維持することへ修正した。主比較は、同等構造のデコーダーを接続したemotion2vec Base対emotion2vec+ largeである。
 
-現在の主要実装は、固定したemotion2vecの事前抽出特徴からVAD回帰headと感情分類headを学習するもの。本体は更新していないため、現段階の実験は厳密にはemotion2vecのfine-tuningではなくhead training / head tuningである。
+エンコーダーはBase、Largeとも常に固定し、学習対象はデコーダーだけとする。VAD媒介型は研究の中心ではなく、主実験後に時間があれば確認する探索条件である。
 
 ## 完了したこと
 
-- 本体固定、部分FT、全層FTの用語を整理した。
-- HCUDBで本体上位1～2層を部分FTする二段階案を整理した。
-- emotion2vec+ largeはbaseとは別に部分FTする必要があると確認した。
-- VADを感情分類の必須経路、並列補助タスク、比較用ボトルネックのどれとして扱うか整理した。
-- 本体部分FTに必要な入力、ラベル、暫定GPU目安を整理した。
+- 研究目的、学習対象、主比較、VADの位置づけを`docs/plans/ja_ser_vad_category_incremental_plan.md`へ反映した。
+- Base向けの直接感情分類と並列VA/Dデコーダーは実装され、合成音声と仮特徴抽出器によるデモ生成物がある。
+- VAD媒介型のモデル、学習、推論経路は実装されている。
+- 現状を証拠付きの段階評価として`docs/reports/2026-08-01-current-completion-status.md`へ整理した。
+- 過去の「分類精度か説明可能性か」という二択は撤回した。主目的はBase対Largeの共通条件比較で確定している。
 
 ## 未完了 / 次の最小ステップ
 
-次のどちらを研究の中心にするか決める。
+次の最小作業は、特徴次元の可変化とBase / Large共通デコーダー実験入口の設計である。
 
-1. 分類精度中心：emotion2vec特徴から感情を直接分類し、VADは並列補助出力または比較条件にする。
-2. 説明可能性中心：`emotion2vec特徴 -> VAD -> 感情`を主経路として、直接分類との性能差を検証する。
-
-決定後、比較表を確定し、各データセットの感情カテゴリ、実測VADラベル、話者分割を一覧化する。
+1. `vad_downstream/data.py`、`vad_downstream/notebook_pipeline.py`、Notebook、`iemocap_downstream/main.py`などの768次元固定を解消する。
+2. エンコーダーごとの`input_dim`だけを切り替え、隠れ層以降を同一に保つ設定を定義する。
+3. Base / Large双方の特徴cacheにエンコーダーIDと特徴次元を記録する。
+4. HCUDBとIEMOCAPの共通split・ラベル・学習条件・評価指標を実験前に固定する。
 
 ## 重要な前提
 
-- 本体固定＋新規head学習は「emotion2vecのfine-tuning」ではなく「下流head training」。
-- 本体上位層まで更新した場合は「partial fine-tuning」と呼べる。
-- emotion2vec+ largeの付属9クラス分類headへVADを単純挿入することはできない。VAD媒介型では付属headを新規headへ置き換え、native 9-class headは参考条件として残す。
-- VAD教師値なしで分類lossだけから3次元中間表現を学習した場合、それを実測VADと同等に扱わない。
-- HCUDBで本体を適応する場合、test話者を適応学習へ混ぜない。
+- 日本語評価はHCUDB、英語評価はIEMOCAPを中心にする。
+- エンコーダー重みはBase、Largeとも更新しない。
+- BaseとLargeで異なることを許容するのはデコーダー入力層の`input_dim`だけで、隠れ層以降と学習条件はそろえる。
+- HCUDBに正解のないDominanceは日本語の学習・評価対象にしない。
+- VAD媒介型は探索条件であり、主比較の代替にしない。
+- 合成音声、仮特徴、random modelの数値は研究成果として扱わない。
 
 ## 変更ファイル
 
-- `archive/logs/2026-07-19-work-log.md`：今回新規作成。
-- `archive/logs/next-chat-handoff.md`：今回の検討内容へ更新。
-- `DEEP_LEARNING_EXPLANATION.md`：既存の未コミット変更あり。今回未変更。
+- `docs/plans/ja_ser_vad_category_incremental_plan.md`
+- `docs/reports/2026-08-01-current-completion-status.md`
+- `archive/logs/next-chat-handoff.md`
+
+過去の日付別ログは履歴として変更していない。
 
 ## 検証状況
 
-- リポジトリ内のモデル構造と公式のemotion2vec+ largeモデル情報を確認済み。
-- 学習、VRAM計測、精度評価は未実行。
-- コード変更とテスト実行は未実施。
+- Base向けデコーダーの合成デモ生成物は`runs/notebooks/audio_to_emotion_vad/`に存在する。
+- 実emotion2vecエンコーダーを用いた学習・評価は未検証。
+- emotion2vec+ largeの学習パイプラインとBase対Large実験は未着手。
+- 自動テストは65件存在する。現環境では`torch`と`soundfile`を利用できるPython環境がなく、今回のテスト実行は成功していない。
+- HCUDB実データ結果、IEMOCAP英語性能維持結果、Base対Large結果は未取得。
 
 ## 注意点
 
-- base上位1～2層の部分FTはVRAM 12～16GBが最低候補、24GBが暫定推奨だが、実測前の目安。
-- +large上位1～2層の部分FTは24GBが最低候補、40～48GBが暫定推奨だが、実測前の目安。
-- PC購入前にクラウドGPUで最長クラスの音声を使ったforward/backwardスモークテストを行う。
-- IEMOCAPなどを外部クラウドへ置く前に、利用規約と大学の研究データ管理規程を確認する。
+- `runs/notebooks/audio_to_emotion_vad/`は合成デモ生成物であり、研究結果ではない。
+- 実データ、実エンコーダー、依存環境がそろうまで新しい性能値を主張しない。
+- 公開API、CLI、checkpoint形式は今回変更していない。

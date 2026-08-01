@@ -1,114 +1,86 @@
-# 日本語音声感情認識・VAD・英語性能維持の段階的計画
+# 固定emotion2vecを用いた日英SER比較の段階的計画
 
-## 目的
+## 研究目的
 
-このリポジトリでは、emotion2vecを使って次の実現を目指す。
+研究の主目的は、エンコーダーを更新せず、固定したemotion2vec特徴を用いる下流SERシステムによって日本語音声感情認識を改善し、同時に英語音声感情認識性能を維持することである。日本語評価はHCUDB、英語評価はIEMOCAPを中心に行う。
 
-- 日本語音声感情認識の精度を上げる
-- 出力として3次元VAD、`valence, arousal, dominance`、を持つ
-- VADを踏まえたカテゴリ分類も行う
-- 日本語性能を上げつつ、英語音声感情認識、特にIEMOCAPで比較可能な感情、の性能を保つ
+主比較はemotion2vec Baseとemotion2vec+ largeである。両条件ともエンコーダー重みは常に固定し、学習対象は新規デコーダーだけとする。本研究はemotion2vec自体の日本語適応を目的としない。
 
-ただし、現状の日本語データには `valence`, `arousal`, `emotion/category` の正解ラベルはあるが、`dominance` の正解ラベルはない。
+## 主実験: Base対Large
 
-## 現状
+BaseとLargeには、各エンコーダーが出力する固定特徴へ同等構造のデコーダーを接続する。
 
-現状でできていること。
+- デコーダーの`input_dim`だけを各エンコーダーの出力次元に合わせる。
+- 入力層より後の隠れ層数、隠れ次元、活性化、dropout、出力層を同一にする。
+- データ分割、感情ラベル、前処理、乱数seed、epoch数、optimizer、学習率、batch条件、モデル選択規則を共通化する。
+- エンコーダーからの特徴抽出は勾配なしで行い、エンコーダーのパラメータをoptimizerへ渡さない。
+- 公開API、CLI、checkpoint形式は今回変更しない。将来の共通実験入口では、デコーダーの`input_dim`をエンコーダーごとに設定可能にする。
 
-- `upstream/` にemotion2vec本体の元コードがある
-- `scripts/extract_features.py` で単一wavからemotion2vec特徴量を抽出できる
-- `vad_downstream/` に固定emotion2vec特徴量から3次元VADを回帰する導線がある
-- VAD出力順は `valence, arousal, dominance` に整理されている
-- 欠損ラベルmask付きCCC lossがある
-- `iemocap_downstream/` にIEMOCAP 4感情分類の参照実装がある
-- `archive/vad_iemocap_two_stage/` に、VADを中間表現として使う古い分類実験が残っている
+### 共通データ条件
 
-現状で足りていないこと。
+- HCUDBは話者独立のtrain / validation / test分割を用い、同一話者を複数splitへ入れない。
+- IEMOCAPも話者またはsession単位で分割し、評価話者を学習へ混ぜない。
+- 日英で比較する感情ラベルの対応表を事前に固定し、結果を見てから統合・除外しない。
+- HCUDBの`valence`、`arousal`、`emotion`を利用する。正解のない`dominance`は日本語の損失および評価対象にしない。
 
-- 現行本線はVAD回帰のみで、カテゴリ分類が統合されていない
-- 日本語データにdominance正解がないため、日本語だけでは3次元VADを完全には教師あり学習・評価できない
-- 英語性能を保つための評価・学習導線がない
-- 日本語と英語で比較可能な感情カテゴリのマッピングが未整理
-- 実データ全体から特徴量cacheを一括作成する安定した導線が弱い
-- `torch`入り環境でのテスト・smoke runが未完了
+### 共通評価指標
 
-## Phase 1: 現状の土台を固める
+- 主指標: macro F1、UA
+- 補助指標: WA / accuracy、クラス別F1、confusion matrix
+- 複数seedの各結果と要約統計を保存する。
+- 日本語改善と英語維持を別々に報告し、Base対Largeの差を同一条件で比較する。
 
-- `torch` が使えるPython環境を用意する
-- 既存テストを実行する
-  - `py -m unittest discover -s tests`
-- `vad_downstream/` がdummy fixtureで動くことを確認する
-- 日本語データをCSV化する
-  - `file_path`
-  - `valence`
-  - `arousal`
-  - `emotion`
-  - `split` または `session`
-- `dominance` は日本語では欠損扱いにする
-- まずは固定emotion2vec特徴量からVA回帰が動く状態を作る
+「英語性能維持」の許容範囲と統計的な比較方法は、本実験開始前に固定する。実験結果を見た後で基準を変更しない。
 
-## Phase 2: 日本語カテゴリ分類baselineを作る
+## 探索条件: VAD媒介型
 
-- 日本語音声からemotion2vec特徴量cacheを作る
-- VADとは別に、カテゴリ分類だけのbaselineを作る
-- 評価指標を固定する
-  - accuracy
-  - macro F1
-  - confusion matrix
-- 日本語カテゴリラベルを、IEMOCAPやemotion2vec+と比較可能な形に整理する
-- この段階では、VADと分類を強く結合しない
+`emotion2vec特徴 -> VA/VAD予測 -> 感情カテゴリ`のVAD媒介型は、主比較ではなく、時間に余裕がある場合に確認する探索条件とする。Base対Largeの共通直接分類実験を完了するまで、VAD媒介型の追加実験を優先しない。
 
-## Phase 3: VA/VADと分類を統合する
+- VAD媒介型の分類性能は、直接分類デコーダーと分けて報告する。
+- HCUDBではVとAのみ教師ありとし、Dを実測値と同等に扱わない。
+- VADを使う場合もエンコーダーは固定し、学習対象はデコーダーだけとする。
+- VAD媒介型の結果は、Base対Largeという研究の中心的比較の代替にしない。
 
-- モデル出力を2系統にする
-  - `vad`: `valence, arousal, dominance`
-  - `logits`: 感情カテゴリ分類
-- 日本語データでは `valence` と `arousal` だけに回帰lossをかける
-- `dominance` は出力するが、日本語ではloss対象外にする
-- 分類器は、emotion2vec特徴量に加えてVAD予測値も使える構成にする
-- 比較条件を用意する
-  - 分類のみ
-  - VA回帰 + 分類の同時学習
-  - VAD予測値を分類入力に追加
+## 実施段階
 
-## Phase 4: 英語性能維持を評価する
+### Phase 1: 特徴次元の可変化と共通入口
 
-- IEMOCAP分類baselineを再現する
-- 日本語学習後に、IEMOCAPで性能がどれだけ変わるか測る
-- 比較対象は、日英で対応可能な感情カテゴリに絞る
-- 記録する指標
-  - WA / accuracy
-  - UA
-  - F1
-  - クラス別性能
-- 英語性能が落ちる場合は、段階的に対策する
-  - 英語データを学習に混ぜる
-  - 日本語と英語のbatch比率を調整する
-  - 既存英語モデルの出力をteacherとして使う
+- データ読込、Notebook、IEMOCAP学習コードに残る768次元固定を列挙する。
+- 実行時にエンコーダーIDと出力次元を対応付け、`input_dim`をデコーダーへ渡す設計を定める。
+- BaseとLargeで入力層だけが変わり、隠れ層以降が一致することを設定・テストで確認する。
+- 特徴cacheへエンコーダーIDと特徴次元を記録し、異なるエンコーダーのcache混用を拒否する。
 
-## Phase 5: Dominanceの扱いを決める
+### Phase 2: HCUDB共通実験
 
-短期方針。
+- 共通の話者分割と感情ラベルを確定する。
+- Base特徴とLarge特徴を同じsplitから作成する。
+- 各条件で同一学習条件の直接感情分類デコーダーを学習する。
+- macro F1、UA、WA / accuracy、クラス別F1、confusion matrixを保存する。
 
-- 3次元VAD出力は維持する
-- 日本語では `dominance` を学習・評価しない
-- 日本語のlossは `valence` と `arousal` のみにかける
+### Phase 3: IEMOCAP共通実験
 
-中期方針。
+- HCUDBと対応可能なラベルおよびIEMOCAPの話者独立分割を固定する。
+- BaseとLargeに同等構造のデコーダーを接続し、HCUDB側と対応する条件で評価する。
+- 日本語側の改善だけでなく、英語側の性能維持を確認する。
 
-- dominance付き英語データがあれば、それでDを保守する
-- なければ既存VADモデルの出力をteacherとして使うか検討する
+### Phase 4: 探索的VAD条件
 
-長期方針。
+- 主実験完了後、必要性と時間を再確認する。
+- 直接分類、並列VA/D補助出力、VAD媒介型を区別して報告する。
+- 合成データや未学習モデルの出力を研究成果へ含めない。
 
-- 日本語dominanceラベルを追加するか検討する
-- 疑似ラベルを使う場合は、その妥当性を別途評価する
+## 完了条件
 
-## 実装時の前提
+次のすべてを満たした時点で主実験を完了とする。
 
-- 当面はemotion2vec本体を更新しない
-- 固定emotion2vec特徴量の上に下流モデルを学習する
-- 日本語データには `valence`, `arousal`, `emotion` がある
-- 日本語データには `dominance` はない
-- 英語性能維持の主な評価対象はIEMOCAP
-- 実装は一度に完成形を作らず、段階ごとに検証する
+- BaseとLargeのエンコーダーが固定され、デコーダーだけが学習されたことを記録で確認できる。
+- 両条件のデータ分割、感情ラベル、学習条件、評価指標が共通である。
+- 入力層の`input_dim`以外のデコーダー構造が同一である。
+- HCUDB実データによる日本語評価結果が保存されている。
+- IEMOCAP実データによる英語評価結果が保存されている。
+- Base対Largeの比較表と、英語性能維持の事前基準に対する判定が作成されている。
+- デモ結果と研究結果が明確に分離されている。
+
+## 現在の最小作業
+
+特徴次元の可変化と、Base / Largeで共通に使えるデコーダー実験入口を設計する。現時点の完成度と根拠は`docs/reports/2026-08-01-current-completion-status.md`に記録する。

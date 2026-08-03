@@ -4,6 +4,70 @@ import torch
 from torch import nn
 
 
+VAD_OUTPUT_NAMES = ("valence", "arousal", "dominance")
+
+
+class MaskedMeanPooling(nn.Module):
+    """Pool frame features while excluding positions marked as padding."""
+
+    def forward(self, features, padding_mask=None):
+        if features.dim() != 3:
+            raise ValueError(
+                f"emotion2vec features must be 3D [B, T, C], got {features.shape}"
+            )
+        if padding_mask is None:
+            return features.mean(dim=1)
+
+        padding_mask = padding_mask.to(device=features.device, dtype=torch.bool)
+        if padding_mask.shape != features.shape[:2]:
+            raise ValueError(
+                "padding_mask shape must match the first two feature dimensions: "
+                f"{padding_mask.shape} != {features.shape[:2]}"
+            )
+        if padding_mask.all(dim=1).any():
+            raise ValueError("cannot pool a fully padded feature sequence")
+
+        valid = (~padding_mask).unsqueeze(-1).to(dtype=features.dtype)
+        return (features * valid).sum(dim=1) / valid.sum(dim=1)
+
+
+class Emotion2VecVADRegressor(nn.Module):
+    """Compatibility regressor for precomputed emotion2vec frame features."""
+
+    output_names = VAD_OUTPUT_NAMES
+
+    def __init__(self, input_dim=768, hidden_dim=256, dropout=0.1):
+        super().__init__()
+        self.pool = MaskedMeanPooling()
+        self.regressor = nn.Sequential(
+            nn.Dropout(dropout),
+            nn.Linear(input_dim, hidden_dim),
+            nn.Tanh(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, len(self.output_names)),
+            nn.Sigmoid(),
+        )
+
+    def forward(self, feats, padding_mask=None):
+        return self.regressor(self.pool(feats, padding_mask))
+
+
+def vad_tensor_to_dict(pred):
+    """Convert one VAD prediction into a name-to-score mapping."""
+    if pred.ndim == 2:
+        if pred.size(0) != 1:
+            raise ValueError("vad_tensor_to_dict expects a single prediction")
+        pred = pred.squeeze(0)
+    if pred.ndim != 1 or pred.numel() != len(VAD_OUTPUT_NAMES):
+        raise ValueError(f"expected shape (3,), got {tuple(pred.shape)}")
+    return {
+        name: float(value)
+        for name, value in zip(
+            VAD_OUTPUT_NAMES, pred.detach().cpu().float().tolist()
+        )
+    }
+
+
 class Emotion2vecVADModel(nn.Module):
     """Whole VA/VAD model: audio waveform -> emotion2vec frames -> regression."""
 

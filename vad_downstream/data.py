@@ -1,14 +1,29 @@
+import csv
+import hashlib
 import logging
+from pathlib import Path
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import DataLoader, Dataset
 
 logger = logging.getLogger(__name__)
 
 FEATURE_DIM = 768
 EMOTION_CLASS_LABELS = ["hap", "sad", "ang", "dis"]
 EMOTION_CLASS_NAMES_JA = ["喜び", "悲しみ", "怒り", "嫌悪"]
+WAGNER_VAD_COLUMNS = ("valence", "arousal", "dominance")
+_SPLIT_ALIASES = {
+    "train": "train",
+    "tr": "train",
+    "dev": "val",
+    "valid": "val",
+    "validation": "val",
+    "val": "val",
+    "test": "test",
+    "eval": "test",
+}
 
 
 def load_vad_dataset(prefix, min_length=1, max_length=None):
@@ -460,3 +475,413 @@ def _normalize_class_labels(class_labels=None):
     if any(not label for label in class_labels):
         raise ValueError("class_labels must not contain empty labels")
     return class_labels
+
+
+# Compatibility API for the cached-feature VAD regression CLI.  These helpers
+# predate the frame-level dataset functions above, but train_vad.py and existing
+# research workflows still use them.
+def _lookup_field(fieldnames: Sequence[str], name: str) -> Optional[str]:
+    fields = {field.strip().lower(): field for field in fieldnames}
+    return fields.get(name)
+
+
+def _parse_vad_value(raw_value: str, column: str, line_number: int) -> float:
+    value = str(raw_value).strip()
+    if value == "":
+        return float("nan")
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise ValueError(
+            f"{column} must be numeric at CSV line {line_number}: {value!r}"
+        ) from exc
+    if not 0.0 <= parsed <= 1.0:
+        raise ValueError(
+            f"{column} must be in the 0..1 range at CSV line "
+            f"{line_number}: {parsed}"
+        )
+    return parsed
+
+
+def load_vad_csv(
+    csv_path: str, audio_dir: Optional[str] = None
+) -> List[Dict[str, object]]:
+    """Load cached-feature VAD records from a CSV annotation file."""
+    csv_file = Path(csv_path)
+    base_dir = Path(audio_dir) if audio_dir else csv_file.parent
+
+    with csv_file.open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        fieldnames = reader.fieldnames or []
+        file_field = _lookup_field(fieldnames, "file_path")
+        if file_field is None:
+            raise ValueError("CSV must contain a file_path column.")
+
+        vad_fields = {
+            column: _lookup_field(fieldnames, column)
+            for column in WAGNER_VAD_COLUMNS
+        }
+        if not any(vad_fields.values()):
+            raise ValueError(
+                "CSV must contain at least one of: valence, arousal, dominance."
+            )
+
+        split_field = _lookup_field(fieldnames, "split")
+        session_field = _lookup_field(fieldnames, "session")
+        records: List[Dict[str, object]] = []
+
+        for row_index, row in enumerate(reader):
+            line_number = row_index + 2
+            raw_file = str(row.get(file_field, "")).strip()
+            if raw_file == "":
+                raise ValueError(f"file_path is empty at CSV line {line_number}.")
+
+            audio_path = Path(raw_file)
+            if not audio_path.is_absolute():
+                audio_path = base_dir / audio_path
+
+            record: Dict[str, object] = {
+                "index": row_index,
+                "file_path": str(audio_path),
+            }
+            has_label = False
+            for column, field in vad_fields.items():
+                value = (
+                    float("nan")
+                    if field is None
+                    else _parse_vad_value(row.get(field, ""), column, line_number)
+                )
+                record[column] = value
+                has_label = has_label or np.isfinite(value)
+
+            if not has_label:
+                raise ValueError(
+                    f"CSV line {line_number} has no usable VAD label."
+                )
+            if split_field is not None:
+                record["split"] = str(row.get(split_field, "")).strip()
+            if session_field is not None:
+                record["session"] = str(row.get(session_field, "")).strip()
+            records.append(record)
+
+    if not records:
+        raise ValueError("CSV contains no data rows.")
+    return records
+
+
+def feature_cache_path(audio_path: str, cache_dir: str, index: int) -> Path:
+    """Build a stable cache filename from the audio path and CSV row index."""
+    source = str(audio_path)
+    digest = hashlib.md5(source.encode("utf-8")).hexdigest()[:12]
+    stem = Path(source).stem or "audio"
+    safe_stem = "".join(
+        char if char.isalnum() or char in ("-", "_") else "_" for char in stem
+    )[:48]
+    return Path(cache_dir) / f"{index:06d}_{safe_stem}_{digest}.npy"
+
+
+def attach_cache_paths(
+    records: Sequence[Dict[str, object]], cache_dir: str
+) -> List[Dict[str, object]]:
+    """Return copies of records with deterministic ``cache_path`` values.
+
+    Cache hashes created from absolute paths differ between Windows and WSL.
+    Reuse a uniquely matching row/stem cache when one already exists so a cache
+    generated on either side remains portable.
+    """
+    prepared: List[Dict[str, object]] = []
+    for offset, record in enumerate(records):
+        copied = dict(record)
+        index = int(copied.get("index", offset))
+        audio_path = str(copied["file_path"])
+        cache_path = feature_cache_path(audio_path, cache_dir, index)
+        if not cache_path.exists():
+            stem = Path(audio_path).stem or "audio"
+            safe_stem = "".join(
+                char if char.isalnum() or char in ("-", "_") else "_"
+                for char in stem
+            )[:48]
+            matches = list(
+                Path(cache_dir).glob(f"{index:06d}_{safe_stem}_*.npy")
+            )
+            if len(matches) == 1:
+                cache_path = matches[0]
+        copied["cache_path"] = str(cache_path)
+        prepared.append(copied)
+    return prepared
+
+
+def ensure_feature_cache(
+    records: Sequence[Dict[str, object]],
+    extractor: Callable[[str], object],
+    cache_dir: Optional[str] = None,
+    force: bool = False,
+) -> List[Dict[str, object]]:
+    """Create missing ``.npy`` feature caches with the supplied extractor."""
+    prepared = (
+        attach_cache_paths(records, cache_dir)
+        if cache_dir is not None
+        else [dict(record) for record in records]
+    )
+
+    for record in prepared:
+        if "cache_path" not in record:
+            raise ValueError(
+                "cache_path is missing. Pass cache_dir or call attach_cache_paths first."
+            )
+        cache_path = Path(str(record["cache_path"]))
+        if cache_path.exists() and not force:
+            continue
+
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        features = extractor(str(record["file_path"]))
+        if torch.is_tensor(features):
+            features = features.detach().cpu().numpy()
+        features = np.asarray(features, dtype=np.float32)
+        if features.ndim == 1:
+            features = features[None, :]
+        elif features.ndim == 3 and features.shape[0] == 1:
+            features = features[0]
+        if features.ndim != 2:
+            raise ValueError(
+                "extractor must return a 2-D feature array for "
+                f"{record['file_path']}, got shape {features.shape}"
+            )
+        np.save(cache_path, features)
+
+    return prepared
+
+
+def _normalise_split_name(value: object) -> str:
+    key = str(value).strip().lower()
+    if key not in _SPLIT_ALIASES:
+        raise ValueError(f"unknown split value {value!r}; expected train/val/test.")
+    return _SPLIT_ALIASES[key]
+
+
+def _random_train_val_test_split(
+    records: Sequence[Dict[str, object]],
+    seed: int,
+    val_ratio: float,
+    test_ratio: float,
+) -> Dict[str, List[Dict[str, object]]]:
+    rng = np.random.default_rng(seed)
+    indices = np.arange(len(records))
+    rng.shuffle(indices)
+
+    if len(records) < 3:
+        n_test = 0
+        n_val = 0
+    else:
+        n_test = (
+            max(1, int(round(len(records) * test_ratio))) if test_ratio > 0 else 0
+        )
+        n_val = (
+            max(1, int(round(len(records) * val_ratio)))
+            if val_ratio > 0 and len(records) >= 4
+            else 0
+        )
+        if n_test + n_val >= len(records):
+            n_test = 1
+            n_val = 0
+
+    test_indices = set(indices[:n_test].tolist())
+    val_indices = set(indices[n_test : n_test + n_val].tolist())
+    splits: Dict[str, List[Dict[str, object]]] = {
+        "train": [],
+        "val": [],
+        "test": [],
+    }
+    for index, record in enumerate(records):
+        if index in test_indices:
+            split_name = "test"
+        elif index in val_indices:
+            split_name = "val"
+        else:
+            split_name = "train"
+        splits[split_name].append(dict(record))
+    return splits
+
+
+def split_vad_records(
+    records: Sequence[Dict[str, object]],
+    mode: str = "auto",
+    test_session: Optional[str] = None,
+    seed: int = 42,
+    val_ratio: float = 0.1,
+    test_ratio: float = 0.1,
+) -> Dict[str, List[Dict[str, object]]]:
+    """Split records by explicit labels, held-out session, or seeded random split."""
+    if not records:
+        raise ValueError("records is empty.")
+
+    selected_mode = (mode or "auto").strip().lower()
+    has_split_column = any("split" in record for record in records)
+    has_session = any(
+        str(record.get("session", "")).strip() for record in records
+    )
+    if selected_mode == "auto":
+        if has_split_column:
+            selected_mode = "split"
+        elif has_session:
+            selected_mode = "session"
+        else:
+            selected_mode = "random"
+
+    if selected_mode == "split":
+        splits: Dict[str, List[Dict[str, object]]] = {
+            "train": [],
+            "val": [],
+            "test": [],
+        }
+        for record in records:
+            split_name = _normalise_split_name(record.get("split", ""))
+            splits[split_name].append(dict(record))
+        if not splits["train"]:
+            raise ValueError("explicit split must include at least one train row.")
+        return splits
+
+    if selected_mode == "session":
+        sessions = sorted(
+            {
+                str(record.get("session", "")).strip()
+                for record in records
+                if str(record.get("session", "")).strip()
+            }
+        )
+        if not sessions:
+            raise ValueError("session split requested, but no session values were found.")
+        held_out = str(test_session).strip() if test_session is not None else sessions[0]
+        if held_out not in sessions:
+            raise ValueError(
+                f"test_session {held_out!r} was not found. Available sessions: {sessions}"
+            )
+        train_pool = [
+            dict(record)
+            for record in records
+            if str(record.get("session", "")).strip() != held_out
+        ]
+        test = [
+            dict(record)
+            for record in records
+            if str(record.get("session", "")).strip() == held_out
+        ]
+        train_val = _random_train_val_test_split(
+            train_pool, seed=seed, val_ratio=val_ratio, test_ratio=0.0
+        )
+        return {"train": train_val["train"], "val": train_val["val"], "test": test}
+
+    if selected_mode == "random":
+        return _random_train_val_test_split(
+            records, seed=seed, val_ratio=val_ratio, test_ratio=test_ratio
+        )
+    raise ValueError("mode must be one of: auto, split, session, random.")
+
+
+def leave_one_session_out_splits(
+    records: Sequence[Dict[str, object]],
+    seed: int = 42,
+    val_ratio: float = 0.1,
+) -> List[Tuple[str, Dict[str, List[Dict[str, object]]]]]:
+    sessions = sorted(
+        {
+            str(record.get("session", "")).strip()
+            for record in records
+            if str(record.get("session", "")).strip()
+        }
+    )
+    return [
+        (
+            session,
+            split_vad_records(
+                records,
+                mode="session",
+                test_session=session,
+                seed=seed,
+                val_ratio=val_ratio,
+                test_ratio=0.0,
+            ),
+        )
+        for session in sessions
+    ]
+
+
+class VADFeatureDataset(Dataset):
+    """Dataset backed by cached frame features and utterance-level VAD labels."""
+
+    def __init__(self, records: Sequence[Dict[str, object]]):
+        super().__init__()
+        self.records = [dict(record) for record in records]
+
+    def __getitem__(self, index):
+        record = self.records[index]
+        features = np.load(str(record["cache_path"])).astype(np.float32)
+        if features.ndim == 1:
+            features = features[None, :]
+        if features.ndim != 2:
+            raise ValueError(
+                f"cached features must be 2-D, got {features.shape}: "
+                f"{record['cache_path']}"
+            )
+
+        labels = np.asarray(
+            [record.get(column, np.nan) for column in WAGNER_VAD_COLUMNS],
+            dtype=np.float32,
+        )
+        mask = np.isfinite(labels)
+        labels = np.nan_to_num(labels, nan=0.0).astype(np.float32)
+        return {
+            "id": int(record.get("index", index)),
+            "file_path": str(record["file_path"]),
+            "feats": torch.from_numpy(features).float(),
+            "vad_target": torch.from_numpy(labels).float(),
+            "vad_mask": torch.from_numpy(mask),
+        }
+
+    def __len__(self):
+        return len(self.records)
+
+    def collator(self, samples):
+        if not samples:
+            return {}
+
+        features = [sample["feats"] for sample in samples]
+        sizes = [feature.shape[0] for feature in features]
+        target_size = max(sizes)
+        collated = features[0].new_zeros(
+            len(features), target_size, features[0].size(-1)
+        )
+        padding_mask = torch.zeros(len(features), target_size, dtype=torch.bool)
+        for index, (feature, size) in enumerate(zip(features, sizes)):
+            collated[index, :size] = feature
+            padding_mask[index, size:] = True
+
+        return {
+            "id": torch.LongTensor([sample["id"] for sample in samples]),
+            "file_path": [sample["file_path"] for sample in samples],
+            "net_input": {"feats": collated, "padding_mask": padding_mask},
+            "vad_labels": torch.stack(
+                [sample["vad_target"] for sample in samples]
+            ),
+            "vad_mask": torch.stack(
+                [sample["vad_mask"] for sample in samples]
+            ).bool(),
+        }
+
+
+def build_vad_dataloader(
+    records: Sequence[Dict[str, object]],
+    batch_size: int,
+    shuffle: bool = False,
+    num_workers: int = 0,
+    pin_memory: bool = False,
+) -> DataLoader:
+    dataset = VADFeatureDataset(records)
+    return DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        collate_fn=dataset.collator,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+    )

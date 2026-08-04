@@ -38,6 +38,8 @@ def get_parser():
     parser.add_argument('--save-dir', help='where to save the output', required=True)
     parser.add_argument('--layer', type=int, default=0,
                         help='which layer to use. Base: 0-11. ')
+    parser.add_argument('--device', choices=('auto', 'cpu', 'cuda'), default='auto',
+                        help='inference device (default: auto)')
     # fmt: on
 
     return parser
@@ -52,14 +54,19 @@ class UserDirModule:
 class Emotion2vecFeatureReader(object):
     """emotion2vec モデルをロードし、音声ファイルから特徴量ベクトルを抽出するクラス。"""
 
-    def __init__(self, model_file, checkpoint, layer):
+    def __init__(self, model_file, checkpoint, layer, device='auto'):
         # fairseq にユーザー定義モジュール（upstream/）を登録する
         model_path = UserDirModule(model_file)
         fairseq.utils.import_user_module(model_path)
         model, cfg, task = fairseq.checkpoint_utils.load_model_ensemble_and_task([checkpoint])
         model = model[0]
+        if device == 'cuda' and not torch.cuda.is_available():
+            raise RuntimeError('CUDA was requested but is not available')
+        self.device = torch.device(
+            'cuda' if device == 'cuda' or (device == 'auto' and torch.cuda.is_available()) else 'cpu'
+        )
         model.eval()
-        model.cuda()
+        model.to(self.device)
         self.model = model
         self.task = task
         self.layer = layer
@@ -77,7 +84,7 @@ class Emotion2vecFeatureReader(object):
         """音声ファイル1件から emotion2vec 特徴量テンソルを返す。shape: (T, D)"""
         x = self.read_audio(loc)
         with torch.no_grad():
-            source = torch.from_numpy(x).float().cuda()
+            source = torch.from_numpy(x).float().to(self.device)
             # タスク設定に normalize フラグがある場合は layer norm で正規化する
             if self.task.cfg.normalize:
                 source = F.layer_norm(source, source.shape)
@@ -97,7 +104,7 @@ def get_iterator(args):
 
         num = len(files)
         reader = Emotion2vecFeatureReader(
-            args.model, args.checkpoint, args.layer)
+            args.model, args.checkpoint, args.layer, args.device)
 
         def iterate():
             for fname in files:

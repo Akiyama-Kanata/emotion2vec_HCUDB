@@ -1,0 +1,51 @@
+
+
+感情を込めた音声データセット
+"1.普通
+2.落ち着き
+3.喜び
+4.悲しみ
+5.怒り
+6.恐れ
+7.嫌悪
+8.驚き
+9.焦り"				
+
+IEMOCAP
+	count	percentage
+emo		
+xxx	2507	24.97
+fru	1849	18.42
+neu	1708	17.01
+ang	1103	10.99
+sad	1084	10.80
+exc	1041	10.37
+hap	595	5.93
+sur	107	1.07
+fea	40	0.40
+oth	3	0.03
+dis	2	0.02
+
+HCUDB
+	column	dtype
+0	音声ファイル名	object
+1	話者ID	object
+2	性別	object
+3	セリフ	object
+4	演技感情	object
+5	テイク	int64
+6	快不快	float64
+7	活性非活性	float64
+8	狂喜・楽しい	int64
+9	驚き	int64
+10	怒り	int64
+11	恐れ	int64
+12	余裕・嬉しい	int64
+13	冷静	int64
+14	嫌い	int64
+15	軽蔑	int64
+16	リラックス・気楽	int64
+17	眠い・疲れた	int64
+18	憂鬱・悲しい	int64
+19	快不快_norm	float64
+20	活性非活性_norm	float64

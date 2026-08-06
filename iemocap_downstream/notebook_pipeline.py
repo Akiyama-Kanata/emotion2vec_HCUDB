@@ -490,6 +490,7 @@ def select_best_experiment(experiments: Mapping[str, dict] | Sequence[dict]) -> 
         "result": selected_result,
         "checkpoint_path": selected_result["checkpoint_path"],
         "validation_metrics": dict(selected_result["validation_metrics"]),
+        "selection_metrics": dict(selected_result["validation_metrics"]),
         "selection_order": ["validation_ua", "validation_macro_f1", "validation_loss", "baseline_first"],
     }
 
@@ -539,16 +540,49 @@ def run_one_fold(bundle: FeatureBundle, config: TrainingConfig, checkpoint_path:
     }
 
 
-def run_five_fold(bundle: FeatureBundle, config: TrainingConfig, output_dir: str | Path) -> dict:
+def _coerce_fold_experiments(
+    config: TrainingConfig | Mapping,
+) -> dict[str, TrainingConfig]:
+    """Accept one config or a named set of configs without breaking the old API."""
+    if isinstance(config, TrainingConfig):
+        return {"base": config}
+    if not isinstance(config, Mapping):
+        raise TypeError("config must be a TrainingConfig, hyperparameter mapping, or named config mapping")
+    config_fields = set(TrainingConfig.__dataclass_fields__)
+    if set(config).issubset(config_fields):
+        return {"base": _coerce_training_config(config)}
+    if not config:
+        raise ValueError("at least one fold experiment is required")
+    experiments = {str(name): _coerce_training_config(value) for name, value in config.items()}
+    if len({candidate.seed for candidate in experiments.values()}) != 1:
+        raise ValueError("all fold experiments must use the same seed")
+    return experiments
+
+
+def run_five_fold(bundle: FeatureBundle, config: TrainingConfig | Mapping, output_dir: str | Path) -> dict:
+    """Run validation-only selection before evaluating each fold's held-out test."""
     output_dir = Path(output_dir)
+    experiments = _coerce_fold_experiments(config)
     folds = []
     for session in SESSION_IDS:
-        fold_config = TrainingConfig(**{**asdict(config), "test_session": session, "validation_session": None})
-        validation_result = run_validation_experiment(bundle, fold_config, output_dir / f"fold_{session}.pt")
-        selected = select_best_experiment({"base": validation_result})
+        validation_results = {}
+        for name, candidate in experiments.items():
+            fold_config = TrainingConfig(
+                **{**asdict(candidate), "test_session": session, "validation_session": None}
+            )
+            safe_name = re.sub(r"[^A-Za-z0-9_.-]+", "_", name).strip("._") or "experiment"
+            checkpoint = output_dir / f"fold_{session}_{safe_name}.pt"
+            validation_results[name] = run_validation_experiment(bundle, fold_config, checkpoint)
+        selected = select_best_experiment(validation_results)
         evaluation = evaluate_selected_experiment(bundle, selected)
         test_metrics = evaluation["split_metrics"]["test"]
-        folds.append({"test_session": session, **{name: test_metrics[name] for name in ("wa", "ua", "macro_f1")}})
+        folds.append(
+            {
+                "test_session": session,
+                "selected_experiment": selected["name"],
+                **{name: test_metrics[name] for name in ("wa", "ua", "macro_f1")},
+            }
+        )
     averages = {name: float(np.mean([fold[name] for fold in folds])) for name in ("wa", "ua", "macro_f1")}
     summary = {"status": "passed", "folds": folds, "average": averages}
     save_json(summary, output_dir / "five_fold_summary.json")

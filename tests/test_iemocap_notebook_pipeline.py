@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -136,6 +137,70 @@ class IemocapNotebookPipelineTest(unittest.TestCase):
         self.assertEqual(len(summary["folds"]), 5)
         self.assertTrue(np.isfinite(list(summary["average"].values())).all())
         self.assertTrue((self.root / "folds" / "five_fold_summary.json").is_file())
+
+    def test_five_fold_selects_between_candidates_before_each_test(self):
+        from iemocap_downstream import notebook_pipeline
+
+        events = []
+
+        def validation_result(bundle, config, checkpoint_path):
+            name = "trial" if "trial" in Path(checkpoint_path).name else "base"
+            events.append(("validation", config.test_session, name))
+            return {
+                "validation_metrics": {
+                    "loss": 0.8 if name == "trial" else 1.0,
+                    "wa": 60.0,
+                    "ua": 70.0 if name == "trial" else 60.0,
+                    "macro_f1": 65.0,
+                },
+                "checkpoint_path": str(checkpoint_path),
+                "test_session": config.test_session,
+            }
+
+        def final_evaluation(bundle, selected):
+            session = selected["result"]["test_session"]
+            events.append(("test", session, selected["name"]))
+            metrics = {"loss": 0.5, "wa": 75.0, "ua": 75.0, "macro_f1": 75.0}
+            return {"split_metrics": {"train": metrics, "validation": metrics, "test": metrics}}
+
+        configs = {
+            "base": TrainingConfig(seed=9, device="cpu", epochs=1),
+            "trial": TrainingConfig(seed=9, device="cpu", epochs=1, hidden_dim=12),
+        }
+        with (
+            mock.patch.object(notebook_pipeline, "run_validation_experiment", side_effect=validation_result),
+            mock.patch.object(notebook_pipeline, "evaluate_selected_experiment", side_effect=final_evaluation),
+        ):
+            summary = run_five_fold(self.bundle, configs, self.root / "selected_folds")
+
+        for session in SESSION_IDS:
+            self.assertEqual(
+                [event for event in events if event[1] == session],
+                [("validation", session, "base"), ("validation", session, "trial"), ("test", session, "trial")],
+            )
+        self.assertTrue(all(fold["selected_experiment"] == "trial" for fold in summary["folds"]))
+
+    def test_lecture_notebook_has_one_line_experiments_and_final_table(self):
+        notebook_path = Path(__file__).resolve().parents[1] / "notebooks" / "iemocap_base_downstream_training.ipynb"
+        notebook = json.loads(notebook_path.read_text(encoding="utf-8"))
+        by_id = {cell["id"]: cell for cell in notebook["cells"]}
+        self.assertEqual(
+            by_id["base-run"]["source"].strip(),
+            "base_result = run_validation_experiment(bundle, hp_base)",
+        )
+        self.assertEqual(
+            by_id["trial-run"]["source"].strip(),
+            "trial_result = run_validation_experiment(bundle, hp_trial)",
+        )
+        all_source = "\n".join(cell["source"] for cell in notebook["cells"])
+        self.assertNotIn("run_one_fold", all_source)
+        self.assertIn("select_best_experiment({'base': base_result, 'trial': trial_result})", all_source)
+        final_source = by_id["final-evaluation"]["source"]
+        self.assertEqual(final_source.count("evaluate_selected_experiment"), 1)
+        for split in ("train", "validation", "test"):
+            self.assertIn(f"'{split}'", final_source)
+        for metric in ("loss", "wa", "ua", "macro_f1"):
+            self.assertIn(f"'{metric}'", final_source)
 
 
 if __name__ == "__main__":

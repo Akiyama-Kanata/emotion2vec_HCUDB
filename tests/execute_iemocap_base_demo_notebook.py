@@ -41,6 +41,9 @@ def main():
         private_values = [os.environ.get(name, "") for name in ("IEMOCAP_ROOT", "IEMOCAP_WORK_DIR", "EMOTION2VEC_CHECKPOINT", "EMOTION2VEC_USER_DIR")]
         if any(value and value in output_text for value in private_values):
             raise RuntimeError("a private data path appeared in notebook output")
+        forbidden_sample_fields = ("utterance_id", "'labels':", '"labels":', "'predictions':", '"predictions":')
+        if any(field in output_text for field in forbidden_sample_fields):
+            raise RuntimeError("sample-level labels or predictions appeared in notebook output")
         for required_label in ('base', 'trial', 'train', 'validation', 'test', 'macro_f1'):
             if required_label not in output_text:
                 raise RuntimeError(f"the notebook output is missing {required_label!r}")

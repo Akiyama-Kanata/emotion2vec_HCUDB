@@ -7,7 +7,8 @@
 - 研究の主目的は、エンコーダーを固定し、IEMOCAP学習後とHCUDB追加学習後の日英性能を比較することである。この主目的は条件Aで検証する。
 - 条件Aを研究の必須実験とし、Aの完了後にB、Bの完了後にC、Cの完了後にDへ進む。B〜Dは主目的の一般性と比較の厚みを増す拡張実験とする。
 - 条件Aは固定1 split・3 seedで実施する。BとDも実施時は同じ3 seedを使い、Cは学習せず固定評価する。5-foldはA完了後も必須化せず、全条件とは別の拡張に回す。
-- A完了までの標準工数は58時間、2026-08-11時点の残工数は53時間とする。A〜Dをすべて実施する場合は12週間、週約9〜10時間、実働合計108時間を標準見積もりとする。
+- Aの学習コード準備完了までは2〜4時間、実特徴抽出を含む正式な学習開始までは累計2.5〜5時間＋特徴抽出待ち、Aの1 seed完了までは累計6〜12時間＋計算待ち、3 seedと集計までの完了は累計10〜16時間＋計算待ちを標準見積もりとする。
+- B〜Dの工数はAの実測を使って段階ごとに再見積もりする。以前の全作業を新規実装として計上した見積もりは廃止する。
 - +largeのCPU特徴抽出時間は未計測のため、A完了後にBへ進む段階で実音声1件をベンチマークし、B以降の夜間実行日数を更新する。
 
 ## 実験条件と実施順
@@ -29,46 +30,69 @@
 - DではHCUDBの「落ち着き」を公式`other`、「焦り」を`unknown`へ事前対応し、9感情すべてを学習に使用する。
 - 英語維持の暫定基準は、HCUDB追加学習後の3-seed平均macro F1とUAが、追加学習前からそれぞれ2.0ポイントを超えて低下しないこととする。これは標準規格ではなく、本研究で結果取得前に固定する判定基準とする。
 
+## 現在の資産と不足
+
+| 対象 | 2026-08-11時点の確認結果 | Aでの扱い |
+|---|---|---|
+| 自動テスト | 76件成功を作業ログで確認済み | 変更後も全件成功を維持する |
+| emotion2vec Base checkpoint | `artifacts/checkpoints/emotion2vec_base.pt`に存在 | Aの固定encoderとして使用する |
+| IEMOCAP WAV | 現在確認できるのはSession 1配下の3,638 WAV | ユーザーがSession 2〜5を利用可能にした後、Codexが全sessionを検証する |
+| IEMOCAP既存特徴 | Session 1の1,085件・4クラス・768次元だけが存在 | 配線確認には再利用できるが、Aの固定split・union 12学習結果には使用しない |
+| IEMOCAP正解ラベル | 10,039行、`xxx`を含む元ラベルCSVが存在 | Codexが`xxx`除外とunion 12対応を実装する |
+| HCUDB注釈 | 4,620行、14話者、11種類の演技感情を確認済み | Codexが列対応と固定話者splitを作る |
+| HCUDB WAV | 4,620件すべて存在し、注釈の音声ファイル名と一致 | ユーザーによる追加準備は不要 |
+| HCUDB特徴 | 研究用Base特徴cacheは未作成 | CodexがBase特徴を抽出して検証する |
+
+IEMOCAPのSession 2〜5が利用可能になるまで、Codexはラベル契約、読込、共通decoder、checkpoint継続経路、合成データテストを先行して実装できる。実データ学習だけをデータ準備完了まで保留する。
+
+## 作業分担
+
+| 担当 | 作業 | 目的・完了の判断 |
+|---|---|---|
+| ユーザー | IEMOCAP Session 2〜5をローカルで利用可能にし、保存場所が既知の場所と異なる場合だけ絶対パスを伝える | Session 2〜4をtrain、Session 1をvalidation、Session 5をtestとして読める状態にする |
+| ユーザー | 長時間の特徴抽出・学習を開始するときにPCを稼働可能にする | 計算待ち中の中断を避ける。CSV編集、コード修正、コマンド実行は不要 |
+| Codex | union 12ラベル対応、`xxx`除外、評価時`excited`統合を実装・テストする | 日英で同じ出力契約を使用できる |
+| Codex | IEMOCAP固定splitとHCUDB固定話者splitを生成・検証・保存する | session・話者漏洩、空split、未知ラベルがない |
+| Codex | Aで共通使用するdecoderとcheckpoint継続経路を実装する | IEMOCAP checkpointを同じdecoderのままHCUDBへ引き継げる |
+| Codex | Base特徴のベンチマーク、抽出、cache検証を実行する | 768次元・有限値・encoder識別一致を確認できる |
+| Codex | 1 seed先行、残り2 seed、追加学習前後の日英評価と集計を実行する | Aの完了条件を満たす成果物を保存できる |
+
 ## 実装と成果物
 
+- 新規パイプラインを最初から作らず、既存の実装を次のように再利用する。
+  - `iemocap_downstream/notebook_pipeline.py`の固定session split、validation選択、test評価、checkpoint metadataを拡張する。
+  - `vad_downstream/notebook_pipeline.py`の注釈検証、話者分割、特徴cache、可変クラス数datasetをHCUDBへ使用する。
+  - `vad_downstream/train_parallel_emotion_vad.py`の初期checkpoint読込と継続学習処理を共通decoder経路へ再利用する。
+  - `vad_downstream/parallel_training.py`のmacro F1、UA、confusion matrix、checkpoint保存を再利用する。
 - AではBase特徴へ`encoder_id`、実測`input_dim`、checkpoint/revision、抽出粒度を渡し、cache manifestとcheckpointで一致を検証する。Bへ進む際に同じ契約をLargeへ適用する。
 - A・Bは入力層の`in_features`だけを変え、以降のdecoder構造、unionラベル、optimizer、学習率、seed、split、モデル選択規則を共通化する。
 - IEMOCAP checkpointを親としてHCUDB追加学習を開始し、`training_stage`、`parent_checkpoint`、seed、日英splitをmetadataへ保存する。
 - Cは公式分類結果だけを保存する。Dは事前抽出した+large特徴を使い、公式`proj`以外をoptimizerへ渡さない。
 - A・B・Dでは、該当する追加学習前後のmacro F1、UA、accuracy/WA、クラス別F1、confusion matrix、3-seed平均・標準偏差・対応するseed差を保存する。Cでは固定評価の同じ指標と予測結果を保存する。
 
-## 工数と段階工程
+## Aの直近工程と工数
 
-| 段階 | 作業 | 標準工数 | 状態・開始条件 |
-|---|---|---:|---|
-| A | Notebook差分保全・76テストの基準更新 | 5h | 2026-08-11完了 |
-| A | ラベル対応、固定split、評価規則の実装 | 12h | 次に着手 |
-| A | HCUDB/IEMOCAPのmanifest・カラム整理 | 12h | ラベル契約確定後 |
-| A | Base用cache識別・metadata・事前検証 | 6h | manifest整理後 |
-| A | IEMOCAP→HCUDB継続学習経路 | 8h | 学習前検査成功後 |
-| A | 1 seed先行実験と修正 | 6h | 継続学習経路完成後 |
-| A | 残り2 seedの実行・監視 | 4h | 1 seed成功後 |
-| A | 前後差、図、再現情報、英語維持判定 | 3h | 3 seed完了後 |
-| A | 再実行・障害対応バッファ | 2h | 必要時 |
-|  | **A小計（研究の主目的達成）** | **58h** | **残り53h** |
-| B | 非768次元、共通cache契約、Large対応 | 6h | A完了後 |
-| B | FunASR/+large環境、1 WAVベンチマーク、特徴抽出準備 | 8h | Large対応後 |
-| B | Bの継続学習経路、3 seed、A/B比較、バッファ | 16h | ベンチマーク合格後 |
-|  | **B追加小計** | **30h** | **累計88h** |
-| C | 公式9クラスheadの固定日英評価 | 4h | B完了後 |
-|  | **C追加小計** | **4h** | **累計92h** |
-| D | 公式`proj`学習経路、3 seed、比較、バッファ | 16h | C完了後 |
-|  | **D追加小計** | **16h** | **累計108h** |
+| 順序 | Codexが行う作業 | 目的 | 実働見積もり | 開始条件・成果物 |
+|---:|---|---|---:|---|
+| 1 | union 12ラベル変換とIEMOCAP読込の一般化 | 現在の4クラス固定を外し、日英で同じ出力を使う | 1〜2h | データ準備と並行可。ラベル変換テスト |
+| 2 | 共通decoder、継続checkpoint、固定splitの短縮テスト | IEMOCAPからHCUDBへ同じdecoderを引き継ぐ | 1〜2h | データ準備と並行可。合成データE2Eテスト |
+|  | **学習コード準備完了まで** |  | **累計2〜4h** | **Session 2〜5の準備を待たずに完了可能** |
+| 3 | 実音声1件のBase特徴抽出ベンチマークと全件抽出 | 学習入力を作り、計算時間と容量を確定する | 0.5〜1h＋計算待ち | shape・有限値・時間・容量記録、cache |
+|  | **正式な学習開始まで** |  | **累計2.5〜5h＋特徴抽出待ち** | **Session 1〜5と実特徴が利用可能で、学習開始条件を満たす** |
+| 4 | Aの1 seed先行実験、HCUDB追加学習、前後評価、修正 | Aを最小単位で最後まで通す | 累計6〜12h＋計算待ち | 1 seedの日英前後指標とcheckpoint |
+| 5 | 残り2 seedと集計 | 再現性と英語維持判定を得る | 累計10〜16h＋計算待ち | 3-seed平均・標準偏差・対応差・図 |
 
-- 工数は実働時間であり、CPU特徴抽出と学習の計算待ちは含めない。各段階の1 seed終了時に実測時間から当該段階の残工数を更新する。
-- Base特徴とLarge特徴はそれぞれ一度抽出し、同一encoder・抽出契約の全seedで再利用する。
+- 上表の時間は2026-08-11に確認した既存実装を再利用する前提の実働時間である。データコピー、CPU特徴抽出、学習の待ち時間は含めない。
+- Base特徴は一度抽出してAの全seedで再利用する。各抽出・学習の開始前に、予想終了時刻と必要空き容量を提示する。
 - B〜Dを実施しない場合でも、Aの完了条件を満たせば研究の主目的は達成したものとする。
+- BはA完了後にLargeの1 WAVベンチマークを行って工数を見積もる。CはB完了後、DはC完了後に個別見積もりを作る。
 
 ## テストゲートと完了条件
 
 ### Aの学習開始条件
 
-- 現在の76テストを全件成功させ、Baseの768次元特徴、次元不一致、cache識別不一致を追加テストする。非768次元の成功テストはB開始前へ回す。
+- 現在の76テストを全件成功させ、追加したunion 12ラベル、固定split、checkpoint継続、Baseの768次元特徴、次元不一致、cache識別不一致テストも成功させる。非768次元の成功テストはB開始前へ回す。
+- IEMOCAP Session 1〜5のWAV・ラベルが利用可能で、Session 2〜4=train、Session 1=validation、Session 5=testの各件数がゼロでないことを確認する。
 - train/validation/test間の話者・session重複、`xxx`混入、未知ラベル、ゼロ件splitを学習前に拒否する。
 - Base encoderをoptimizerへ渡さず、学習前後でencoderのparameter hashが不変であることを確認する。
 - IEMOCAP checkpointとHCUDB追加学習設定の`encoder_id`、`input_dim`、ラベル、splitが一致し、不一致時は学習開始前に拒否する。
@@ -91,8 +115,9 @@
 
 ## 前提
 
-- HCUDB1は4,620 WAV、IEMOCAPは3,638 WAVがローカルに存在する。
+- HCUDB1の4,620 WAVと注釈はローカルに存在し、対応を確認済みである。
+- IEMOCAPは2026-08-11時点でSession 1だけを確認済みであり、ユーザーがSession 2〜5を用意する。用意後はCodexが件数、ラベル、session、音声形式を再検証する。
 - 現PCはCore i7-1260P、WSL RAM約7.6GiB、CUDAなし、空き容量約103GBである。
 - IEMOCAPの希少クラスは学習対象に残すが、話者分割を崩してまでtrainへ移動せず、主性能主張には使用しない。
-- VAD媒介型、encoderの部分・全層学習、5-fold交差検証は今回の108時間に含めない。
+- VAD媒介型、encoderの部分・全層学習、5-fold交差検証はAの10〜16時間に含めない。
 - A完了前はB〜Dの実装・環境構築・実験を開始しない。条件間で再利用できる設計をAに採用しても、それ自体をB着手とは扱わない。

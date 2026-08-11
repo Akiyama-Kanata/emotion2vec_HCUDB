@@ -1,5 +1,7 @@
 # emotion2vec研究 現在の進捗・完成度報告書
 
+> **履歴資料:** 本報告書は2026-08-02時点の記録である。記載された残作業、推奨順序、完了条件は現行計画ではない。以後の計画判断には`docs/plans/2026-08-11-ja-en-ser-revised-effort-plan.md`だけを使用する。
+
 作成日: 2026-08-02  
 対象リビジョン: `8b943a1`（ブランチ `test`、`origin/test` より1コミット先行）
 
@@ -36,7 +38,7 @@
 
 | 工程・成果物 | 現在の判定 | 根拠 | 残作業 |
 |---|---|---|---|
-| 研究目的と比較方針 | 完了 | `docs/plans/ja_ser_vad_category_incremental_plan.md` | 実験結果を見た後に条件を変更しないよう、英語性能維持の許容幅と統計手法を実験前に追記する |
+| 研究目的と比較方針 | 完了 | `docs/plans/2026-08-11-ja-en-ser-revised-effort-plan.md` | 実験結果を見た後に条件を変更しないよう、英語性能維持の許容幅と統計手法を実験前に追記する |
 | Base向け直接感情分類＋並列VA/D | 実装済み・デモ検証済み | `ParallelEmotionVADClassifier`、学習・推論CLI、デモcheckpoint・metrics・評価図 | 実Base特徴と実データで学習・評価する |
 | 探索用VAD媒介型 | 実装済み | `VADMediatedEmotionClassifier`、学習・推論CLI、関連テスト | 主実験完了後に必要性を再判定する |
 | 実emotion2vec BaseのCPU推論経路 | 配線検証済み | 公式Base checkpoint、`outputs/real_emotion2vec_smoke.json` | 学習済みheadへ置換し、意味のある評価を行う |

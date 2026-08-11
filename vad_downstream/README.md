@@ -73,7 +73,7 @@ Dominance status is `trained` when the current train split has D labels,
 trained D head. An `untrained` numeric output is schema-compatible only and is
 not a learned Dominance estimate.
 
-## WAV to VA/VAD staged plan
+## WAV to VA/VAD staged implementation
 
 The WAV-to-VA/VAD path is intentionally staged.
 

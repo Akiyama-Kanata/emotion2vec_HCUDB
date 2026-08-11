@@ -24,6 +24,10 @@ from iemocap_downstream.notebook_pipeline import (
 )
 
 
+def notebook_source_text(source):
+    return source if isinstance(source, str) else "".join(source)
+
+
 class IemocapNotebookPipelineTest(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
@@ -185,17 +189,17 @@ class IemocapNotebookPipelineTest(unittest.TestCase):
         notebook = json.loads(notebook_path.read_text(encoding="utf-8"))
         by_id = {cell["id"]: cell for cell in notebook["cells"]}
         self.assertEqual(
-            by_id["base-run"]["source"].strip(),
+            notebook_source_text(by_id["base-run"]["source"]).strip(),
             "base_result = run_validation_experiment(bundle, hp_base)",
         )
         self.assertEqual(
-            by_id["trial-run"]["source"].strip(),
+            notebook_source_text(by_id["trial-run"]["source"]).strip(),
             "trial_result = run_validation_experiment(bundle, hp_trial)",
         )
-        all_source = "\n".join(cell["source"] for cell in notebook["cells"])
+        all_source = "\n".join(notebook_source_text(cell["source"]) for cell in notebook["cells"])
         self.assertNotIn("run_one_fold", all_source)
         self.assertIn("select_best_experiment({'base': base_result, 'trial': trial_result})", all_source)
-        final_source = by_id["final-evaluation"]["source"]
+        final_source = notebook_source_text(by_id["final-evaluation"]["source"])
         self.assertEqual(final_source.count("evaluate_selected_experiment"), 1)
         for split in ("train", "validation", "test"):
             self.assertIn(f"'{split}'", final_source)

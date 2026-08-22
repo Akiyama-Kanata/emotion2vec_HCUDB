@@ -2,6 +2,22 @@
 
 作成日: 2026-08-20
 
+> **2026-08-22方針変更:** 主学習をMSP-Podcast Release 1.10へ変更し、現行研究の4クラス表記・出力順は`anger / happy / sadness / disgust`とする。本書の`neutral`を含む候補やDS-001比較は決定前の調査履歴であり、現行判断には[MSP-Podcast→HCUDB SER研究 現行実施計画](../plans/2026-08-22-msp-hcudb-feature-decoder-plan.md)を使用する。
+
+## 2026-08-22 現行4クラス対応
+
+| 共通出力 | MSP-Podcast Release 1.10 | HCUDB1 | IEMOCAP | 現行の扱い |
+|---|---|---|---|---|
+| `anger` | Release metadataから元ラベル名と件数を再確認 | `怒り` | `ang` | 正式評価 |
+| `happy` | Release metadataから元ラベル名と件数を再確認 | `狂喜・楽しい`、`余裕・嬉しい` | `hap`、`exc` | 統合規則と件数をmanifestへ保存 |
+| `sadness` | Release metadataから元ラベル名と件数を再確認 | `憂鬱・悲しい` | `sad` | 正式評価 |
+| `disgust` | Release metadataから元ラベル名と件数を再確認 | `嫌い` | `dis` | HCUDBは近似対応。IEMOCAPは2件のため記述評価 |
+
+- MSP-Podcastは全感情ラベルと件数を調べたうえで、この4クラスだけを学習対象へ抽出する。
+- MSP-PodcastとHCUDBでは4クラスすべてを正式な性能比較対象とする。
+- IEMOCAPでは`anger / happy / sadness`を主定量比較し、`disgust`は出力確率・予測ラベル・混同行列を保存して確認できるようにする。
+- すべてのデータセットで元ラベルを`original_emotion`として保持し、変換後を`mapped_emotion`、変換版を`mapping_version`として保存する。
+
 ## 1. 目的
 
 IEMOCAP、HCUDB1、DS-001の感情ラベルを比較し、複数データセットを使った音声感情認識で共通クラスを設計するための候補を整理する。
@@ -33,7 +49,7 @@ IEMOCAPとHCUDB1の件数は、`notebooks/machine_learning_dataset_analysis.ipyn
 |---|---|---|---|---|---|
 | 中立 | `neu` | `冷静` | `普通` | B | `neu`と`普通`は直接対応に近い。`冷静`は落ち着いた状態を含むため近似として扱う |
 | 落ち着き・リラックス | — | `冷静`、`リラックス・気楽` | `落ち着き` | B | HCUDB1の2カテゴリをまとめる場合は情報が失われる。IEMOCAPには直接対応なし |
-| 喜び | `hap`、`exc` | `狂喜・楽しい`、`余裕・嬉しい` | `喜び` | B | 広い`joy`へ統合可能。ただし興奮度や喜び方の違いが失われる。`exc -> hap`はIEMOCAPで用いられる統合方法 |
+| 喜び | `hap`、`exc` | `狂喜・楽しい`、`余裕・嬉しい` | `喜び` | B | 共通出力`happy`へ統合可能。ただし興奮度や喜び方の違いが失われる。`exc -> hap`はIEMOCAPで用いられる統合方法 |
 | 悲しみ | `sad` | `憂鬱・悲しい` | `悲しみ` | A | 共通クラス`sadness`として利用可能 |
 | 怒り | `ang` | `怒り` | `怒り` | A | 共通クラス`anger`として利用可能 |
 | 恐れ | `fea` | `恐れ` | `恐れ` | A | 共通クラス`fear`として利用可能。ただしIEMOCAPでは40件と少ない |
@@ -96,7 +112,7 @@ IEMOCAPとHCUDB1の件数は、`notebooks/machine_learning_dataset_analysis.ipyn
 DS-001は感情ラベルの`普通`と発話強度の`普通`が同じ文字列になる。実装では混同を避けるため、例えば次のように別フィールド・別値へ正規化する。
 
 ```text
-emotion = neutral | calm | joy | sadness | anger | fear | disgust | surprise | impatience
+emotion = neutral | calm | happy | sadness | anger | fear | disgust | surprise | impatience
 intensity = normal | strong
 ```
 
@@ -120,15 +136,15 @@ intensity = normal | strong
 | 共通クラス | IEMOCAP | HCUDB1 | DS-001 | 注意点 |
 |---|---|---|---|---|
 | `anger` | `ang` | 怒り | 怒り | 直接対応 |
-| `joy` | `hap`＋`exc` | 狂喜・楽しい＋余裕・嬉しい | 喜び | 複数の喜び・興奮カテゴリを統合する |
+| `happy` | `hap`＋`exc` | 狂喜・楽しい＋余裕・嬉しい | 喜び | 複数の喜び・興奮カテゴリを統合する |
 | `sadness` | `sad` | 憂鬱・悲しい | 悲しみ | 直接対応 |
 | `neutral` | `neu` | 冷静 | 普通 | HCUDB1の冷静は中立と完全には同義でない |
 
-IEMOCAPの一般的な4クラス設定に近く、IEMOCAP内の件数を確保しやすい。一方で、`joy`と`neutral`に意味の近似統合が含まれるため、論文・報告では変換規則を明示する。
+IEMOCAPの一般的な4クラス設定に近く、IEMOCAP内の件数を確保しやすい。一方で、`happy`と`neutral`に意味の近似統合が含まれるため、論文・報告では変換規則を明示する。
 
 ### 6.3 広い7クラス候補
 
-`neutral`, `joy`, `sadness`, `anger`, `fear`, `disgust`, `surprise`を共通クラスとする案である。ただし、HCUDB1の`冷静 -> neutral`と`嫌い -> disgust`は近似対応であり、IEMOCAPの`fear`、`disgust`、`surprise`は極端に少ない。主実験へ採用する前に、各splitの件数と評価可能性を確認する。
+`anger`, `happy`, `sadness`, `neutral`, `fear`, `disgust`, `surprise`を共通クラスとする案である。ただし、HCUDB1の`冷静 -> neutral`と`嫌い -> disgust`は近似対応であり、IEMOCAPの`fear`、`disgust`、`surprise`は極端に少ない。主実験へ採用する前に、各splitの件数と評価可能性を確認する。
 
 ## 7. 推奨方針
 

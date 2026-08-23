@@ -182,3 +182,33 @@ MSP-PodcastとHCUDBは4クラスすべてを正式比較する。IEMOCAPは3ク�
 - 実音声1件のベンチマークと全件の時間・容量見積もりがある。
 - 長時間処理を開始する直前に、対象、予想時間、必要容量をユーザーへ提示する。
 
+## 12. 2026-08-23確定追補
+
+本節は上記の未確定表現を置き換える確定契約である。新しい計画ファイルは作成せず、本文書を引き続き単一の現行計画とする。
+
+- MSP-Podcastは公式`Train → train`、`Development → validation`、`Test1 → test`を使用する。Test2 13,289件は全件監査するが、今回の学習・評価・cache対象から除外する。
+- `SpkrID=Unknown`は主manifestのincluded行から除外する。既知話者のTrain/Development/Test1間重複は0件である。
+- HCUDBは`hcudb1_speaker_split_v1`を使用する。train=`FA, FB, FD, FH, FI, FL, MC, MJ, MM, MN`、validation=`FF, MK`、test=`FG, ME`である。
+- IEMOCAPはSession 1–5をまとめた外部testとし、4クラス出力を維持する。4クラス記述評価に加えて3クラス主集計を保存するが、確率を再正規化しない。
+- `--layer`は`final`だけを受け付け、cache metadataには`final_after_encoder_norm`を保存する。整数層は拒否する。
+- manifest schemaは`ser_manifest_v1`、feature cacheは`ser_feature_cache_v1`、decoder checkpointは`ser_decoder_checkpoint_v1`とする。
+- emotion2vec事前学習にMSP-Podcast v1.8が使われたことは論文Table 1で確認済みのlimitationとする。R1.8とR1.10の包含関係はmetadata不在のため`unverified`のままとする。
+
+## 13. 実装状況（2026-08-23）
+
+- [x] worktree保護、dirty prompt SHA-256記録、実装前76テスト成功
+- [x] version付きmapping、共通reader、manifest、strict split/leakage検証CLI
+- [x] 48→16 kHz変換、mono/有限値検査、再開可能shard、partial復旧、hash、mmap reader
+- [x] dataset非依存`BaseModel`、旧import/state dict互換re-export
+- [x] validation UAR→macro F1→lossのmodel選択
+- [x] 0–1 metrics、4×4混同行列、クラス別指標、4確率CSV/JSON保存
+- [x] MSP親/HCUDB子のstage・親ID・親SHAとparent/resume分離
+- [x] 3 dataset before/afterのmanifest/utterance集合signature検証
+- [x] Notebook 01/02 builder、既定の長時間実行フラグfalse、静的境界テスト
+- [x] CPU合成E2E（1 epoch、seed 42）
+- [x] HCUDB実音声1件のBase checkpoint benchmark
+- [x] 既存・新規を含む101テストとNotebook 01/02 demoの最終成功
+- [ ] MSP音声配置後のstrict manifestと全対象duration集計
+- [ ] MSP全件時間・容量見積り、+20%容量ゲート、正式実行承認
+
+詳細監査とbenchmark値は`docs/reports/2026-08-23-msp-hcudb-data-audit.md`に記録する。MSP `Audio/`が空であるため、正式な全件抽出・学習は引き続き開始しない。

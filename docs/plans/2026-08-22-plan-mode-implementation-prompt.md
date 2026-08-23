@@ -13,8 +13,6 @@
 - 主学習はMSP-Podcast Release 1.10、追加学習はHCUDB、外部英語testはIEMOCAPとする。
 - decoder出力の表記・順序は`anger / happy / sadness / disgust`の4クラスに固定する。
 - MSP-PodcastとHCUDBでは4クラスすべてを正式評価する。
-- IEMOCAPでは十分な件数がある`anger / happy / sadness`を主定量評価し、`disgust`は予測を保存・確認するが、2件だけなので一般的な性能結論には使わない。
-- IEMOCAP評価時もdecoder出力は4クラスのままとし、`disgust`予測を隠したり3クラスへ再正規化したりしない。
 - HCUDBの「嫌い→disgust」は近似対応として明記し、元ラベルを保持する。
 - seedは`42 / 43 / 44`とする。
 - IEMOCAPを学習に使わないため、旧IEMOCAP 5-foldは現行主実験へ持ち込まない。
@@ -39,7 +37,6 @@
 - MSP学習checkpoint→HCUDB追加学習checkpointの親子metadataと互換性検証を設計する。
 - 追加学習前後で同一のMSP、HCUDB、IEMOCAP評価集合を使う。
 - accuracy / WA、UAR、macro F1、クラス別precision / recall / F1 / support、4クラスconfusion matrix、発話単位の4クラス確率を保存する。
-- IEMOCAPの3クラス主評価と4クラス記述評価を分離し、`disgust`のsupportを必ず表示する。
 - 合成fixtureで、manifest→cache検証→MSP decoder学習→checkpoint保存→HCUDB追加学習→3データセット前後評価までを短時間E2Eテストする。
 - 既存テストを壊さず、mapping、split漏洩、cache破損、metadata不一致、checkpoint継続、Notebook責務分離のテストを追加する。
 - 実音声1件の抽出ベンチマーク、全件の時間・容量見積もり、正式実行前ゲートを計画する。

@@ -1,0 +1,10 @@
+{
+  "split_version": "hcudb1_speaker_split_v1",
+  "seed": 42,
+  "method": "sort speakers by gender and id, shuffle each gender with random.Random(42), then allocate one speaker per gender to validation and test",
+  "splits": {
+    "train": ["FA", "FB", "FD", "FH", "FI", "FL", "MC", "MJ", "MM", "MN"],
+    "validation": ["FF", "MK"],
+    "test": ["FG", "ME"]
+  }
+}

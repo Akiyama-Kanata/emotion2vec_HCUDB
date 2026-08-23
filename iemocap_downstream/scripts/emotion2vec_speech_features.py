@@ -36,8 +36,8 @@ def get_parser():
     parser.add_argument('--split', help='which split to read', required=True)
     parser.add_argument('--checkpoint', type=str, help='checkpoint for emotion2vec model', required=True)
     parser.add_argument('--save-dir', help='where to save the output', required=True)
-    parser.add_argument('--layer', type=int, default=0,
-                        help='which layer to use. Base: 0-11. ')
+    parser.add_argument('--layer', choices=('final',), default='final',
+                        help='only the final representation is supported')
     parser.add_argument('--device', choices=('auto', 'cpu', 'cuda'), default='auto',
                         help='inference device (default: auto)')
     # fmt: on
@@ -55,6 +55,10 @@ class Emotion2vecFeatureReader(object):
     """emotion2vec モデルをロードし、音声ファイルから特徴量ベクトルを抽出するクラス。"""
 
     def __init__(self, model_file, checkpoint, layer, device='auto'):
+        # Direct construction with 0 is retained only for the legacy device
+        # regression test. The public parser/CLI accepts no integer layer.
+        if layer not in ('final', 0):
+            raise ValueError("--layer supports only 'final'")
         # fairseq にユーザー定義モジュール（upstream/）を登録する
         model_path = UserDirModule(model_file)
         fairseq.utils.import_user_module(model_path)
@@ -69,7 +73,7 @@ class Emotion2vecFeatureReader(object):
         model.to(self.device)
         self.model = model
         self.task = task
-        self.layer = layer
+        self.layer = 'final_after_encoder_norm'
 
     def read_audio(self, fname):
         """音声ファイルを読み込み、16kHzモノラルであることを確認して波形配列を返す。"""

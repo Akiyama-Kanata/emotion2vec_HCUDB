@@ -1,0 +1,23 @@
+{
+  "status": "ok",
+  "audio_file_name": "FA-01-01-1.wav",
+  "audio_sha256": "97e4916ddeaca9f73997855f0950c8cda1878f452b6c1bf7b8e17e2f0a101ca6",
+  "source_sample_rate_hz": 48000,
+  "source_channels": 1,
+  "source_num_samples": 60416,
+  "source_duration_seconds": 1.2586666666666666,
+  "target_sample_rate_hz": 16000,
+  "encoder_name": "emotion2vec_base",
+  "encoder_checkpoint_sha256": "4f14ddf7ba394bcafdd4bff6ae0f24ab2e4134260d4dd42c58ea791a201b02dd",
+  "feature_layer": "final_after_encoder_norm",
+  "device": "cpu",
+  "checkpoint_load_seconds": 66.270636871,
+  "preprocessing_seconds": 1.9053738259999875,
+  "extraction_seconds": 0.4167887739999969,
+  "extraction_realtime_factor": 0.3311351488347433,
+  "feature_frames": 62,
+  "feature_dim": 768,
+  "feature_dtype": "float32",
+  "feature_bytes": 190464,
+  "feature_bytes_per_audio_second": 151322.0338983051
+}

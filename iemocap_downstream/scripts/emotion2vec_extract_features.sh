@@ -12,17 +12,11 @@ model_path=$3         # emotion2vec upstream モデルのディレクトリ
 checkpoint_path=$4    # 事前学習済みチェックポイント (.pt) のパス
 save_dir=$5           # 抽出した特徴量 (.npy) の保存先ディレクトリ
 
-# Here we only extract the last layer
-# 最終層（layer 11、1-indexed で 12層目）のみを特徴量として抽出する
-for layer in {11..11}; do
-    true_layer=$[$layer+1]
-    echo "Extracting features from layer $true_layer"
-
-    python scripts/emotion2vec_speech_features.py  \
-        --data $manifest_path \
-        --model $model_path \
-        --split=train \
-        --checkpoint=$checkpoint_path \
-        --save-dir=$save_dir \
-        --layer=$layer
-done
+# Legacy IEMOCAP wrapper: only the model's final normalized representation is valid.
+python scripts/emotion2vec_speech_features.py  \
+    --data $manifest_path \
+    --model $model_path \
+    --split=train \
+    --checkpoint=$checkpoint_path \
+    --save-dir=$save_dir \
+    --layer=final

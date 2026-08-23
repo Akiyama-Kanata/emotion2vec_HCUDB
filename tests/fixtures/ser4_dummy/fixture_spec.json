@@ -1,0 +1,9 @@
+{
+  "fixture_version": "ser4_dummy_v1",
+  "label_order": ["anger", "happy", "sadness", "disgust"],
+  "feature_dim": 8,
+  "datasets": ["msp_podcast", "hcudb1", "iemocap"],
+  "study_seeds": [42, 43, 44],
+  "default_test_epochs": 1,
+  "binary_artifacts": "generated_in_temporary_directory"
+}

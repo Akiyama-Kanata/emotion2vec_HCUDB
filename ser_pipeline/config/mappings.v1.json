@@ -1,0 +1,51 @@
+{
+  "schema_version": "ser_mapping_config_v1",
+  "label_order": ["anger", "happy", "sadness", "disgust"],
+  "datasets": {
+    "msp_podcast": {
+      "dataset_release": "R1.10",
+      "mapping_version": "msp_podcast_r1_10_primary_v1",
+      "mappings": {
+        "A": "anger",
+        "H": "happy",
+        "S": "sadness",
+        "D": "disgust"
+      },
+      "excluded_labels": ["C", "F", "N", "O", "U", "X"],
+      "approximate_labels": []
+    },
+    "hcudb1": {
+      "dataset_release": "HCUDB1",
+      "mapping_version": "hcudb1_acted_emotion_v1",
+      "mappings": {
+        "怒り": "anger",
+        "狂喜・楽しい": "happy",
+        "余裕・嬉しい": "happy",
+        "憂鬱・悲しい": "sadness",
+        "嫌い": "disgust"
+      },
+      "excluded_labels": [
+        "驚き",
+        "恐れ",
+        "冷静",
+        "軽蔑",
+        "リラックス・気楽",
+        "眠い・疲れた"
+      ],
+      "approximate_labels": ["嫌い"]
+    },
+    "iemocap": {
+      "dataset_release": "IEMOCAP_full_release",
+      "mapping_version": "iemocap_external_v1",
+      "mappings": {
+        "ang": "anger",
+        "hap": "happy",
+        "exc": "happy",
+        "sad": "sadness",
+        "dis": "disgust"
+      },
+      "excluded_labels": ["fea", "fru", "neu", "oth", "sur", "xxx"],
+      "approximate_labels": []
+    }
+  }
+}

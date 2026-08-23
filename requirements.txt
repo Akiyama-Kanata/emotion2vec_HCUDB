@@ -10,3 +10,4 @@ numpy<2
 npy-append-array
 tqdm
 scikit-learn
+scipy

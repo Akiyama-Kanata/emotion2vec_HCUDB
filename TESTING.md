@@ -10,7 +10,7 @@ wsl -d Ubuntu-Recovered --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec -e /ho
 Expected result:
 
 ```text
-Ran 65 tests in ...s
+Ran 101 tests in ...s
 OK
 ```
 
@@ -58,13 +58,36 @@ Notes:
 
 ## Latest verification
 
-On 2026-08-02, the recovered environment started successfully, but the full
-suite did not pass:
+Before the MSP/HCUDB implementation, the baseline suite passed on 2026-08-23:
 
 ```text
-Ran 59 tests in 3.953s
-FAILED (errors=2)
-Successful: 57; failures: 0; errors: 2
-First failing test: test_notebook_pipeline (unittest.loader._FailedTest)
-Exception tail: ModuleNotFoundError: No module named 'pandas'
+Ran 76 tests in 7.431s
+OK
+```
+
+The new SER tests can be run independently while iterating:
+
+```bash
+wsl -d Ubuntu-Recovered --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec -e /home/akiyama/miniforge/envs/emotion2vec-py310/bin/python -m unittest \
+  tests.test_ser_mappings tests.test_ser_splits tests.test_ser_manifest \
+  tests.test_ser_cache tests.test_ser_decoder tests.test_ser_e2e \
+  tests.test_ser_notebook_boundaries
+```
+
+Run both separated notebooks with all formal/long-running flags disabled:
+
+```bash
+wsl -d Ubuntu-Recovered --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec -e /home/akiyama/miniforge/envs/emotion2vec-py310/bin/python tests/execute_ser_demo_notebooks.py
+```
+
+Formal feature extraction and the three-seed study are not part of the test
+suite. They remain gated by real MSP audio availability, complete manifest and
+cache validation, capacity estimation, and explicit user approval.
+
+Final implementation verification on 2026-08-23:
+
+```text
+Ran 101 tests in 16.030s
+OK
+Separated SER demo notebooks completed
 ```

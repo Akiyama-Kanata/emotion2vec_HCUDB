@@ -93,3 +93,24 @@ Session 1–5のmetadata 10,039件を外部`test`へまとめる。4クラスmap
 - [ ] ユーザーの明示的な正式開始指示
 
 したがって、実装・合成E2E・1件benchmarkまで完了可能だが、正式な全件抽出と学習は開始しない。
+
+## 2026-08-24追補: HCUDB1全対象の特徴抽出
+
+ユーザーの開始指示を受け、現行4クラス実験で採用するHCUDB1の2,100発話について、固定emotion2vec Baseによる特徴抽出を完了した。生コーパス全4,620発話のうち、現行mappingで除外する6感情は抽出対象に含めていない。
+
+| 項目 | 結果 |
+|---|---:|
+| strict manifest | 全4,620行、採用2,100件、採用音声欠損0 |
+| split | train 1,500 / validation 300 / test 300 |
+| manifest SHA-256 | `1ff09b60be9d83d42c0ee2203c1a655d218f3070a978303000e40e4fbc3faf46` |
+| cache ID | `fdbaf28f74b94d3f` |
+| encoder checkpoint SHA-256 | `4f14ddf7ba394bcafdd4bff6ae0f24ab2e4134260d4dd42c58ea791a201b02dd` |
+| 特徴契約 | `final_after_encoder_norm` / 768次元 / float32 |
+| cache構成 | 4 shard、2,100発話 |
+| cache総容量 | 432,034,839 bytes（412.02 MiB） |
+| partial | 0件 |
+| 独立cache再検証 | `status: ok` |
+
+manifestは`runs/ser_manifests/hcudb1_4class_v1.jsonl`、cacheは`runs/ser_feature_cache/hcudb1_base_final_v1`へ保存した。`runs/`はGit管理外であるため、再利用時は上記manifest hash、cache ID、checkpoint hashの一致を確認する。
+
+この完了により、HCUDB側は実データ特徴cacheの準備まで進んだ。ただしdecoder学習と性能評価は未実施であり、日本語SER性能の改善を示す結果ではない。MSP全件抽出・MSP親decoder学習・HCUDB継続学習の開始条件は別途満たす必要がある。

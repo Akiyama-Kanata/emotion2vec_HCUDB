@@ -32,7 +32,7 @@ frame-level features: [時間, 768]
 
 ## 現在の実験・評価設定
 
-旧スライドでは「emotion2vecのfine-tuning」と表現していましたが、現在の主な学習対象は
+以前は「emotion2vecのfine-tuning」と表現していましたが、現在の主な学習対象は
 **固定したemotion2vec特徴の上に置く下流head**です。したがって、現段階の実験は厳密には
 emotion2vec本体のfine-tuningではなく、`head tuning`です。
 

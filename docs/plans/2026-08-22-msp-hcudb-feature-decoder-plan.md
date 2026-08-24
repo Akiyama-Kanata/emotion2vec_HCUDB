@@ -212,3 +212,14 @@ MSP-PodcastとHCUDBは4クラスすべてを正式比較する。IEMOCAPは3ク�
 - [ ] MSP全件時間・容量見積り、+20%容量ゲート、正式実行承認
 
 詳細監査とbenchmark値は`docs/reports/2026-08-23-msp-hcudb-data-audit.md`に記録する。MSP `Audio/`が空であるため、正式な全件抽出・学習は引き続き開始しない。
+
+## 14. 実行状況追補（2026-08-24）
+
+- [x] HCUDB1のstrict manifestを作成（全4,620行、現行4クラス対象2,100件、欠損0）
+- [x] HCUDB1対象2,100発話のemotion2vec Base特徴を全件抽出
+- [x] train 1,500 / validation 300 / test 300、4 shard、412.02 MiB、partial 0件を確認
+- [x] cache ID `fdbaf28f74b94d3f`、manifest SHA-256 `1ff09b60be9d83d42c0ee2203c1a655d218f3070a978303000e40e4fbc3faf46`で独立再検証成功
+- [ ] MSP全件特徴抽出と親decoder学習
+- [ ] MSP親checkpointからのHCUDB継続学習と正式評価
+
+HCUDB側は実音声の特徴cache準備まで完了した。これは実験準備上の進捗であり、decoder性能や追加学習効果の結果ではない。

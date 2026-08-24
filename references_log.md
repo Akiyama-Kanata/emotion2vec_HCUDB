@@ -100,3 +100,21 @@
 | 論文 | 著者 | 年 | エビデンス強度 | DOI/URL | 使用した主張 |
 |------|------|----|--------------|---------|-------------|
 | The MSP-Podcast Corpus | Busso et al. | 2025 | [中・Web本文確認: プレプリント] | https://arxiv.org/abs/2509.09791 | MSP-Podcastは複数releaseを通じて発話・注釈を拡張してきたコーパスであり、版間の音声ID重複は実ファイルまたはmanifestで確認する必要がある |
+
+## 2026-08-24 — encoder出力次元とHCUDB・MSP-Podcast分割の妥当性
+
+**質問/文脈**: emotion2vec Baseの768次元表現と4クラスdecoder出力を区別し、HCUDB固定10/2/2話者splitおよびMSP-Podcast公式partitionが評価条件として妥当かを確認した。
+
+emotion2vec論文、HCUDB公式配布情報、MSP-Podcast公式コーパス仕様は既存記録を再引用したため、重複行は追加しない。
+
+| 論文 | 著者 | 年 | エビデンス強度 | DOI/URL | 使用した主張 |
+|------|------|----|--------------|---------|-------------|
+| Acoustic Features and Neural Representations for Categorical Emotion Recognition from Speech | Keesing et al. | 2021 | [高・Web本文確認] | https://doi.org/10.21437/Interspeech.2021-2217 | 未知話者への一般化を評価するため、SERで話者独立cross-validationを用いる研究設計例がある |
+
+## 2026-08-24 — MSP-Podcast Release 1.10のdisgust件数
+
+**質問/文脈**: ローカルのRelease 1.10 `labels_consensus.csv`から、`disgust`を全metadataで2,946件、現行4クラス実験条件で2,434件（Train 1,237／Development 465／Test1 732）とsplit別に再集計した。
+
+| 論文 | 著者 | 年 | エビデンス強度 | DOI/URL | 使用した主張 |
+|------|------|----|--------------|---------|-------------|
+| The Importance of Calibration: Rethinking Confidence and Performance of Speech Multi-label Emotion Classifiers（再引用） | Chou et al. | 2023 | [高・Web本文確認] | https://doi.org/10.21437/Interspeech.2023-1113 | Release 1.10のTrain／Development／Test構成と、primary emotionにdisgustが含まれることの確認。正確な件数はローカルmetadataを一次根拠として集計 |

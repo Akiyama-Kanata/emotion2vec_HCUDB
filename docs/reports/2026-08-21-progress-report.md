@@ -125,7 +125,6 @@ IEMOCAP train / validation
 | `outputs/real_emotion2vec_smoke.json` | 実encoder＋random modelの配線確認。性能結果ではない |
 | `runs/notebooks/audio_to_emotion_vad/*` | 合成音声・仮特徴によるデモ。研究結果ではない |
 | `runs/iemocap_base_downstream/five_fold/*` | `demo_synthetic_fixed_features`による5-foldデモ。平均値をIEMOCAP性能として引用不可 |
-| `artifacts/presentations/23RD004_秋山叶太_研究進捗_2026-08-06_7月版更新.pptx` | 研究進捗発表資料 |
 
 `artifacts/checkpoints/`、`outputs/`、`runs/`は`.gitignore`対象であり、Gitだけでは再現用生成物を保全できない。正式実験では、成果物の保存場所・manifest・commit hash・checkpoint hashを別途固定する必要がある。
 
@@ -136,7 +135,7 @@ IEMOCAP train / validation
 3. テスト数が76件へ増え、2026-08-11と2026-08-21の両方で全件成功した。
 4. 条件Aを必須とし、B〜Dを順番に後置する現行計画へ整理した。
 5. IEMOCAP・HCUDB1・DS-001のラベルと件数を比較し、直接対応と近似対応を分離した。
-6. 研究進捗発表用PPTXと最新のラベル対応文書を作成した。
+6. 最新のラベル対応文書を作成した。
 7. 2026-08-21に固定1 splitを廃止し、IEMOCAP 5-fold×3 seedとHCUDB固定10/2/2話者splitを条件Aへ採用した。
 
 主実験のmetrics取得はこの期間にも進んでいない。進展は、主として**計画の固定、試作コードの信頼性向上、データ契約の調査**である。

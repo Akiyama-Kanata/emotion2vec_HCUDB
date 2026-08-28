@@ -91,6 +91,7 @@ $missing = 0
 $copied = 0
 $skipped = 0
 $failed = 0
+$zeroLengthSource = 0
 $processed = 0
 
 foreach ($item in $batch) {
@@ -105,6 +106,19 @@ foreach ($item in $batch) {
     }
 
     $sourceSize = (Get-Item -LiteralPath $sourceFile).Length
+    if ($sourceSize -le 0) {
+        $zeroLengthSource++
+        $failed++
+        $processed++
+        $progress = @{
+            Activity = 'WAV download'
+            Status = "$processed / $($batch.Count)"
+            PercentComplete = (($processed / $batch.Count) * 100)
+        }
+        Write-Progress @progress
+        continue
+    }
+
     if (Test-Path -LiteralPath $destinationFile -PathType Leaf) {
         $destinationSize = (Get-Item -LiteralPath $destinationFile).Length
         if ($sourceSize -gt 0 -and $destinationSize -eq $sourceSize) {
@@ -185,6 +199,7 @@ $summary = [pscustomobject]@{
     Skipped = $skipped
     Missing = $missing
     Failed = $failed
+    ZeroLengthSource = $zeroLengthSource
 }
 
 $progressLog = Join-Path $PSScriptRoot 'msp_download_progress.csv'

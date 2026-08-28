@@ -1,0 +1,145 @@
+[2026-08-24 11:16:12] Starting batch 40 / 52
+
+BatchNumber      : 40
+BatchSize        : 500
+Selected         : 500
+Completed        : 0
+Copied           : 0
+Skipped          : 0
+Missing          : 0
+Failed           : 500
+ZeroLengthSource : 500
+
+[2026-08-24 11:16:24] Starting batch 41 / 52
+BatchNumber      : 41
+BatchSize        : 500
+Selected         : 500
+Completed        : 74
+Copied           : 74
+Skipped          : 0
+Missing          : 0
+Failed           : 426
+ZeroLengthSource : 426
+
+[2026-08-24 11:17:43] Starting batch 42 / 52
+BatchNumber      : 42
+BatchSize        : 500
+Selected         : 500
+Completed        : 317
+Copied           : 317
+Skipped          : 0
+Missing          : 0
+Failed           : 183
+ZeroLengthSource : 183
+
+[2026-08-24 11:22:41] Starting batch 43 / 52
+BatchNumber      : 43
+BatchSize        : 500
+Selected         : 500
+Completed        : 500
+Copied           : 500
+Skipped          : 0
+Missing          : 0
+Failed           : 0
+ZeroLengthSource : 0
+
+[2026-08-24 11:30:58] Starting batch 44 / 52
+BatchNumber      : 44
+BatchSize        : 500
+Selected         : 500
+Completed        : 500
+Copied           : 500
+Skipped          : 0
+Missing          : 0
+Failed           : 0
+ZeroLengthSource : 0
+
+[2026-08-24 11:39:43] Starting batch 45 / 52
+BatchNumber      : 45
+BatchSize        : 500
+Selected         : 500
+Completed        : 500
+Copied           : 500
+Skipped          : 0
+Missing          : 0
+Failed           : 0
+ZeroLengthSource : 0
+
+[2026-08-24 11:48:23] Starting batch 46 / 52
+BatchNumber      : 46
+BatchSize        : 500
+Selected         : 500
+Completed        : 500
+Copied           : 500
+Skipped          : 0
+Missing          : 0
+Failed           : 0
+ZeroLengthSource : 0
+
+[2026-08-24 11:57:16] Starting batch 47 / 52
+BatchNumber      : 47
+BatchSize        : 500
+Selected         : 500
+Completed        : 500
+Copied           : 500
+Skipped          : 0
+Missing          : 0
+Failed           : 0
+ZeroLengthSource : 0
+
+[2026-08-24 12:05:48] Starting batch 48 / 52
+BatchNumber      : 48
+BatchSize        : 500
+Selected         : 500
+Completed        : 500
+Copied           : 500
+Skipped          : 0
+Missing          : 0
+Failed           : 0
+ZeroLengthSource : 0
+
+[2026-08-24 12:14:12] Starting batch 49 / 52
+BatchNumber      : 49
+BatchSize        : 500
+Selected         : 500
+Completed        : 500
+Copied           : 500
+Skipped          : 0
+Missing          : 0
+Failed           : 0
+ZeroLengthSource : 0
+
+[2026-08-24 12:22:03] Starting batch 50 / 52
+BatchNumber      : 50
+BatchSize        : 500
+Selected         : 500
+Completed        : 500
+Copied           : 500
+Skipped          : 0
+Missing          : 0
+Failed           : 0
+ZeroLengthSource : 0
+
+[2026-08-24 12:29:34] Starting batch 51 / 52
+BatchNumber      : 51
+BatchSize        : 500
+Selected         : 500
+Completed        : 500
+Copied           : 500
+Skipped          : 0
+Missing          : 0
+Failed           : 0
+ZeroLengthSource : 0
+
+[2026-08-24 12:37:30] Starting batch 52 / 52
+BatchNumber      : 52
+BatchSize        : 500
+Selected         : 485
+Completed        : 485
+Copied           : 485
+Skipped          : 0
+Missing          : 0
+Failed           : 0
+ZeroLengthSource : 0
+
+[2026-08-24 12:45:11] All requested batches completed.

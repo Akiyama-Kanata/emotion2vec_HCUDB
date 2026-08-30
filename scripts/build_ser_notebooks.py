@@ -224,7 +224,7 @@ unavailable_label_audit_cells = [
         """
 # MSP-Podcast 破損候補の感情ラベル照合
 
-`msp_unavailable_filenames.txt` と `labels_consensus.csv` をファイル名で照合し、元の感情ラベルと研究用4クラスへの対応を確認します。このNotebookは音声ファイルを検索・読み込み・再生せず、結果ファイルも書き出しません。
+`msp_podcast_unavailable_wav_filenames.txt` と `labels_consensus.csv` をファイル名で照合し、元の感情ラベルと研究用4クラスへの対応を確認します。このNotebookは音声ファイルを検索・読み込み・再生せず、結果ファイルも書き出しません。
 
 既定では合成データだけを使用します。実metadataを確認するときだけ、設定セルのパスを確認して `RUN_REAL_DATA = True` に変更してください。
         """,
@@ -252,7 +252,7 @@ RUN_REAL_DATA = False
 RUN_WAV_CSV_AUDIT = False
 
 # 今回指定されたDesktop版（1,128件）を既定入力にします。
-UNAVAILABLE_LIST_PATH = Path(r'C:\Users\RD004\Desktop\msp_unavailable_filenames.txt')
+UNAVAILABLE_LIST_PATH = Path(r'C:\Users\RD004\Desktop\msp_podcast_unavailable_wav_filenames.txt')
 
 # 直接指定を優先し、未指定なら既存のMSP_PODCAST_ROOTから解決します。
 _label_csv_override = os.environ.get('MSP_LABEL_CSV_PATH')

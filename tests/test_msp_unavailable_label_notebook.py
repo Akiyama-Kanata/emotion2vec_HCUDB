@@ -63,7 +63,10 @@ class MspUnavailableLabelNotebookTest(unittest.TestCase):
         )
         self.assertIn("RUN_REAL_DATA = False", code_source)
         self.assertIn("RUN_WAV_CSV_AUDIT = False", code_source)
-        self.assertIn(r"C:\Users\RD004\Desktop\msp_unavailable_filenames.txt", code_source)
+        self.assertIn(
+            r"C:\Users\RD004\Desktop\msp_podcast_unavailable_wav_filenames.txt",
+            code_source,
+        )
         self.assertIn("MSP_LABEL_CSV_PATH", code_source)
         self.assertIn("MSP_AUDIO_DIR", code_source)
         self.assertIn("labels_consensus.csv", code_source)

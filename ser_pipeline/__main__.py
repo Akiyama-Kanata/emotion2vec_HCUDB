@@ -1,3 +1,5 @@
+"""`python -m ser_pipeline` をコマンドライン処理へ接続する入口。"""
+
 from .cli import main
 
 

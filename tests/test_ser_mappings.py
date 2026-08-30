@@ -1,3 +1,5 @@
+"""各データセットの感情ラベルを共通クラスへ対応付ける契約を検証する。"""
+
 import unittest
 
 from ser_pipeline.contracts import (

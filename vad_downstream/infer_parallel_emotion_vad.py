@@ -1,3 +1,5 @@
+"""並列モデルからカテゴリ感情と Valence／Arousal／Dominance を推論する。"""
+
 import argparse
 
 import torch

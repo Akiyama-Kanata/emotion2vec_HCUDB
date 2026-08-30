@@ -1,3 +1,5 @@
+"""独立したカテゴリ感情ヘッドと V/A/D 回帰ヘッドの学習・評価処理。"""
+
 from pathlib import Path
 
 import torch

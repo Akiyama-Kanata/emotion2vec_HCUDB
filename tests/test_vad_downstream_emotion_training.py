@@ -1,3 +1,5 @@
+"""VAD経由カテゴリ感情分類の複合損失、評価指標、保存処理を検証する。"""
+
 import unittest
 
 import torch

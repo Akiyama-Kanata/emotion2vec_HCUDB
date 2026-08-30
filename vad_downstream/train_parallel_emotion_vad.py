@@ -1,3 +1,5 @@
+"""独立したカテゴリ感情ヘッドと V/A/D 回帰ヘッドを同時学習する CLI。"""
+
 import argparse
 import json
 import random

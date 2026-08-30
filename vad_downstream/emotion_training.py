@@ -1,3 +1,5 @@
+"""VAD経由カテゴリ感情分類モデルの学習、評価、チェックポイント保存を担う。"""
+
 from pathlib import Path
 
 import torch

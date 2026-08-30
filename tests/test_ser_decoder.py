@@ -1,3 +1,5 @@
+"""SER デコーダ、評価指標、チェックポイント互換性を検証する。"""
+
 import tempfile
 import unittest
 from pathlib import Path

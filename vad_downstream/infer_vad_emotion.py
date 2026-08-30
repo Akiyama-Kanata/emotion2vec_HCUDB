@@ -1,3 +1,5 @@
+"""VAD経由カテゴリ感情分類を実行し、線形分類器の寄与度とともに出力する。"""
+
 import argparse
 
 import torch

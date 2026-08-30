@@ -1,3 +1,5 @@
+"""VAD経由カテゴリ感情推論の JSON と分類寄与度の整合性を検証する。"""
+
 import json
 import tempfile
 import unittest

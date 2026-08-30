@@ -1,3 +1,5 @@
+"""小規模な人工データで SER 学習・転移・評価の全体経路を検証する。"""
+
 import tempfile
 import unittest
 from pathlib import Path

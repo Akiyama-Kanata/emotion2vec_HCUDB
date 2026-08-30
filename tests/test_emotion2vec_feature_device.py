@@ -1,3 +1,5 @@
+"""emotion2vec 特徴抽出器が指定した CPU／GPU 上で動くことを検証する。"""
+
 import importlib.util
 import sys
 import types

@@ -1,3 +1,5 @@
+"""音声からカテゴリ感情・VADを扱うノートブック用パイプラインを検証する。"""
+
 import tempfile
 import unittest
 from dataclasses import asdict

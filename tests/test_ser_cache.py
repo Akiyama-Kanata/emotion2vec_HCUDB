@@ -1,3 +1,5 @@
+"""SER 特徴キャッシュの作成・再開・検証と本実行前の容量見積りを検証する。"""
+
 import json
 import tempfile
 import unittest

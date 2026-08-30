@@ -1,3 +1,5 @@
+"""連結済み emotion2vec 特徴量から VAD 回帰ヘッドを学習・評価・保存する。"""
+
 from pathlib import Path
 
 import torch

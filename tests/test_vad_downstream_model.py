@@ -1,3 +1,5 @@
+"""VAD 回帰・VAD経由分類モデルの構造、形状、マスク処理を検証する。"""
+
 import unittest
 
 import torch

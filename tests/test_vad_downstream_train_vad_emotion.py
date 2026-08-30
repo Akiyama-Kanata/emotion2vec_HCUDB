@@ -1,3 +1,5 @@
+"""VAD経由カテゴリ感情分類モデルを学習する CLI を検証する。"""
+
 import io
 import json
 import tempfile

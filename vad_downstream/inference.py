@@ -1,3 +1,5 @@
+"""WAV から emotion2vec 特徴量を得て連続感情値を JSON 出力する推論 CLI。"""
+
 import argparse
 import json
 import math

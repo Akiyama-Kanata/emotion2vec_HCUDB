@@ -1,3 +1,5 @@
+"""WAV から連続感情値を得る推論経路とチェックポイント検査を検証する。"""
+
 import json
 import sys
 import tempfile

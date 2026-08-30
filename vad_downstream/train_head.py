@@ -1,3 +1,5 @@
+"""`<prefix>.npy/.lengths/.vad` から VAD 回帰ヘッドだけを学習する CLI。"""
+
 import argparse
 import json
 import random

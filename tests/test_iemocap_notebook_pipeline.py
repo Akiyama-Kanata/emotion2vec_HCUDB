@@ -1,3 +1,5 @@
+"""IEMOCAP ベース実験ノートブックの再利用処理と境界条件を検証する。"""
+
 import json
 import tempfile
 import unittest

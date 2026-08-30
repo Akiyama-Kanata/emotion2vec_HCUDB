@@ -42,6 +42,10 @@ GitHub リポジトリ: [emotion2vec](https://github.com/ddlBoJack/emotion2vec)
 
 # 概要
 
+Python ファイルの役割、現行コード・テスト・過去コードの区別、および
+バックアップファイルを作らない編集方針は
+[`PYTHON_FILES.md`](PYTHON_FILES.md) を参照してください。
+
 - [emotion2vec+: 音声感情認識の基盤モデル](#emotion2vec-音声感情認識の基盤モデル)
   - [ガイド](#ガイド)
   - [データエンジニアリング](#データエンジニアリング)

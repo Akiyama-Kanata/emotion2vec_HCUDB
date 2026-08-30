@@ -1,3 +1,5 @@
+"""VAD／感情ラベルと emotion2vec 特徴量を読み込み、検証して Dataset 化する。"""
+
 import csv
 import hashlib
 import logging

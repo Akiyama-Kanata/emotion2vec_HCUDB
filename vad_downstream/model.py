@@ -1,3 +1,5 @@
+"""連続感情回帰、VAD経由分類、並列感情・VAD推定に使うモデルを定義する。"""
+
 import contextlib
 
 import torch

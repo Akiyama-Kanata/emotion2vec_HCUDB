@@ -1,3 +1,5 @@
+"""生成した SER ノートブック間で処理責務が混在していないことを検証する。"""
+
 import json
 import subprocess
 import sys

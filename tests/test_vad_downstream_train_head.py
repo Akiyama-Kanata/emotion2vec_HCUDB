@@ -1,3 +1,5 @@
+"""連結済み特徴量から VAD 回帰ヘッドを学習する CLI を検証する。"""
+
 import io
 import json
 import tempfile

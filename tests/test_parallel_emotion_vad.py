@@ -1,3 +1,5 @@
+"""独立したカテゴリ感情ヘッドと V/A/D 回帰ヘッドの一連の処理を検証する。"""
+
 import tempfile
 import unittest
 import wave

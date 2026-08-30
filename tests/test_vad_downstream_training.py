@@ -1,3 +1,5 @@
+"""VAD 回帰ヘッドの CCC 学習、評価、チェックポイント保存を検証する。"""
+
 import tempfile
 import unittest
 from pathlib import Path

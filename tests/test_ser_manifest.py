@@ -1,3 +1,5 @@
+"""SER 用 JSONL マニフェストの生成、ハッシュ記録、監査を検証する。"""
+
 import csv
 import json
 import tempfile

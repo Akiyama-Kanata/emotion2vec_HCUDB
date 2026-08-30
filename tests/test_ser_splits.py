@@ -1,3 +1,5 @@
+"""SER データの固定分割と話者・音声リーク検査を検証する。"""
+
 import copy
 import unittest
 

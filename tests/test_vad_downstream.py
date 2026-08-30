@@ -1,3 +1,5 @@
+"""CSV 音声入力、欠損対応 CCC 損失、VAD 回帰モデルの旧現行経路を検証する。"""
+
 import sys
 import unittest
 from pathlib import Path

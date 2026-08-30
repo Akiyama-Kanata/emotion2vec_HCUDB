@@ -1,3 +1,5 @@
+"""推定 VAD を分類器入力に使うカテゴリ感情モデルを学習する CLI。"""
+
 import argparse
 import json
 import random

@@ -1,3 +1,5 @@
+"""現行処理では使わない、特定の旧ノートブック向け一回限りの編集スクリプト。"""
+
 import json
 
 nb_path = r'c:\Users\RD004\Documents\lab\emotion2vec\vad_downstream\experiment.ipynb'

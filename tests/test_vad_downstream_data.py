@@ -1,3 +1,5 @@
+"""連結済み特徴量と VAD／カテゴリ感情ラベルの読込・整合性検査を検証する。"""
+
 import tempfile
 import unittest
 from pathlib import Path

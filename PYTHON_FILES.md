@@ -35,6 +35,7 @@ Git の履歴を復元手段として使います。`*_old.py`、`*_backup.py`�
 - `ser_pipeline/__main__.py`: `python -m ser_pipeline` の入口。
 - `ser_pipeline/cli.py`: マニフェスト作成、特徴抽出、実験の CLI。
 - `ser_pipeline/contracts.py`: ラベル対応、スキーマ版、固定値の契約。
+- `ser_pipeline/exclusions.py`: MSP-Podcast不足874件の固定除外契約の生成・SHA・整合性検証。
 - `ser_pipeline/readers.py`: MSP-Podcast、HCUDB1、IEMOCAP のメタデータ読込。
 - `ser_pipeline/manifest.py`: JSONL マニフェストの作成、監査、検証。
 - `ser_pipeline/splits.py`: データ分割と話者・音声リークの検査。

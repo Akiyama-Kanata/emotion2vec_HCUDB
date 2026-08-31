@@ -32,7 +32,7 @@ class SerManifestTest(unittest.TestCase):
         value = (sum(path.name.encode("utf-8")) % 100 + 1) / 1000.0
         sf.write(path, np.full(sample_rate // 20, value, dtype=np.float32), sample_rate)
 
-    def _write_msp(self, include_missing=False):
+    def _write_msp(self, include_missing=False, nested_audio=False):
         labels = self.root / "Labels"
         labels.mkdir()
         rows = [
@@ -50,7 +50,8 @@ class SerManifestTest(unittest.TestCase):
                 writer.writerow([filename, emotion, 1, 2, 3, speaker, "X", split])
         for filename, _emotion, _speaker, _split in rows:
             if filename != "excluded.wav" and not (include_missing and filename == "train.wav"):
-                self._write_audio(self.root / "Audio" / filename)
+                relative = Path("Audio") / "batch_001" / filename if nested_audio else Path("Audio") / filename
+                self._write_audio(self.root / relative)
 
     def test_build_manifest_keeps_excluded_rows_and_is_stable(self):
         self._write_msp()
@@ -76,8 +77,41 @@ class SerManifestTest(unittest.TestCase):
         audit = audit_dataset("msp_podcast", self.root)
         self.assertEqual(audit["eligible_primary_rows"], 3)
         self.assertEqual(audit["missing_eligible_audio"], 1)
+        self.assertEqual(audit["missing_eligible_original_label_counts"], {"A": 1})
+        self.assertEqual(audit["missing_eligible_mapped_label_counts"], {"anger": 1})
+        self.assertEqual(audit["missing_eligible_source_split_counts"], {"Train": 1})
+        self.assertEqual(
+            audit["available_eligible_mapped_label_counts"],
+            {"happy": 1, "sadness": 1},
+        )
         with self.assertRaisesRegex(ValueError, "strict manifest"):
             build_manifest("msp_podcast", self.root, self.root / "manifest.jsonl")
+
+    def test_nested_msp_audio_is_resolved_by_unique_filename(self):
+        self._write_msp(nested_audio=True)
+        audit = audit_dataset("msp_podcast", self.root)
+        self.assertEqual(audit["missing_eligible_audio"], 0)
+        self.assertEqual(audit["unregistered_audio_files"], 0)
+
+        manifest = self.root / "nested.jsonl"
+        build_manifest("msp_podcast", self.root, manifest)
+        rows = load_manifest(manifest)
+        included_paths = {row["audio_relpath"] for row in rows if row["included"]}
+        self.assertTrue(all(path.startswith("Audio/batch_001/") for path in included_paths))
+        self.assertEqual(validate_manifest(manifest, audio_root=self.root)["audio"]["verified_audio"], 3)
+
+    def test_nested_msp_duplicate_filename_is_rejected(self):
+        self._write_msp(nested_audio=True)
+        self._write_audio(self.root / "Audio" / "batch_002" / "train.wav")
+        with self.assertRaisesRegex(ValueError, "duplicate MSP WAV basename"):
+            audit_dataset("msp_podcast", self.root)
+
+    def test_included_audio_decode_failure_is_not_auto_excluded(self):
+        self._write_msp()
+        (self.root / "Audio" / "train.wav").write_text("not a wave file", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "unreadable audio"):
+            build_manifest("msp_podcast", self.root, self.root / "manifest.jsonl", strict=True)
+        self.assertFalse((self.root / "manifest.jsonl").exists())
 
     def test_invalid_json_and_absolute_paths_are_rejected(self):
         invalid = self.root / "invalid.jsonl"

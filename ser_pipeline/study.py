@@ -10,17 +10,33 @@ from typing import Any, Mapping, Sequence
 from .audio import sha256_file
 from .checkpoints import load_decoder_checkpoint
 from .evaluation import assert_same_evaluation_sets
+from .exclusions import (
+    load_msp_missing_audio_exclusion_contract,
+    manifest_exclusion_contract_signature,
+    write_msp_missing_audio_exclusion_contract,
+)
+from .manifest import load_manifest, manifest_sha256
 from .training import TrainingConfig, evaluate_checkpoint, train_decoder
 
 
 STUDY_SEEDS = (42, 43, 44)
-EVALUATION_DATASETS = ("msp_podcast", "hcudb1", "iemocap")
+EVALUATION_DATASETS = ("msp_podcast", "hcudb1")
 
 
 @dataclass(frozen=True)
 class DatasetArtifacts:
     manifest_path: Path
     cache_root: Path
+    exclusion_contract_path: Path | None = None
+
+
+def require_formal_epochs(epochs: int | None) -> int:
+    """Return an explicitly configured positive epoch count for a formal run."""
+    if epochs is None:
+        raise ValueError("formal epochs must be set explicitly before execution")
+    if isinstance(epochs, bool) or not isinstance(epochs, int) or epochs <= 0:
+        raise ValueError("formal epochs must be a positive integer")
+    return epochs
 
 
 def _artifact(artifacts: Mapping[str, DatasetArtifacts], dataset: str) -> DatasetArtifacts:
@@ -28,6 +44,40 @@ def _artifact(artifacts: Mapping[str, DatasetArtifacts], dataset: str) -> Datase
         return artifacts[dataset]
     except KeyError as exc:
         raise ValueError(f"study artifacts are missing dataset: {dataset}") from exc
+
+
+def bundle_msp_exclusion_contract(
+    artifact: DatasetArtifacts,
+    output_dir: str | Path,
+) -> dict[str, Any] | None:
+    """Copy a validated MSP contract into study provenance and link its downstream IDs."""
+    signature = manifest_exclusion_contract_signature(load_manifest(artifact.manifest_path))
+    if signature is None:
+        if artifact.exclusion_contract_path is not None:
+            raise ValueError("an MSP exclusion contract was supplied for a manifest without contract provenance")
+        return None
+    if artifact.exclusion_contract_path is None:
+        raise ValueError("MSP manifest contract provenance requires exclusion_contract_path")
+    payload, report = load_msp_missing_audio_exclusion_contract(
+        artifact.exclusion_contract_path,
+        expected_sha256=signature["normalized_sha256"],
+    )
+    cache_meta_path = artifact.cache_root / "cache_meta.json"
+    try:
+        cache_meta = json.loads(cache_meta_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"invalid MSP cache metadata: {cache_meta_path}") from exc
+    if cache_meta.get("exclusion_contract") != signature:
+        raise ValueError("MSP cache and manifest exclusion contract provenance differ")
+    destination = Path(output_dir) / "provenance" / "msp_missing_audio_exclusions_v1.json"
+    write_msp_missing_audio_exclusion_contract(payload, destination)
+    return {
+        "path": str(destination),
+        "normalized_sha256": report["normalized_sha256"],
+        "manifest_sha256": manifest_sha256(artifact.manifest_path),
+        "cache_id": cache_meta.get("cache_id"),
+        "final_included": signature["final_included"],
+    }
 
 
 def run_transfer_study(
@@ -44,6 +94,10 @@ def run_transfer_study(
     template = base_config or TrainingConfig()
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
+    exclusion_contract_artifact = bundle_msp_exclusion_contract(
+        _artifact(artifacts, "msp_podcast"),
+        output,
+    )
     runs: list[dict[str, Any]] = []
     for seed_value in seeds:
         seed = int(seed_value)
@@ -86,9 +140,11 @@ def run_transfer_study(
         child_path = Path(child["best_checkpoint"])
         child_payload = load_decoder_checkpoint(child_path)
         parent_payload = load_decoder_checkpoint(parent_path)
+        parent_sha256 = sha256_file(parent_path)
+        child_sha256 = sha256_file(child_path)
         if child_payload["parent_checkpoint_id"] != parent_payload["checkpoint_id"]:
             raise ValueError("child checkpoint parent ID mismatch")
-        if child_payload["parent_checkpoint_sha256"] != sha256_file(parent_path):
+        if child_payload["parent_checkpoint_sha256"] != parent_sha256:
             raise ValueError("child checkpoint parent SHA-256 mismatch")
 
         after: dict[str, Any] = {}
@@ -114,11 +170,37 @@ def run_transfer_study(
                 "child": child,
                 "before": before,
                 "after": after,
+                "provenance": {
+                    "parent_checkpoint": {
+                        "id": parent_payload["checkpoint_id"],
+                        "sha256": parent_sha256,
+                        "cache_id": parent_payload["cache_id"],
+                        "path": str(parent_path),
+                    },
+                    "child_checkpoint": {
+                        "id": child_payload["checkpoint_id"],
+                        "sha256": child_sha256,
+                        "cache_id": child_payload["cache_id"],
+                        "path": str(child_path),
+                        "parent_id": child_payload["parent_checkpoint_id"],
+                        "parent_sha256": child_payload["parent_checkpoint_sha256"],
+                    },
+                    "evaluation_sets": {
+                        dataset: before[dataset]["result"]["set_signature"]
+                        for dataset in EVALUATION_DATASETS
+                    },
+                    "exclusion_contract_artifact": exclusion_contract_artifact,
+                    "training_configs": {
+                        "parent": parent["config"],
+                        "child": child["config"],
+                    },
+                },
             }
         )
     summary = {
         "seeds": [int(seed) for seed in seeds],
         "evaluation_datasets": list(EVALUATION_DATASETS),
+        "exclusion_contract_artifact": exclusion_contract_artifact,
         "runs": runs,
     }
     summary_path = output / "study_summary.json"
@@ -134,6 +216,8 @@ __all__ = [
     "DatasetArtifacts",
     "EVALUATION_DATASETS",
     "STUDY_SEEDS",
+    "bundle_msp_exclusion_contract",
+    "require_formal_epochs",
     "run_msp_hcudb_study",
     "run_transfer_study",
 ]

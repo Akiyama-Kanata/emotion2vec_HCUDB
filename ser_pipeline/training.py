@@ -381,6 +381,7 @@ def evaluate_checkpoint(
     )
     result["checkpoint_id"] = payload["checkpoint_id"]
     result["training_stage"] = payload["training_stage"]
+    result["cache_id"] = str(store.meta["cache_id"])
     paths = save_evaluation_result(result, output_dir)
     return {"result": result, "paths": paths}
 

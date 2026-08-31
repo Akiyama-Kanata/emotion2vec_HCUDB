@@ -8,7 +8,7 @@ import platform
 import sys
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 import numpy as np
 import torch
@@ -25,7 +25,7 @@ from .contracts import (
 )
 from .manifest import manifest_sha256, write_manifest
 from .splits import IEMOCAP_SPLIT_VERSION, MSP_SPLIT_VERSION, load_hcudb_split
-from .study import DatasetArtifacts, STUDY_SEEDS, run_transfer_study
+from .study import DatasetArtifacts, EVALUATION_DATASETS, STUDY_SEEDS, run_transfer_study
 from .training import TrainingConfig
 
 
@@ -261,11 +261,16 @@ def _write_demo_cache(cache_root: Path, manifest_path: Path, rows: list[dict[str
     )
 
 
-def make_demo_artifacts(root: str | Path, feature_dim: int = 8) -> dict[str, DatasetArtifacts]:
+def make_demo_artifacts(
+    root: str | Path,
+    feature_dim: int = 8,
+    *,
+    datasets: Sequence[str] = ("msp_podcast", "hcudb1", "iemocap"),
+) -> dict[str, DatasetArtifacts]:
     destination = Path(root)
     destination.mkdir(parents=True, exist_ok=True)
     artifacts = {}
-    for dataset in ("msp_podcast", "hcudb1", "iemocap"):
+    for dataset in datasets:
         rows = _demo_rows(dataset)
         manifest_path = destination / dataset / "manifest.jsonl"
         write_manifest(rows, manifest_path)
@@ -276,8 +281,12 @@ def make_demo_artifacts(root: str | Path, feature_dim: int = 8) -> dict[str, Dat
     return artifacts
 
 
-def demo_cache_summary(root: str | Path) -> dict[str, Any]:
-    artifacts = make_demo_artifacts(root)
+def demo_cache_summary(
+    root: str | Path,
+    *,
+    datasets: Sequence[str] = ("msp_podcast", "hcudb1", "iemocap"),
+) -> dict[str, Any]:
+    artifacts = make_demo_artifacts(root, datasets=datasets)
     return {
         dataset: validate_cache(current.cache_root, current.manifest_path)
         for dataset, current in artifacts.items()
@@ -291,7 +300,7 @@ def run_demo_transfer_study(
     epochs: int = 1,
 ) -> dict[str, Any]:
     destination = Path(root)
-    artifacts = make_demo_artifacts(destination / "artifacts")
+    artifacts = make_demo_artifacts(destination / "artifacts", datasets=EVALUATION_DATASETS)
     config = TrainingConfig(
         seed=int(seeds[0]),
         device="cpu",

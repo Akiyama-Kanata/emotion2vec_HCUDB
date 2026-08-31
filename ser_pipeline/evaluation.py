@@ -12,7 +12,7 @@ import numpy as np
 import torch
 
 from .contracts import LABEL_ORDER, RESULT_LIMITATIONS, RESULT_SCHEMA_VERSION
-from .manifest import load_manifest, manifest_sha256
+from .manifest import load_manifest, manifest_sha256, validate_manifest_records
 
 
 def confusion_matrix(y_true: Sequence[int], y_pred: Sequence[int], num_classes: int = 4) -> np.ndarray:
@@ -118,6 +118,18 @@ def build_evaluation_result(
             }
         )
     limitations = [dict(item) for item in RESULT_LIMITATIONS]
+    if dataset == "msp_podcast":
+        limitations.append(
+            {
+                "id": "msp_podcast_r1_10_fixed_available_subset_v1",
+                "status": "fixed_subset",
+                "excluded_missing_utterances": 874,
+                "excluded_test1_utterances": 144,
+                "included_utterances": 25111,
+                "missingness_assumption": "none",
+                "implication": "Metrics apply to the pre-approved available subset, not the complete official Test1 set.",
+            }
+        )
     if dataset == "iemocap":
         limitations.append(
             {
@@ -140,9 +152,11 @@ def build_evaluation_result(
 
 
 def evaluation_set_signature(manifest_path: str | Path, dataset: str, split: str = "test") -> dict[str, Any]:
+    all_rows = load_manifest(manifest_path)
+    manifest_validation = validate_manifest_records(all_rows)
     rows = [
         row
-        for row in load_manifest(manifest_path)
+        for row in all_rows
         if row["included"] and row["dataset"] == dataset and row["split"] == split
     ]
     if not rows:
@@ -153,13 +167,21 @@ def evaluation_set_signature(manifest_path: str | Path, dataset: str, split: str
         "dataset": dataset,
         "split": split,
         "manifest_sha256": manifest_sha256(manifest_path),
+        "exclusion_contract": manifest_validation["exclusion_contracts"].get(dataset),
         "utterance_id_sha256": ids_hash,
         "utterance_count": len(ids),
     }
 
 
 def assert_same_evaluation_sets(before: Mapping[str, Any], after: Mapping[str, Any]) -> None:
-    keys = ("dataset", "split", "manifest_sha256", "utterance_id_sha256", "utterance_count")
+    keys = (
+        "dataset",
+        "split",
+        "manifest_sha256",
+        "exclusion_contract",
+        "utterance_id_sha256",
+        "utterance_count",
+    )
     for key in keys:
         if before.get(key) != after.get(key):
             raise ValueError(f"before/after evaluation set mismatch for {key}")

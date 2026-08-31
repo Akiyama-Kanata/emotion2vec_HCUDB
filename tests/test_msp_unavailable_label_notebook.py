@@ -46,14 +46,19 @@ def execute_code_cells() -> dict:
 
 
 class MspUnavailableLabelNotebookTest(unittest.TestCase):
-    def test_builder_is_reproducible(self):
+    def test_builder_default_does_not_generate_protected_notebook(self):
         before = NOTEBOOK.read_bytes()
-        subprocess.run(
-            [sys.executable, str(BUILDER)],
-            cwd=ROOT,
-            check=True,
-            capture_output=True,
-        )
+        with tempfile.TemporaryDirectory() as directory:
+            output_dir = Path(directory)
+            subprocess.run(
+                [sys.executable, str(BUILDER), "--output-dir", str(output_dir)],
+                cwd=ROOT,
+                check=True,
+                capture_output=True,
+            )
+            self.assertTrue((output_dir / "01_extract_emotion2vec_features.ipynb").is_file())
+            self.assertTrue((output_dir / "02_train_and_evaluate_decoder.ipynb").is_file())
+            self.assertFalse((output_dir / NOTEBOOK.name).exists())
         self.assertEqual(before, NOTEBOOK.read_bytes())
 
     def test_notebook_is_metadata_only_and_real_mode_is_disabled(self):

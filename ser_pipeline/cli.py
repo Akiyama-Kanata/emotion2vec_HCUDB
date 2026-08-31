@@ -7,7 +7,12 @@ import json
 from pathlib import Path
 
 from .contracts import SUPPORTED_DATASETS
-from .manifest import audit_dataset, build_manifest, validate_manifest
+from .manifest import (
+    audit_dataset,
+    build_manifest,
+    generate_msp_missing_audio_exclusion_contract,
+    validate_manifest,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -18,12 +23,28 @@ def build_parser() -> argparse.ArgumentParser:
     audit.add_argument("--dataset", choices=SUPPORTED_DATASETS, required=True)
     audit.add_argument("--root", type=Path, required=True)
 
+    exclusions = subparsers.add_parser(
+        "generate-msp-exclusion-contract",
+        help="Generate msp_missing_audio_exclusions_v1 from currently missing eligible audio",
+    )
+    exclusions.add_argument("--root", type=Path, required=True)
+    exclusions.add_argument("--output", type=Path, required=True)
+
     build = subparsers.add_parser("build-manifest", help="Build a ser_manifest_v1 JSONL file")
     build.add_argument("--dataset", choices=SUPPORTED_DATASETS, required=True)
     build.add_argument("--root", type=Path, required=True)
     build.add_argument("--output", type=Path, required=True)
     build.add_argument("--allow-missing-audio", action="store_true")
     build.add_argument("--skip-excluded-audio-inspection", action="store_true")
+    build.add_argument(
+        "--approved-exclusion-contract",
+        type=Path,
+        help="approved msp_missing_audio_exclusions_v1 JSON",
+    )
+    build.add_argument(
+        "--expected-exclusion-sha256",
+        help="approved normalized SHA-256 for the MSP exclusion contract",
+    )
 
     validate = subparsers.add_parser("validate-manifest", help="Validate a ser_manifest_v1 JSONL file")
     validate.add_argument("--manifest", type=Path, required=True)
@@ -79,6 +100,8 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "audit-data":
         result = audit_dataset(args.dataset, args.root)
+    elif args.command == "generate-msp-exclusion-contract":
+        result = generate_msp_missing_audio_exclusion_contract(args.root, args.output)
     elif args.command == "build-manifest":
         result = build_manifest(
             args.dataset,
@@ -86,6 +109,8 @@ def main(argv: list[str] | None = None) -> int:
             args.output,
             strict=not args.allow_missing_audio,
             inspect_excluded_audio=not args.skip_excluded_audio_inspection,
+            approved_exclusion_contract=args.approved_exclusion_contract,
+            expected_exclusion_sha256=args.expected_exclusion_sha256,
         )
     elif args.command == "validate-manifest":
         result = validate_manifest(args.manifest, audio_root=args.root)

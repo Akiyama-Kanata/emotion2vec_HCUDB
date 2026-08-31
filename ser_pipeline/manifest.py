@@ -11,6 +11,15 @@ from typing import Any, Iterable, Mapping
 
 from .audio import inspect_audio
 from .contracts import LABEL_ORDER, MANIFEST_FIELDS, MANIFEST_SCHEMA_VERSION, dataset_contract, map_emotion
+from .exclusions import (
+    MSP_EXCLUSION_REASON,
+    MSP_EXCLUSION_SCHEMA_VERSION,
+    build_msp_missing_audio_exclusion_contract,
+    load_msp_missing_audio_exclusion_contract,
+    manifest_exclusion_contract_signature,
+    reconcile_msp_exclusion_contract,
+    write_msp_missing_audio_exclusion_contract,
+)
 from .readers import read_dataset, resolved_dataset_root
 from .splits import validate_split_integrity
 
@@ -85,6 +94,70 @@ def _audio_inventory(dataset_root: Path) -> tuple[dict[str, Path], int]:
     return files, appledouble
 
 
+def _audio_basename_index(files: Mapping[str, Path]) -> dict[str, list[tuple[str, Path]]]:
+    index: dict[str, list[tuple[str, Path]]] = defaultdict(list)
+    for relative, path in files.items():
+        index[PurePosixPath(relative).name.casefold()].append((relative, path))
+    return index
+
+
+def _resolve_inventory_audio(
+    dataset: str,
+    expected_relpath: str,
+    files: Mapping[str, Path],
+    basename_index: Mapping[str, list[tuple[str, Path]]],
+) -> tuple[str, Path] | None:
+    exact = files.get(expected_relpath)
+    if exact is not None:
+        return expected_relpath, exact
+    if dataset != "msp_podcast":
+        return None
+    filename = PurePosixPath(expected_relpath).name.casefold()
+    matches = basename_index.get(filename, [])
+    if len(matches) > 1:
+        examples = [relative for relative, _path in matches[:5]]
+        raise ValueError(f"duplicate MSP WAV basename {filename!r}: {examples}")
+    return matches[0] if matches else None
+
+
+def generate_msp_missing_audio_exclusion_contract(
+    root: str | Path,
+    output: str | Path,
+) -> dict[str, Any]:
+    """Generate the fixed v1 contract from eligible MSP rows missing at this moment."""
+    dataset_root = resolved_dataset_root("msp_podcast", root)
+    rows = list(read_dataset("msp_podcast", dataset_root))
+    ids = [str(row["utterance_id"]) for row in rows]
+    duplicates = sorted(identifier for identifier, count in Counter(ids).items() if count > 1)
+    if duplicates:
+        raise ValueError(f"duplicate metadata utterance_id: {duplicates[:5]}")
+    available_audio, _appledouble = _audio_inventory(dataset_root)
+    basename_index = _audio_basename_index(available_audio)
+    missing_rows = [
+        row
+        for row in rows
+        if bool(row["included"])
+        and _resolve_inventory_audio(
+            "msp_podcast",
+            str(row["audio_relpath"]),
+            available_audio,
+            basename_index,
+        )
+        is None
+    ]
+    payload = build_msp_missing_audio_exclusion_contract(missing_rows)
+    destination = write_msp_missing_audio_exclusion_contract(payload, output)
+    return {
+        "dataset": "msp_podcast",
+        "output": str(destination),
+        "schema_version": payload["schema_version"],
+        "normalized_sha256": payload["normalized_sha256"],
+        "count": payload["count"],
+        "expected_included_count": payload["expected_included_count"],
+        "counts": payload["counts"],
+    }
+
+
 def build_manifest(
     dataset: str,
     root: str | Path,
@@ -92,27 +165,74 @@ def build_manifest(
     *,
     strict: bool = True,
     inspect_excluded_audio: bool = True,
+    approved_exclusion_contract: str | Path | None = None,
+    expected_exclusion_sha256: str | None = None,
 ) -> dict[str, Any]:
     normalized = str(dataset).strip().lower()
+    if approved_exclusion_contract is not None and normalized != "msp_podcast":
+        raise ValueError("approved missing-audio exclusions are supported only for MSP-Podcast")
+    if expected_exclusion_sha256 is not None and approved_exclusion_contract is None:
+        raise ValueError("expected exclusion SHA-256 requires an approved exclusion contract")
+    if approved_exclusion_contract is not None and expected_exclusion_sha256 is None:
+        raise ValueError("approved MSP exclusion contract requires an expected SHA-256")
+    if approved_exclusion_contract is not None and not strict:
+        raise ValueError("approved MSP exclusion contract requires strict=True")
     dataset_root = resolved_dataset_root(normalized, root)
     rows = list(read_dataset(normalized, dataset_root))
     available_audio, _appledouble = _audio_inventory(dataset_root)
+    basename_index = _audio_basename_index(available_audio)
     ids = [row["utterance_id"] for row in rows]
     duplicates = sorted(identifier for identifier, count in Counter(ids).items() if count > 1)
     if duplicates:
         raise ValueError(f"duplicate metadata utterance_id: {duplicates[:5]}")
 
+    resolved_audio: dict[str, tuple[str, Path] | None] = {}
+    for row in rows:
+        resolved_audio[str(row["utterance_id"])] = _resolve_inventory_audio(
+            normalized,
+            str(row["audio_relpath"]),
+            available_audio,
+            basename_index,
+        )
+
+    contract_payload: dict[str, Any] | None = None
+    contract_report: dict[str, Any] | None = None
+    contract_ids: set[str] = set()
+    if approved_exclusion_contract is not None:
+        contract_payload, contract_report = load_msp_missing_audio_exclusion_contract(
+            approved_exclusion_contract,
+            expected_sha256=expected_exclusion_sha256,
+        )
+        missing_eligible_ids = {
+            str(row["utterance_id"])
+            for row in rows
+            if bool(row["included"]) and resolved_audio[str(row["utterance_id"])] is None
+        }
+        reconciliation = reconcile_msp_exclusion_contract(rows, missing_eligible_ids, contract_payload)
+        contract_report = {**contract_report, **reconciliation, "path": str(Path(approved_exclusion_contract))}
+        contract_ids = {str(record["utterance_id"]) for record in contract_payload["records"]}
+        for row in rows:
+            row["exclusion_contract_schema_version"] = MSP_EXCLUSION_SCHEMA_VERSION
+            row["exclusion_contract_sha256"] = contract_report["normalized_sha256"]
+
     missing_included: list[str] = []
     for row in rows:
-        path = available_audio.get(row["audio_relpath"])
+        identifier = str(row["utterance_id"])
+        resolved = resolved_audio[identifier]
+        if identifier in contract_ids:
+            row["included"] = False
+            if MSP_EXCLUSION_REASON not in row["exclusion_reasons"]:
+                row["exclusion_reasons"].append(MSP_EXCLUSION_REASON)
         eligible = bool(row["included"])
-        if path is None:
+        if resolved is None:
             if eligible:
-                missing_included.append(row["utterance_id"])
+                missing_included.append(identifier)
                 if not strict:
                     row["included"] = False
                     row["exclusion_reasons"].append("audio_missing")
             continue
+        resolved_relpath, path = resolved
+        row["audio_relpath"] = resolved_relpath
         if eligible or inspect_excluded_audio:
             metadata = inspect_audio(path, compute_sha256=eligible)
             row.update(metadata)
@@ -125,21 +245,27 @@ def build_manifest(
         )
     write_manifest(rows, output)
     validation = validate_manifest_records(rows, validate_splits=not missing_included)
-    return {
+    report = {
         "dataset": normalized,
         "output": str(Path(output)),
         "total": len(rows),
         "included": sum(bool(row["included"]) for row in rows),
         "missing_included_audio": len(missing_included),
+        "approved_missing_audio_exclusions": len(contract_ids),
         "manifest_sha256": records_sha256(rows),
         "validation": validation,
     }
+    if contract_report is not None:
+        report["exclusion_contract_sha256"] = contract_report["normalized_sha256"]
+        report["exclusion_contract"] = contract_report
+    return report
 
 
 def audit_dataset(dataset: str, root: str | Path) -> dict[str, Any]:
     normalized = str(dataset).strip().lower()
     dataset_root = resolved_dataset_root(normalized, root)
     available_audio, appledouble = _audio_inventory(dataset_root)
+    basename_index = _audio_basename_index(available_audio)
     total = 0
     eligible_count = 0
     missing_count = 0
@@ -148,13 +274,25 @@ def audit_dataset(dataset: str, root: str | Path) -> dict[str, Any]:
     source_splits: Counter[str] = Counter()
     speakers: set[str] = set()
     test2 = 0
-    metadata_relpaths: set[str] = set()
+    matched_audio_relpaths: set[str] = set()
     metadata_missing_total = 0
+    eligible_mapped_labels: Counter[str] = Counter()
+    available_eligible_mapped_labels: Counter[str] = Counter()
+    missing_eligible_original_labels: Counter[str] = Counter()
+    missing_eligible_mapped_labels: Counter[str] = Counter()
+    missing_eligible_source_splits: Counter[str] = Counter()
     for row in read_dataset(normalized, dataset_root):
         total += 1
-        metadata_relpaths.add(row["audio_relpath"])
-        if row["audio_relpath"] not in available_audio:
+        resolved = _resolve_inventory_audio(
+            normalized,
+            str(row["audio_relpath"]),
+            available_audio,
+            basename_index,
+        )
+        if resolved is None:
             metadata_missing_total += 1
+        else:
+            matched_audio_relpaths.add(resolved[0])
         labels[row["original_emotion"]] += 1
         source_splits[row["source_split"]] += 1
         if row["speaker_id_status"] == "known":
@@ -163,10 +301,17 @@ def audit_dataset(dataset: str, root: str | Path) -> dict[str, Any]:
             test2 += 1
         if row["included"]:
             eligible_count += 1
-            if row["audio_relpath"] not in available_audio:
+            mapped_label = str(row["mapped_emotion"])
+            eligible_mapped_labels[mapped_label] += 1
+            if resolved is None:
                 missing_count += 1
+                missing_eligible_original_labels[str(row["original_emotion"])] += 1
+                missing_eligible_mapped_labels[mapped_label] += 1
+                missing_eligible_source_splits[str(row["source_split"])] += 1
                 if first_missing is None:
                     first_missing = row["utterance_id"]
+            else:
+                available_eligible_mapped_labels[mapped_label] += 1
     return {
         "dataset": normalized,
         "total_metadata_rows": total,
@@ -174,11 +319,16 @@ def audit_dataset(dataset: str, root: str | Path) -> dict[str, Any]:
         "known_speakers": len(speakers),
         "missing_eligible_audio": missing_count,
         "first_missing_audio_id": first_missing,
+        "eligible_mapped_label_counts": dict(sorted(eligible_mapped_labels.items())),
+        "available_eligible_mapped_label_counts": dict(sorted(available_eligible_mapped_labels.items())),
+        "missing_eligible_original_label_counts": dict(sorted(missing_eligible_original_labels.items())),
+        "missing_eligible_mapped_label_counts": dict(sorted(missing_eligible_mapped_labels.items())),
+        "missing_eligible_source_split_counts": dict(sorted(missing_eligible_source_splits.items())),
         "test2_audited_rows": test2,
         "appledouble_files_ignored": appledouble,
         "valid_audio_files": len(available_audio),
         "metadata_audio_missing_total": metadata_missing_total,
-        "unregistered_audio_files": len(set(available_audio) - metadata_relpaths),
+        "unregistered_audio_files": len(set(available_audio) - matched_audio_relpaths),
         "original_label_counts": dict(sorted(labels.items())),
         "source_split_counts": dict(sorted(source_splits.items())),
     }
@@ -244,6 +394,11 @@ def validate_manifest_records(
         elif not reasons:
             raise ValueError(f"excluded row must preserve an exclusion reason: {utterance_id}")
         dataset_rows[dataset].append(row)
+    exclusion_contracts: dict[str, Any] = {}
+    for dataset, subset in dataset_rows.items():
+        signature = manifest_exclusion_contract_signature(subset)
+        if signature is not None:
+            exclusion_contracts[dataset] = signature
     split_reports = {}
     if validate_splits:
         for dataset, subset in dataset_rows.items():
@@ -255,6 +410,8 @@ def validate_manifest_records(
         "included": sum(bool(row["included"]) for row in rows),
         "manifest_sha256": records_sha256(rows),
         "utterance_id_sha256": utterance_id_sha256(rows),
+        "exclusion_contract": exclusion_contracts.get("msp_podcast"),
+        "exclusion_contracts": exclusion_contracts,
         "splits": split_reports,
     }
 

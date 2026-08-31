@@ -220,7 +220,7 @@ def extract_feature_cache(
     if max_shard_frames <= 0:
         raise ValueError("max_shard_frames must be positive")
     rows = load_manifest(manifest_path)
-    validate_manifest_records(rows)
+    manifest_validation = validate_manifest_records(rows)
     included = [row for row in rows if row["included"]]
     if not included:
         raise ValueError("manifest has no included rows")
@@ -240,6 +240,7 @@ def extract_feature_cache(
         "extraction_code_version": EXTRACTION_CODE_VERSION,
         "git_commit": _git_commit(),
         "manifest_sha256": manifest_sha256(manifest_path),
+        "exclusion_contract": manifest_validation["exclusion_contract"],
         "mapping_versions": mapping_versions,
         "split_versions": split_versions,
         "audio_preprocessing": {

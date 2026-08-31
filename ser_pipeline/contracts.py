@@ -18,7 +18,7 @@ EXTRACTION_CODE_VERSION = "ser_features_v1"
 LABEL_ORDER = ("anger", "happy", "sadness", "disgust")
 CLASS_TO_INDEX = {label: index for index, label in enumerate(LABEL_ORDER)}
 SUPPORTED_DATASETS = ("msp_podcast", "hcudb1", "iemocap")
-EXPECTED_INCLUDED_COUNTS = {"msp_podcast": 25985, "hcudb1": 2100, "iemocap": 3825}
+EXPECTED_INCLUDED_COUNTS = {"msp_podcast": 25111, "hcudb1": 2100, "iemocap": 3825}
 RESULT_LIMITATIONS = (
     {
         "id": "emotion2vec_pretraining_includes_msp_podcast_v1_8",

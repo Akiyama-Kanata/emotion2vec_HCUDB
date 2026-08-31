@@ -65,14 +65,18 @@ Ran 76 tests in 7.431s
 OK
 ```
 
-The new SER tests can be run independently while iterating:
+The non-training SER checks that Codex may run independently are:
 
 ```bash
 wsl -d Ubuntu-Recovered --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec -e /home/akiyama/miniforge/envs/emotion2vec-py310/bin/python -m unittest \
   tests.test_ser_mappings tests.test_ser_splits tests.test_ser_manifest \
-  tests.test_ser_cache tests.test_ser_decoder tests.test_ser_e2e \
-  tests.test_ser_notebook_boundaries
+  tests.test_ser_exclusions tests.test_ser_cache tests.test_ser_notebook_boundaries
 ```
+
+`tests.test_ser_e2e` calls `train_decoder` on synthetic caches. It is retained as a
+user-run regression test and Codex does not execute it. The non-training study
+contract/epoch gate can be checked separately by selecting only
+`tests.test_ser_e2e.SerEndToEndTest.test_study_contract_and_formal_epoch_gate_do_not_train`.
 
 Run both separated notebooks with all formal/long-running flags disabled:
 
@@ -80,9 +84,29 @@ Run both separated notebooks with all formal/long-running flags disabled:
 wsl -d Ubuntu-Recovered --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec -e /home/akiyama/miniforge/envs/emotion2vec-py310/bin/python tests/execute_ser_demo_notebooks.py
 ```
 
-Formal feature extraction and the three-seed study are not part of the test
-suite. They remain gated by real MSP audio availability, complete manifest and
-cache validation, capacity estimation, and explicit user approval.
+Real feature extraction and training are not part of Codex-run verification.
+They remain user-run operations gated by complete MSP/HCUDB cache validation,
+the one-item CPU benchmark, the +20% capacity margin, an explicitly fixed formal
+epoch count, and separated smoke/formal output directories. Formal training runs
+seed 42 first; seeds 43 and 44 remain disabled until the seed 42 artifacts are
+confirmed.
+
+The user-run MSP exclusion/manifest sequence is:
+
+```bash
+python -m ser_pipeline generate-msp-exclusion-contract \
+  --root /path/to/MSP_PODCAST \
+  --output runs/ser_manifests/msp_missing_audio_exclusions_v1.json
+python -m ser_pipeline build-manifest \
+  --dataset msp_podcast \
+  --root /path/to/MSP_PODCAST \
+  --output runs/ser_manifests/msp_podcast_4class_v1.jsonl \
+  --approved-exclusion-contract runs/ser_manifests/msp_missing_audio_exclusions_v1.json \
+  --expected-exclusion-sha256 APPROVED_64_HEX_SHA256
+```
+
+The second command refuses an unset or mismatched approval SHA. Both commands
+are real-data operations and are not run by Codex.
 
 Final implementation verification on 2026-08-23:
 

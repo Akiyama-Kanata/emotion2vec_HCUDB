@@ -1,7 +1,8 @@
-"""Build the SER study and metadata-audit notebooks."""
+"""Build or compare the SER study and metadata-audit notebooks."""
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
@@ -40,15 +41,17 @@ def notebook(cells: list[dict]) -> dict:
 feature_cells = [
     markdown(
         """
-# 01 — 4クラスSER特徴cacheの準備
+# 01 — MSP-Podcast 4クラス特徴cacheの作成
 
-MSP-Podcast R1.10、HCUDB1、IEMOCAPのmetadata監査、version付きmapping/split、manifest、固定encoder出力のshard cacheを確認します。正式な全件処理は明示フラグを変更するまで開始しません。
+MSP-Podcast R1.10の監査、strict manifest作成、実音声1件のCPU benchmark、容量+20%判定、emotion2vec特徴抽出、cache検証を上から順に行います。
+
+実データを読む処理はすべて既定で無効です。設定セルでパスを指定し、各段階の結果を確認してから、対応するフラグを1つずつ`True`にしてください。IEMOCAPは今回の一括研究経路には含めません。
         """,
         "intro",
     ),
     code(
         """
-import os, sys, subprocess
+import json, os, sys
 from pathlib import Path
 import pandas as pd
 
@@ -58,63 +61,435 @@ if not (PROJECT_ROOT / 'ser_pipeline').is_dir():
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from ser_pipeline.manifest import audit_dataset
-from ser_pipeline.notebook_api import (
-    demo_cache_summary, environment_summary, extraction_command_preview,
-    mapping_summary, one_item_feature_benchmark, split_summary,
+from ser_pipeline.cache import validate_cache
+from ser_pipeline.exclusions import load_msp_missing_audio_exclusion_contract
+from ser_pipeline.features import Emotion2vecEncoder, extract_feature_cache
+from ser_pipeline.manifest import (
+    audit_dataset, build_manifest, generate_msp_missing_audio_exclusion_contract,
+    load_manifest, validate_manifest,
+)
+from ser_pipeline.notebook_api import environment_summary, mapping_summary, split_summary
+from ser_pipeline.preflight import (
+    benchmark_audio_extraction, disk_capacity_gate,
+    estimate_full_extraction, save_benchmark,
 )
 
+STUDY_DATASETS = ('msp_podcast', 'hcudb1')
+
+# 実行フラグ: 最初はすべてFalseのまま、上から1段階ずつ有効化します。
+RUN_MSP_AUDIT = False
+RUN_MSP_GENERATE_EXCLUSION_CONTRACT = False
+RUN_MSP_VERIFY_EXCLUSION_CONTRACT = False
+RUN_MSP_BUILD_MANIFEST = False
+RUN_MSP_VALIDATE_MANIFEST = False
+RUN_MSP_BENCHMARK = False
+RUN_MSP_CAPACITY_GATE = False
 RUN_FULL_EXTRACTION = False
-ARTIFACT_DIR = PROJECT_ROOT / 'runs' / 'ser_feature_preflight'
-ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+RUN_VALIDATE_CACHE = False
+
+# 前段の結果をユーザーが確認した後だけTrueにします。
+CONFIRM_MANIFEST_VALIDATED = False
+CONFIRM_BENCHMARK_AND_CAPACITY = False
+
+# 環境変数を使わない場合は、ここへWSLから見えるPathを直接指定できます。
+MSP_ROOT = Path(os.environ['MSP_PODCAST_ROOT']) if os.environ.get('MSP_PODCAST_ROOT') else None
+BENCHMARK_AUDIO = Path(os.environ['MSP_BENCHMARK_AUDIO']) if os.environ.get('MSP_BENCHMARK_AUDIO') else None
+
+USER_DIR = PROJECT_ROOT / 'upstream'
+CHECKPOINT_PATH = PROJECT_ROOT / 'artifacts' / 'checkpoints' / 'emotion2vec_base.pt'
+MANIFEST_PATH = PROJECT_ROOT / 'runs' / 'ser_manifests' / 'msp_podcast_4class_v1.jsonl'
+EXCLUSION_CONTRACT_PATH = PROJECT_ROOT / 'runs' / 'ser_manifests' / 'msp_missing_audio_exclusions_v1.json'
+CACHE_ROOT = PROJECT_ROOT / 'runs' / 'ser_feature_cache' / 'msp_podcast_base_final_v1'
+REPORT_DIR = PROJECT_ROOT / 'runs' / 'ser_feature_preflight' / 'msp_podcast'
+BENCHMARK_PATH = REPORT_DIR / 'one_audio_cpu_benchmark.json'
+CAPACITY_PATH = REPORT_DIR / 'capacity_estimate.json'
+
+
+def require_path(value, label, *, kind):
+    if value is None:
+        raise ValueError(f'Set {label} in the configuration cell before execution')
+    path = Path(value)
+    valid = path.is_file() if kind == 'file' else path.is_dir()
+    if not valid:
+        raise FileNotFoundError(f'{label} was not found: {path}')
+    return path
+
+
+def persist_report(report, path):
+    save_benchmark(report, path)
+    return report
         """,
         "setup",
     ),
-    markdown("## 1. 実行環境と固定契約", "environment-heading"),
+    markdown("## 1. 設定・実行環境・固定契約", "environment-heading"),
+    code(
+        """
+{
+    'msp_root': str(MSP_ROOT) if MSP_ROOT else None,
+    'benchmark_audio': str(BENCHMARK_AUDIO) if BENCHMARK_AUDIO else None,
+    'user_dir': str(USER_DIR),
+    'checkpoint': str(CHECKPOINT_PATH),
+    'manifest': str(MANIFEST_PATH),
+    'exclusion_contract': str(EXCLUSION_CONTRACT_PATH),
+    'cache_root': str(CACHE_ROOT),
+    'device': 'cpu',
+    'run_flags': {
+        'audit': RUN_MSP_AUDIT,
+        'generate_exclusion_contract': RUN_MSP_GENERATE_EXCLUSION_CONTRACT,
+        'verify_exclusion_contract': RUN_MSP_VERIFY_EXCLUSION_CONTRACT,
+        'build_manifest': RUN_MSP_BUILD_MANIFEST,
+        'validate_manifest': RUN_MSP_VALIDATE_MANIFEST,
+        'benchmark': RUN_MSP_BENCHMARK,
+        'capacity_gate': RUN_MSP_CAPACITY_GATE,
+        'full_extraction': RUN_FULL_EXTRACTION,
+        'validate_cache': RUN_VALIDATE_CACHE,
+    },
+}
+        """,
+        "configuration",
+    ),
     code("environment_summary()", "environment"),
-    code("pd.DataFrame(mapping_summary())", "mapping"),
-    code("split_summary()", "splits"),
+    code(
+        "mapping_rows = [row for row in mapping_summary() if row['dataset'] in STUDY_DATASETS]\n"
+        "pd.DataFrame(mapping_rows)",
+        "mapping",
+    ),
+    code(
+        "all_split_contracts = split_summary()\n"
+        "{name: all_split_contracts[name] for name in STUDY_DATASETS}",
+        "splits",
+    ),
     markdown(
         """
-## 2. ローカルmetadata監査
+## 2. MSP-Podcast metadata・音声inventory監査
 
-環境変数でrootが設定されたデータセットだけを読み取り専用で監査します。未設定時は空の表になり、demoは継続します。
+`RUN_MSP_AUDIT = True`にした場合だけ実データを読みます。添付の利用不能候補リストは除外条件に使用しません。結果には、現在不足している対象音声の元ラベル、4クラス変換後ラベル、公式split別件数も含まれます。`missing_eligible_audio == 874`と固定内訳、`unregistered_audio_files == 0`、現行契約の対象25,985件を確認してから次へ進みます。
         """,
         "audit-heading",
     ),
     code(
         """
-configured_roots = {
-    'msp_podcast': os.environ.get('MSP_PODCAST_ROOT'),
-    'hcudb1': os.environ.get('HCUDB1_ROOT'),
-    'iemocap': os.environ.get('IEMOCAP_ROOT'),
-}
-audit_rows = [audit_dataset(name, root) for name, root in configured_roots.items() if root]
-pd.DataFrame(audit_rows)
+if RUN_MSP_AUDIT:
+    msp_root = require_path(MSP_ROOT, 'MSP_ROOT', kind='directory')
+    audit_report = audit_dataset('msp_podcast', msp_root)
+    persist_report(audit_report, REPORT_DIR / 'audit.json')
+else:
+    audit_report = {'status': 'disabled_by_default'}
+audit_report
         """,
         "audit",
     ),
-    markdown("## 3. 合成manifest/cacheの境界確認", "demo-heading"),
-    code("demo_status = demo_cache_summary(ARTIFACT_DIR / 'demo')\ndemo_status", "demo-cache"),
-    markdown("## 4. 1件preflightと容量表示", "benchmark-heading"),
-    code("one_item_feature_benchmark(feature_dim=768, seconds=1.0)", "benchmark"),
     markdown(
         """
-## 5. 全件コマンドのpreview
+### 2.1 現在不足している対象音声の感情・split内訳
 
-次のセルはコマンド文字列を表示するだけです。正式実行時もlayerは `final` 固定です。
+添付リストではなく、metadata上の4クラス対象と現在存在するWAVを照合し、不足している対象音声だけを集計します。`missing_count`の合計が`missing_eligible_audio`と一致することを確認してください。
         """,
-        "preview-heading",
+        "missing-label-heading",
     ),
-    code("full_command = extraction_command_preview()\nfull_command", "preview"),
+    code(
+        """
+if RUN_MSP_AUDIT:
+    label_pairs = (
+        ('A', 'anger'),
+        ('H', 'happy'),
+        ('S', 'sadness'),
+        ('D', 'disgust'),
+    )
+    missing_label_summary = pd.DataFrame([
+        {
+            'original_label': original_label,
+            'mapped_label': mapped_label,
+            'eligible_total': audit_report['eligible_mapped_label_counts'].get(mapped_label, 0),
+            'available_count': audit_report['available_eligible_mapped_label_counts'].get(mapped_label, 0),
+            'missing_count': audit_report['missing_eligible_original_label_counts'].get(original_label, 0),
+        }
+        for original_label, mapped_label in label_pairs
+    ])
+    missing_split_summary = pd.DataFrame([
+        {
+            'source_split': source_split,
+            'missing_count': audit_report['missing_eligible_source_split_counts'].get(source_split, 0),
+        }
+        for source_split in ('Train', 'Development', 'Test1')
+    ])
+    print('不足対象音声の感情ラベル内訳:')
+    display(missing_label_summary)
+    print('不足対象音声の公式split内訳:')
+    display(missing_split_summary)
+else:
+    print('監査は無効です。RUN_MSP_AUDIT = Trueで監査セルから実行してください。')
+        """,
+        "missing-label-summary",
+    ),
+    markdown(
+        """
+## 3. 除外候補生成
+
+`RUN_MSP_GENERATE_EXCLUSION_CONTRACT = True`にした場合だけ、添付リストを参照せず、metadata上の4クラス対象と現在のWAV inventoryから不足行を再計算します。874件・固定内訳に一致しない場合はJSONを書きません。
+        """,
+        "exclusion-generation-heading",
+    ),
+    code(
+        """
+if RUN_MSP_GENERATE_EXCLUSION_CONTRACT:
+    msp_root = require_path(MSP_ROOT, 'MSP_ROOT', kind='directory')
+    exclusion_generation_report = generate_msp_missing_audio_exclusion_contract(
+        msp_root,
+        EXCLUSION_CONTRACT_PATH,
+    )
+    persist_report(exclusion_generation_report, REPORT_DIR / 'exclusion_contract_generation.json')
+else:
+    exclusion_generation_report = {'status': 'disabled_by_default'}
+exclusion_generation_report
+        """,
+        "exclusion-generation",
+    ),
+    markdown(
+        """
+## 4. 除外契約の件数・内訳・SHA確認
+
+`RUN_MSP_VERIFY_EXCLUSION_CONTRACT = True`にすると、874件、元ラベル`A 378 / H 392 / S 80 / D 24`、公式split`Train 520 / Development 210 / Test1 144`、ファイル名順、重複なし、正規化SHA-256を検証します。
+        """,
+        "exclusion-verification-heading",
+    ),
+    code(
+        """
+if RUN_MSP_VERIFY_EXCLUSION_CONTRACT:
+    contract_path = require_path(EXCLUSION_CONTRACT_PATH, 'EXCLUSION_CONTRACT_PATH', kind='file')
+    _, exclusion_verification_report = load_msp_missing_audio_exclusion_contract(contract_path)
+    persist_report(exclusion_verification_report, REPORT_DIR / 'exclusion_contract_verification.json')
+else:
+    exclusion_verification_report = {'status': 'disabled_by_default'}
+exclusion_verification_report
+        """,
+        "exclusion-verification",
+    ),
+    markdown(
+        """
+## 5. 承認SHA設定
+
+上の検証結果を確認後、承認する`normalized_sha256`を64桁の小文字16進文字列として設定します。未設定のままstrict manifest作成を有効化すると必ず拒否します。
+        """,
+        "exclusion-approval-heading",
+    ),
+    code(
+        """
+APPROVED_MSP_EXCLUSION_SHA256 = None
+# 例: APPROVED_MSP_EXCLUSION_SHA256 = '64桁の検証済みSHA-256'
+        """,
+        "exclusion-approval",
+    ),
+    markdown(
+        """
+## 6. strict manifest作成
+
+`RUN_MSP_BUILD_MANIFEST = True`にすると、承認SHAと除外契約を照合し、契約内874件だけを`included: false`にします。一覧外欠損、復旧済み契約対象、metadata不一致、音声デコード失敗、重複、話者漏洩、ラベル契約違反があれば停止します。
+        """,
+        "manifest-build-heading",
+    ),
+    code(
+        """
+if RUN_MSP_BUILD_MANIFEST:
+    if APPROVED_MSP_EXCLUSION_SHA256 is None:
+        raise RuntimeError('Set APPROVED_MSP_EXCLUSION_SHA256 after reviewing the exclusion contract')
+    msp_root = require_path(MSP_ROOT, 'MSP_ROOT', kind='directory')
+    require_path(EXCLUSION_CONTRACT_PATH, 'EXCLUSION_CONTRACT_PATH', kind='file')
+    manifest_build_report = build_manifest(
+        'msp_podcast',
+        msp_root,
+        MANIFEST_PATH,
+        strict=True,
+        inspect_excluded_audio=True,
+        approved_exclusion_contract=EXCLUSION_CONTRACT_PATH,
+        expected_exclusion_sha256=APPROVED_MSP_EXCLUSION_SHA256,
+    )
+    persist_report(manifest_build_report, REPORT_DIR / 'manifest_build.json')
+else:
+    manifest_build_report = {'status': 'disabled_by_default'}
+manifest_build_report
+        """,
+        "manifest-build",
+    ),
+    markdown(
+        """
+## 7. manifestと実音声の完全検証
+
+`RUN_MSP_VALIDATE_MANIFEST = True`にすると、included音声のmetadataとSHA-256を再計算します。結果が`status: ok`で、`audio.verified_audio`と`included`が一致したことを確認してください。
+        """,
+        "manifest-validation-heading",
+    ),
+    code(
+        """
+if RUN_MSP_VALIDATE_MANIFEST:
+    msp_root = require_path(MSP_ROOT, 'MSP_ROOT', kind='directory')
+    require_path(MANIFEST_PATH, 'MANIFEST_PATH', kind='file')
+    manifest_validation_report = validate_manifest(MANIFEST_PATH, audio_root=msp_root)
+    persist_report(manifest_validation_report, REPORT_DIR / 'manifest_validation.json')
+else:
+    manifest_validation_report = {'status': 'disabled_by_default'}
+manifest_validation_report
+        """,
+        "manifest-validation",
+    ),
+    markdown(
+        """
+## 8. 実音声1件のCPU benchmark
+
+manifestで`included: true`のWAVを`BENCHMARK_AUDIO`へ指定します。manifest検証結果を確認後、`CONFIRM_MANIFEST_VALIDATED = True`と`RUN_MSP_BENCHMARK = True`にします。
+        """,
+        "benchmark-heading",
+    ),
+    code(
+        """
+if RUN_MSP_BENCHMARK:
+    if not CONFIRM_MANIFEST_VALIDATED:
+        raise RuntimeError('Confirm the complete MSP manifest validation first')
+    benchmark_audio = require_path(BENCHMARK_AUDIO, 'BENCHMARK_AUDIO', kind='file')
+    require_path(USER_DIR, 'USER_DIR', kind='directory')
+    require_path(CHECKPOINT_PATH, 'CHECKPOINT_PATH', kind='file')
+    benchmark_report = benchmark_audio_extraction(
+        benchmark_audio,
+        USER_DIR,
+        CHECKPOINT_PATH,
+        device='cpu',
+    )
+    persist_report(benchmark_report, BENCHMARK_PATH)
+else:
+    benchmark_report = {'status': 'disabled_by_default'}
+benchmark_report
+        """,
+        "benchmark",
+    ),
+    markdown(
+        """
+## 9. 全件所要時間・容量+20%ゲート
+
+`RUN_MSP_CAPACITY_GATE = True`にすると、manifestの対象総時間と1件benchmarkから全件見積りを作ります。`capacity.passes`が`True`でなければ全件抽出へ進みません。
+        """,
+        "capacity-heading",
+    ),
+    code(
+        """
+if RUN_MSP_CAPACITY_GATE:
+    if not CONFIRM_MANIFEST_VALIDATED:
+        raise RuntimeError('Confirm the complete MSP manifest validation first')
+    require_path(MANIFEST_PATH, 'MANIFEST_PATH', kind='file')
+    require_path(BENCHMARK_PATH, 'BENCHMARK_PATH', kind='file')
+    CACHE_ROOT.mkdir(parents=True, exist_ok=True)
+    included_rows = [row for row in load_manifest(MANIFEST_PATH) if row['included']]
+    total_duration_seconds = sum(float(row['duration_seconds']) for row in included_rows)
+    saved_benchmark = json.loads(BENCHMARK_PATH.read_text(encoding='utf-8'))
+    estimate = estimate_full_extraction(
+        total_duration_seconds,
+        saved_benchmark,
+        storage_margin=1.2,
+    )
+    capacity = disk_capacity_gate(CACHE_ROOT, estimate['required_bytes_with_margin'])
+    capacity_report = {
+        'included_utterances': len(included_rows),
+        'estimate': estimate,
+        'capacity': capacity,
+    }
+    persist_report(capacity_report, CAPACITY_PATH)
+    if not capacity['passes']:
+        raise RuntimeError('Capacity gate failed; do not start full extraction')
+else:
+    capacity_report = {'status': 'disabled_by_default'}
+capacity_report
+        """,
+        "capacity-gate",
+    ),
+    markdown(
+        """
+## 10. MSP-Podcast全件特徴抽出
+
+manifest検証、benchmark、容量判定を確認した後だけ、2つの確認フラグと`RUN_FULL_EXTRACTION`を`True`にします。deviceはCPU、layerは`final`固定です。中断した場合はcacheを削除せず、同じ設定でこのセルを再実行すると完成済みshardを再利用します。
+        """,
+        "extraction-heading",
+    ),
     code(
         """
 if RUN_FULL_EXTRACTION:
-    raise RuntimeError('Placeholders must be replaced and the formal preflight gate approved before execution')
+    if not CONFIRM_MANIFEST_VALIDATED:
+        raise RuntimeError('Confirm the complete MSP manifest validation first')
+    if not CONFIRM_BENCHMARK_AND_CAPACITY:
+        raise RuntimeError('Confirm the CPU benchmark and +20% capacity gate first')
+    msp_root = require_path(MSP_ROOT, 'MSP_ROOT', kind='directory')
+    require_path(MANIFEST_PATH, 'MANIFEST_PATH', kind='file')
+    require_path(USER_DIR, 'USER_DIR', kind='directory')
+    require_path(CHECKPOINT_PATH, 'CHECKPOINT_PATH', kind='file')
+    saved_capacity = json.loads(require_path(CAPACITY_PATH, 'CAPACITY_PATH', kind='file').read_text(encoding='utf-8'))
+    if not saved_capacity['capacity']['passes']:
+        raise RuntimeError('Saved capacity gate does not pass')
+    saved_benchmark = json.loads(require_path(BENCHMARK_PATH, 'BENCHMARK_PATH', kind='file').read_text(encoding='utf-8'))
+    encoder = Emotion2vecEncoder(
+        USER_DIR,
+        CHECKPOINT_PATH,
+        layer='final',
+        device='cpu',
+    )
+    if encoder.info.checkpoint_sha256 != saved_benchmark['encoder_checkpoint_sha256']:
+        raise RuntimeError('Benchmark and extraction checkpoint SHA-256 differ')
+    extraction_report = extract_feature_cache(
+        MANIFEST_PATH,
+        msp_root,
+        CACHE_ROOT,
+        encoder,
+        layer='final',
+        max_shard_frames=65536,
+        expected_dim=768,
+    )
+    persist_report(extraction_report, REPORT_DIR / 'extraction_result.json')
 else:
-    {'status': 'preview_only', 'command': full_command}
+    extraction_report = {'status': 'disabled_by_default'}
+extraction_report
         """,
-        "full-gate",
+        "full-extraction-gate",
+    ),
+    markdown(
+        """
+## 11. cache最終検証
+
+抽出完了後に`RUN_VALIDATE_CACHE = True`として実行します。manifest対象件数、768次元、有限float32、shard/index hash、全splitの`_SUCCESS`、cache完了フラグ、checkpoint SHA-256を検証します。
+        """,
+        "cache-validation-heading",
+    ),
+    code(
+        """
+if RUN_VALIDATE_CACHE:
+    require_path(MANIFEST_PATH, 'MANIFEST_PATH', kind='file')
+    require_path(CACHE_ROOT, 'CACHE_ROOT', kind='directory')
+    saved_benchmark = json.loads(require_path(BENCHMARK_PATH, 'BENCHMARK_PATH', kind='file').read_text(encoding='utf-8'))
+    cache_validation = validate_cache(
+        CACHE_ROOT,
+        MANIFEST_PATH,
+        expected_signature={
+            'feature_dim': 768,
+            'feature_layer': 'final_after_encoder_norm',
+            'dtype': 'float32',
+        },
+    )
+    expected_count = sum(bool(row['included']) for row in load_manifest(MANIFEST_PATH))
+    if cache_validation['utterances'] != expected_count:
+        raise RuntimeError('Cache utterance count does not match the manifest')
+    cache_meta = json.loads((CACHE_ROOT / 'cache_meta.json').read_text(encoding='utf-8'))
+    if cache_meta['encoder_checkpoint_sha256'] != saved_benchmark['encoder_checkpoint_sha256']:
+        raise RuntimeError('Benchmark and cache checkpoint SHA-256 differ')
+    partial_files = [str(path) for path in CACHE_ROOT.rglob('*.partial')]
+    if partial_files:
+        raise RuntimeError(f'Partial cache files remain: {partial_files[:5]}')
+    cache_validation_report = {
+        **cache_validation,
+        'checkpoint_sha256': cache_meta['encoder_checkpoint_sha256'],
+        'partial_files': partial_files,
+    }
+    persist_report(cache_validation_report, REPORT_DIR / 'cache_validation.json')
+else:
+    cache_validation_report = {'status': 'disabled_by_default'}
+cache_validation_report
+        """,
+        "cache-validation",
     ),
 ]
 
@@ -124,7 +499,7 @@ decoder_cells = [
         """
 # 02 — MSP-Podcast→HCUDB 4クラスdecoder学習・評価
 
-検証済みframe cacheとmanifestだけを入力にし、MSP-Podcast学習、HCUDB継続学習、IEMOCAP外部testを同じ4クラス出力で比較します。正式実行は既定で無効です。
+検証済みframe cacheとmanifestだけを入力にし、MSP-Podcast学習、HCUDB継続学習、両データセットの追加学習前後評価を行います。IEMOCAPは今回の一括研究経路には含めません。実データ1 epoch疎通と正式実行は別の出力先を使い、どちらも既定で無効です。
         """,
         "intro",
     ),
@@ -132,7 +507,6 @@ decoder_cells = [
         """
 import os, sys
 from pathlib import Path
-import pandas as pd
 
 PROJECT_ROOT = Path.cwd()
 if not (PROJECT_ROOT / 'ser_pipeline').is_dir():
@@ -140,81 +514,165 @@ if not (PROJECT_ROOT / 'ser_pipeline').is_dir():
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from ser_pipeline.notebook_api import environment_summary, run_demo_transfer_study
-from ser_pipeline.study import DatasetArtifacts, run_transfer_study
+from ser_pipeline.cache import validate_cache
+from ser_pipeline.notebook_api import environment_summary
+from ser_pipeline.study import DatasetArtifacts, require_formal_epochs, run_transfer_study
 from ser_pipeline.training import TrainingConfig
 
-RUN_DEMO = True
-RUN_FORMAL_STUDY = False
-STUDY_SEEDS = (42, 43, 44)
+STUDY_DATASETS = ('msp_podcast', 'hcudb1')
+RUN_REAL_SMOKE = False
+RUN_FORMAL_SEED_42 = False
+RUN_FORMAL_SEEDS_43_44 = False
+FORMAL_EPOCHS = None
+
+# 実測・検証結果をユーザーが確認した後だけTrueにします。
+CONFIRM_CACHE_VALIDATION = False
+CONFIRM_BENCHMARK_AND_CAPACITY = False
+CONFIRM_SMOKE_COMPLETED = False
+CONFIRM_SEED_42_ARTIFACTS = False
+
 ARTIFACT_DIR = PROJECT_ROOT / 'runs' / 'ser_decoder_study'
-ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def load_study_artifacts():
+    artifacts = {}
+    missing = []
+    for name in STUDY_DATASETS:
+        manifest_key = f'SER_{name.upper()}_MANIFEST'
+        cache_key = f'SER_{name.upper()}_CACHE'
+        if not os.environ.get(manifest_key):
+            missing.append(manifest_key)
+        if not os.environ.get(cache_key):
+            missing.append(cache_key)
+        exclusion_contract_path = None
+        if name == 'msp_podcast':
+            exclusion_key = 'SER_MSP_PODCAST_EXCLUSION_CONTRACT'
+            if not os.environ.get(exclusion_key):
+                missing.append(exclusion_key)
+            else:
+                exclusion_contract_path = Path(os.environ[exclusion_key])
+        if manifest_key not in missing and cache_key not in missing:
+            artifacts[name] = DatasetArtifacts(
+                manifest_path=Path(os.environ[manifest_key]),
+                cache_root=Path(os.environ[cache_key]),
+                exclusion_contract_path=exclusion_contract_path,
+            )
+    if missing:
+        raise ValueError(f'Missing study artifact environment variables: {missing}')
+    return artifacts
+
+
+def validate_execution_gates():
+    if not CONFIRM_CACHE_VALIDATION:
+        raise RuntimeError('Confirm both MSP/HCUDB caches were completely validated')
+    if not CONFIRM_BENCHMARK_AND_CAPACITY:
+        raise RuntimeError('Confirm the one-item CPU benchmark and the +20% capacity gate')
+    artifacts = load_study_artifacts()
+    cache_validation = {
+        name: validate_cache(current.cache_root, current.manifest_path)
+        for name, current in artifacts.items()
+    }
+    return artifacts, cache_validation
         """,
         "setup",
     ),
     markdown("## 1. cache-only実行環境", "environment-heading"),
     code("environment_summary()", "environment"),
-    markdown("## 2. 合成cacheでの短時間E2E", "demo-heading"),
+    markdown("## 2. 実行設定の確認", "configuration-heading"),
     code(
         """
-demo_seeds = (42,)
-demo_summary = run_demo_transfer_study(ARTIFACT_DIR / 'demo', seeds=demo_seeds, epochs=1) if RUN_DEMO else None
-{'status': 'completed' if demo_summary else 'skipped', 'seeds': list(demo_seeds)}
+{
+    'datasets': STUDY_DATASETS,
+    'device': 'cpu',
+    'run_real_smoke': RUN_REAL_SMOKE,
+    'run_formal_seed_42': RUN_FORMAL_SEED_42,
+    'run_formal_seeds_43_44': RUN_FORMAL_SEEDS_43_44,
+    'formal_epochs': FORMAL_EPOCHS,
+}
         """,
-        "demo-run",
-    ),
-    code(
-        """
-if demo_summary:
-    demo_run = demo_summary['runs'][0]
-    rows = []
-    for stage_name in ('before', 'after'):
-        for dataset_name, payload in demo_run[stage_name].items():
-            metrics = payload['result']['metrics_4class']
-            rows.append({
-                'stage': stage_name,
-                'dataset': dataset_name,
-                'accuracy_percent': metrics['accuracy'] * 100,
-                'uar_percent': metrics['uar'] * 100,
-                'macro_f1_percent': metrics['macro_f1'] * 100,
-            })
-    demo_table = pd.DataFrame(rows)
-else:
-    demo_table = pd.DataFrame()
-demo_table
-        """,
-        "demo-results",
+        "configuration",
     ),
     markdown(
         """
-## 3. 正式3-seed実行ゲート
+## 3. 実データ1 epoch疎通（正式集計外）
 
-必要な6つのmanifest/cacheパスを環境変数で与え、全preflight項目の承認後にフラグを変更します。指標ファイルは0–1、ここでの表示だけ百分率です。
+seed 42でMSP親学習→HCUDB継続学習→両データセットの前後評価を行います。出力は`smoke/`に隔離され、正式結果には混ぜません。
         """,
-        "formal-heading",
+        "smoke-heading",
     ),
     code(
         """
-if RUN_FORMAL_STUDY:
-    names = ('msp_podcast', 'hcudb1', 'iemocap')
-    formal_artifacts = {
-        name: DatasetArtifacts(
-            manifest_path=Path(os.environ[f'SER_{name.upper()}_MANIFEST']),
-            cache_root=Path(os.environ[f'SER_{name.upper()}_CACHE']),
-        )
-        for name in names
-    }
-    formal_summary = run_transfer_study(
-        formal_artifacts,
-        ARTIFACT_DIR / 'formal',
-        seeds=STUDY_SEEDS,
-        base_config=TrainingConfig(seed=42, device='auto'),
+if RUN_REAL_SMOKE:
+    smoke_artifacts, smoke_cache_validation = validate_execution_gates()
+    smoke_summary = run_transfer_study(
+        smoke_artifacts,
+        ARTIFACT_DIR / 'smoke',
+        seeds=(42,),
+        base_config=TrainingConfig(seed=42, device='cpu', epochs=1),
     )
 else:
-    formal_summary = {'status': 'disabled_by_default', 'seeds': list(STUDY_SEEDS)}
-formal_summary
+    smoke_summary = {'status': 'disabled_by_default', 'seed': 42, 'epochs': 1}
+smoke_summary
         """,
-        "formal-gate",
+        "smoke-gate",
+    ),
+    markdown(
+        """
+## 4. 正式seed 42実行ゲート
+
+1 epoch疎通の時間と履歴を確認して`FORMAL_EPOCHS`を正の整数に固定し、先にseed 42だけを実行します。未設定のまま実行すると拒否します。
+        """,
+        "formal-seed-42-heading",
+    ),
+    code(
+        """
+if RUN_FORMAL_SEED_42:
+    if not CONFIRM_SMOKE_COMPLETED:
+        raise RuntimeError('Confirm the real-data 1 epoch smoke run before formal seed 42')
+    formal_epochs = require_formal_epochs(FORMAL_EPOCHS)
+    formal_artifacts, formal_cache_validation = validate_execution_gates()
+    formal_seed_42_summary = run_transfer_study(
+        formal_artifacts,
+        ARTIFACT_DIR / 'formal' / 'initial-seed-42',
+        seeds=(42,),
+        base_config=TrainingConfig(seed=42, device='cpu', epochs=formal_epochs),
+    )
+else:
+    formal_seed_42_summary = {
+        'status': 'disabled_by_default', 'seed': 42, 'formal_epochs': FORMAL_EPOCHS
+    }
+formal_seed_42_summary
+        """,
+        "formal-seed-42-gate",
+    ),
+    markdown(
+        """
+## 5. 正式seed 43・44実行ゲート
+
+seed 42のcheckpoint、評価signature、cache ID、設定値を確認した後だけ実行します。出力はseed 42の正式出力と分けて保存します。
+        """,
+        "formal-followup-heading",
+    ),
+    code(
+        """
+if RUN_FORMAL_SEEDS_43_44:
+    if not CONFIRM_SEED_42_ARTIFACTS:
+        raise RuntimeError('Confirm the formal seed 42 artifacts before seeds 43 and 44')
+    formal_epochs = require_formal_epochs(FORMAL_EPOCHS)
+    followup_artifacts, followup_cache_validation = validate_execution_gates()
+    formal_followup_summary = run_transfer_study(
+        followup_artifacts,
+        ARTIFACT_DIR / 'formal' / 'followup-seeds-43-44',
+        seeds=(43, 44),
+        base_config=TrainingConfig(seed=43, device='cpu', epochs=formal_epochs),
+    )
+else:
+    formal_followup_summary = {
+        'status': 'disabled_by_default', 'seeds': [43, 44], 'formal_epochs': FORMAL_EPOCHS
+    }
+formal_followup_summary
+        """,
+        "formal-followup-gate",
     ),
 ]
 
@@ -665,11 +1123,66 @@ else:
 ]
 
 
-for filename, cells in (
-    ("01_extract_emotion2vec_features.ipynb", feature_cells),
-    ("02_train_and_evaluate_decoder.ipynb", decoder_cells),
-    ("msp_unavailable_label_audit.ipynb", unavailable_label_audit_cells),
-):
-    output = NOTEBOOK_DIR / filename
-    output.write_text(json.dumps(notebook(cells), ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    print(output)
+NOTEBOOKS = {
+    "01_extract_emotion2vec_features.ipynb": feature_cells,
+    "02_train_and_evaluate_decoder.ipynb": decoder_cells,
+    "msp_unavailable_label_audit.ipynb": unavailable_label_audit_cells,
+}
+DEFAULT_NOTEBOOKS = (
+    "01_extract_emotion2vec_features.ipynb",
+    "02_train_and_evaluate_decoder.ipynb",
+)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="compare parsed JSON content without writing any notebook",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=NOTEBOOK_DIR,
+        help="directory to write or inspect (defaults to the tracked notebooks directory)",
+    )
+    parser.add_argument(
+        "--notebook",
+        action="append",
+        choices=tuple(NOTEBOOKS),
+        help="notebook to process; repeat for multiple files (defaults to study notebooks only)",
+    )
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    selected = tuple(args.notebook) if args.notebook else DEFAULT_NOTEBOOKS
+    target_dir = args.output_dir.resolve()
+    generated = {name: notebook(NOTEBOOKS[name]) for name in selected}
+    if args.check:
+        mismatches = []
+        for name, expected in generated.items():
+            path = target_dir / name
+            try:
+                actual = json.loads(path.read_text(encoding="utf-8"))
+            except (FileNotFoundError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+                mismatches.append(f"{name}: {exc}")
+                continue
+            if actual != expected:
+                mismatches.append(f"{name}: JSON content differs")
+        if mismatches:
+            raise SystemExit("Notebook check failed:\n" + "\n".join(mismatches))
+        print(f"Notebook JSON content matches ({len(selected)} files); no files written")
+        return
+
+    target_dir.mkdir(parents=True, exist_ok=True)
+    for name, payload in generated.items():
+        output = target_dir / name
+        output.write_text(json.dumps(payload, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        print(output)
+
+
+if __name__ == "__main__":
+    main()

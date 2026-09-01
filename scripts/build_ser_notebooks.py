@@ -30,7 +30,11 @@ def notebook(cells: list[dict]) -> dict:
     return {
         "cells": cells,
         "metadata": {
-            "kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
+            "kernelspec": {
+                "display_name": "emotion2vec-py310",
+                "language": "python",
+                "name": "emotion2vec-py310",
+            },
             "language_info": {"name": "python", "version": "3.10"},
         },
         "nbformat": 4,
@@ -43,7 +47,7 @@ feature_cells = [
         """
 # 01 — MSP-Podcast 4クラス特徴cacheの作成
 
-MSP-Podcast R1.10の監査、strict manifest作成、実音声1件のCPU benchmark、容量+20%判定、emotion2vec特徴抽出、cache検証を上から順に行います。
+MSP-Podcast R1.10の欠損監査、完全一致重複監査、承認契約、strict manifest作成、実音声1件のCPU benchmark、容量+20%判定、emotion2vec特徴抽出、cache検証を上から順に行います。
 
 実データを読む処理はすべて既定で無効です。設定セルでパスを指定し、各段階の結果を確認してから、対応するフラグを1つずつ`True`にしてください。IEMOCAPは今回の一括研究経路には含めません。
         """,
@@ -62,10 +66,16 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from ser_pipeline.cache import validate_cache
+from ser_pipeline.duplicates import (
+    generate_msp_audio_duplicate_exclusion_contract,
+    load_msp_audio_duplicate_audit,
+    load_msp_audio_duplicate_exclusion_contract,
+)
 from ser_pipeline.exclusions import load_msp_missing_audio_exclusion_contract
 from ser_pipeline.features import Emotion2vecEncoder, extract_feature_cache
 from ser_pipeline.manifest import (
-    audit_dataset, build_manifest, generate_msp_missing_audio_exclusion_contract,
+    audit_dataset, build_manifest, generate_msp_audio_duplicate_audit,
+    generate_msp_missing_audio_exclusion_contract,
     load_manifest, validate_manifest,
 )
 from ser_pipeline.notebook_api import environment_summary, mapping_summary, split_summary
@@ -80,6 +90,9 @@ STUDY_DATASETS = ('msp_podcast', 'hcudb1')
 RUN_MSP_AUDIT = False
 RUN_MSP_GENERATE_EXCLUSION_CONTRACT = False
 RUN_MSP_VERIFY_EXCLUSION_CONTRACT = False
+RUN_MSP_DUPLICATE_AUDIT = False
+RUN_MSP_GENERATE_DUPLICATE_EXCLUSION_CONTRACT = False
+RUN_MSP_VERIFY_DUPLICATE_EXCLUSION_CONTRACT = False
 RUN_MSP_BUILD_MANIFEST = False
 RUN_MSP_VALIDATE_MANIFEST = False
 RUN_MSP_BENCHMARK = False
@@ -99,6 +112,9 @@ USER_DIR = PROJECT_ROOT / 'upstream'
 CHECKPOINT_PATH = PROJECT_ROOT / 'artifacts' / 'checkpoints' / 'emotion2vec_base.pt'
 MANIFEST_PATH = PROJECT_ROOT / 'runs' / 'ser_manifests' / 'msp_podcast_4class_v1.jsonl'
 EXCLUSION_CONTRACT_PATH = PROJECT_ROOT / 'runs' / 'ser_manifests' / 'msp_missing_audio_exclusions_v1.json'
+DUPLICATE_AUDIT_PATH = PROJECT_ROOT / 'runs' / 'ser_manifests' / 'msp_audio_duplicate_audit_v1.json'
+DUPLICATE_CANDIDATES_CSV_PATH = PROJECT_ROOT / 'runs' / 'ser_manifests' / 'msp_audio_duplicate_candidates_v1.csv'
+DUPLICATE_EXCLUSION_CONTRACT_PATH = PROJECT_ROOT / 'runs' / 'ser_manifests' / 'msp_audio_duplicate_exclusions_v1.json'
 CACHE_ROOT = PROJECT_ROOT / 'runs' / 'ser_feature_cache' / 'msp_podcast_base_final_v1'
 REPORT_DIR = PROJECT_ROOT / 'runs' / 'ser_feature_preflight' / 'msp_podcast'
 BENCHMARK_PATH = REPORT_DIR / 'one_audio_cpu_benchmark.json'
@@ -131,12 +147,18 @@ def persist_report(report, path):
     'checkpoint': str(CHECKPOINT_PATH),
     'manifest': str(MANIFEST_PATH),
     'exclusion_contract': str(EXCLUSION_CONTRACT_PATH),
+    'duplicate_audit': str(DUPLICATE_AUDIT_PATH),
+    'duplicate_candidates_csv': str(DUPLICATE_CANDIDATES_CSV_PATH),
+    'duplicate_exclusion_contract': str(DUPLICATE_EXCLUSION_CONTRACT_PATH),
     'cache_root': str(CACHE_ROOT),
     'device': 'cpu',
     'run_flags': {
         'audit': RUN_MSP_AUDIT,
         'generate_exclusion_contract': RUN_MSP_GENERATE_EXCLUSION_CONTRACT,
         'verify_exclusion_contract': RUN_MSP_VERIFY_EXCLUSION_CONTRACT,
+        'duplicate_audit': RUN_MSP_DUPLICATE_AUDIT,
+        'generate_duplicate_exclusion_contract': RUN_MSP_GENERATE_DUPLICATE_EXCLUSION_CONTRACT,
+        'verify_duplicate_exclusion_contract': RUN_MSP_VERIFY_DUPLICATE_EXCLUSION_CONTRACT,
         'build_manifest': RUN_MSP_BUILD_MANIFEST,
         'validate_manifest': RUN_MSP_VALIDATE_MANIFEST,
         'benchmark': RUN_MSP_BENCHMARK,
@@ -163,7 +185,7 @@ def persist_report(report, path):
         """
 ## 2. MSP-Podcast metadata・音声inventory監査
 
-`RUN_MSP_AUDIT = True`にした場合だけ実データを読みます。添付の利用不能候補リストは除外条件に使用しません。結果には、現在不足している対象音声の元ラベル、4クラス変換後ラベル、公式split別件数も含まれます。`missing_eligible_audio == 874`と固定内訳、`unregistered_audio_files == 0`、現行契約の対象25,985件を確認してから次へ進みます。
+`RUN_MSP_AUDIT = True`にした場合だけ実データを読みます。0バイトWAVは入手不能な欠損音声として扱います。結果には、現在不足している対象音声の元ラベル、4クラス変換後ラベル、公式split別件数も含まれます。`missing_eligible_audio == 1128`、`zero_byte_audio_files_treated_as_missing == 254`、固定内訳、`unregistered_audio_files == 0`、現行契約の対象25,985件を確認してから次へ進みます。
         """,
         "audit-heading",
     ),
@@ -224,9 +246,99 @@ else:
     ),
     markdown(
         """
+### 2.2 欠損ファイルの分布
+
+欠損1,128件を、実ファイルなし／0バイト、感情ラベル、公式split、感情×splitで集計します。`missing_share_pct`は全欠損に占める構成比、`missing_rate_pct`は各区分の対象総数に対する欠損率です。
+        """,
+        "missing-distribution-heading",
+    ),
+    code(
+        """
+if RUN_MSP_AUDIT:
+    missing_total = int(audit_report['missing_eligible_audio'])
+    missing_kind_names = {
+        'absent': 'ファイルなし',
+        'zero_byte': '0バイト',
+    }
+    missing_kind_summary = pd.DataFrame([
+        {
+            'missing_type': missing_kind_names[kind],
+            'missing_count': audit_report['missing_eligible_kind_counts'].get(kind, 0),
+            'missing_share_pct': round(
+                100 * audit_report['missing_eligible_kind_counts'].get(kind, 0) / missing_total,
+                2,
+            ) if missing_total else None,
+        }
+        for kind in ('absent', 'zero_byte')
+    ])
+
+    distribution_label_pairs = (
+        ('A', 'anger'),
+        ('H', 'happy'),
+        ('S', 'sadness'),
+        ('D', 'disgust'),
+    )
+    missing_label_distribution = pd.DataFrame([
+        {
+            'original_label': original_label,
+            'mapped_label': mapped_label,
+            'eligible_total': eligible_total,
+            'missing_count': missing_count,
+            'missing_share_pct': round(100 * missing_count / missing_total, 2) if missing_total else None,
+            'missing_rate_pct': round(100 * missing_count / eligible_total, 2) if eligible_total else None,
+        }
+        for original_label, mapped_label in distribution_label_pairs
+        for eligible_total, missing_count in [(
+            audit_report['eligible_mapped_label_counts'].get(mapped_label, 0),
+            audit_report['missing_eligible_original_label_counts'].get(original_label, 0),
+        )]
+    ])
+
+    missing_split_distribution = pd.DataFrame([
+        {
+            'source_split': source_split,
+            'eligible_total': eligible_total,
+            'available_count': eligible_total - missing_count,
+            'missing_count': missing_count,
+            'missing_share_pct': round(100 * missing_count / missing_total, 2) if missing_total else None,
+            'missing_rate_pct': round(100 * missing_count / eligible_total, 2) if eligible_total else None,
+        }
+        for source_split in ('Train', 'Development', 'Test1')
+        for eligible_total, missing_count in [(
+            audit_report['eligible_source_split_counts'].get(source_split, 0),
+            audit_report['missing_eligible_source_split_counts'].get(source_split, 0),
+        )]
+    ])
+
+    missing_label_split_cross = pd.DataFrame.from_dict(
+        audit_report['missing_eligible_original_by_source_split_counts'],
+        orient='index',
+    ).reindex(
+        index=('Train', 'Development', 'Test1'),
+        columns=('A', 'H', 'S', 'D'),
+        fill_value=0,
+    ).fillna(0).astype(int)
+    missing_label_split_cross['Total'] = missing_label_split_cross.sum(axis=1)
+    missing_label_split_cross.loc['Total'] = missing_label_split_cross.sum(axis=0)
+
+    print('欠損種別:')
+    display(missing_kind_summary)
+    print('感情ラベル別の欠損構成比・欠損率:')
+    display(missing_label_distribution)
+    print('公式split別の欠損構成比・欠損率:')
+    display(missing_split_distribution)
+    print('感情ラベル × 公式split（欠損件数）:')
+    display(missing_label_split_cross)
+else:
+    print('監査は無効です。RUN_MSP_AUDIT = Trueで監査セルから実行してください。')
+        """,
+        "missing-distribution",
+    ),
+    markdown(
+        """
 ## 3. 除外候補生成
 
-`RUN_MSP_GENERATE_EXCLUSION_CONTRACT = True`にした場合だけ、添付リストを参照せず、metadata上の4クラス対象と現在のWAV inventoryから不足行を再計算します。874件・固定内訳に一致しない場合はJSONを書きません。
+`RUN_MSP_GENERATE_EXCLUSION_CONTRACT = True`にした場合だけ、添付リストを参照せず、metadata上の4クラス対象と現在のWAV inventoryから、0バイトWAVを含む不足行を再計算します。1,128件・固定内訳に一致しない場合はJSONを書きません。
         """,
         "exclusion-generation-heading",
     ),
@@ -249,7 +361,7 @@ exclusion_generation_report
         """
 ## 4. 除外契約の件数・内訳・SHA確認
 
-`RUN_MSP_VERIFY_EXCLUSION_CONTRACT = True`にすると、874件、元ラベル`A 378 / H 392 / S 80 / D 24`、公式split`Train 520 / Development 210 / Test1 144`、ファイル名順、重複なし、正規化SHA-256を検証します。
+`RUN_MSP_VERIFY_EXCLUSION_CONTRACT = True`にすると、1,128件、元ラベル`A 416 / H 576 / S 107 / D 29`、公式split`Train 579 / Development 219 / Test1 330`、ファイル名順、重複なし、正規化SHA-256を検証します。
         """,
         "exclusion-verification-heading",
     ),
@@ -282,9 +394,131 @@ APPROVED_MSP_EXCLUSION_SHA256 = None
     ),
     markdown(
         """
-## 6. strict manifest作成
+## 6. MSP-Podcast完全一致重複監査
 
-`RUN_MSP_BUILD_MANIFEST = True`にすると、承認SHAと除外契約を照合し、契約内874件だけを`included: false`にします。一覧外欠損、復旧済み契約対象、metadata不一致、音声デコード失敗、重複、話者漏洩、ラベル契約違反があれば停止します。
+欠損音声除外契約のSHAを承認した後、`RUN_MSP_DUPLICATE_AUDIT = True`にした場合だけ、利用可能な4クラス・既知話者・`Train / Development / Test1`音声を読みます。全対象のファイルバイトSHA-256を計算し、同じサンプルレート・チャンネル数・フレーム数の候補だけを`little-endian float32`へデコードして、形状込みの波形SHA-256を計算します。リサンプリング、許容誤差、類似度閾値は使いません。
+
+このセルは監査JSONと候補CSVだけを生成し、manifestや生WAVを変更しません。`summary`で同一split群とcross-split群を分けて確認し、候補CSVでは話者・ラベル不一致フラグも確認してください。
+        """,
+        "duplicate-audit-heading",
+    ),
+    code(
+        """
+if RUN_MSP_DUPLICATE_AUDIT:
+    if APPROVED_MSP_EXCLUSION_SHA256 is None:
+        raise RuntimeError('Approve the missing-audio exclusion SHA-256 before duplicate audit')
+    msp_root = require_path(MSP_ROOT, 'MSP_ROOT', kind='directory')
+    require_path(EXCLUSION_CONTRACT_PATH, 'EXCLUSION_CONTRACT_PATH', kind='file')
+    duplicate_audit_report = generate_msp_audio_duplicate_audit(
+        msp_root,
+        DUPLICATE_AUDIT_PATH,
+        DUPLICATE_CANDIDATES_CSV_PATH,
+        approved_missing_audio_exclusion_contract=EXCLUSION_CONTRACT_PATH,
+        expected_missing_audio_exclusion_sha256=APPROVED_MSP_EXCLUSION_SHA256,
+    )
+    persist_report(duplicate_audit_report, REPORT_DIR / 'duplicate_audit_generation.json')
+    duplicate_candidates = pd.read_csv(DUPLICATE_CANDIDATES_CSV_PATH)
+    print('完全一致重複監査サマリー:')
+    display(pd.Series(duplicate_audit_report['summary'], name='count').to_frame())
+    print('重複候補（候補が0件の場合は空の表です）:')
+    display(duplicate_candidates)
+else:
+    duplicate_audit_report = {'status': 'disabled_by_default'}
+duplicate_audit_report
+        """,
+        "duplicate-audit",
+    ),
+    markdown(
+        """
+## 7. 重複除外IDの手動判断
+
+候補CSVをグループごとに確認し、除外すると判断した発話IDだけを明示します。ここへ書いただけではまだ除外されません。監査候補にないID、同じIDの重複指定、cross-split群を複数splitに残す判断は次の契約生成で拒否されます。同一split内の候補は、承認しないまま残すこともできます。
+        """,
+        "duplicate-decision-heading",
+    ),
+    code(
+        """
+MSP_APPROVED_DUPLICATE_EXCLUDE_IDS = [
+    # 'MSP-PODCAST_XXXX',
+]
+        """,
+        "duplicate-decision",
+    ),
+    markdown(
+        """
+## 8. 重複除外契約の生成・検証
+
+`RUN_MSP_GENERATE_DUPLICATE_EXCLUSION_CONTRACT = True`にすると、監査候補と明示IDだけから`msp_audio_duplicate_exclusions_v1`を生成します。続けて`RUN_MSP_VERIFY_DUPLICATE_EXCLUSION_CONTRACT = True`にすると、監査SHA、除外レコード、理由、除外後件数、cross-split解消条件、正規化SHA-256を再検証します。
+        """,
+        "duplicate-contract-heading",
+    ),
+    code(
+        """
+if RUN_MSP_GENERATE_DUPLICATE_EXCLUSION_CONTRACT:
+    require_path(DUPLICATE_AUDIT_PATH, 'DUPLICATE_AUDIT_PATH', kind='file')
+    duplicate_contract_generation_report = generate_msp_audio_duplicate_exclusion_contract(
+        DUPLICATE_AUDIT_PATH,
+        MSP_APPROVED_DUPLICATE_EXCLUDE_IDS,
+        DUPLICATE_EXCLUSION_CONTRACT_PATH,
+    )
+    persist_report(
+        duplicate_contract_generation_report,
+        REPORT_DIR / 'duplicate_exclusion_contract_generation.json',
+    )
+else:
+    duplicate_contract_generation_report = {'status': 'disabled_by_default'}
+duplicate_contract_generation_report
+        """,
+        "duplicate-contract-generation",
+    ),
+    code(
+        """
+if RUN_MSP_VERIFY_DUPLICATE_EXCLUSION_CONTRACT:
+    audit_path = require_path(DUPLICATE_AUDIT_PATH, 'DUPLICATE_AUDIT_PATH', kind='file')
+    duplicate_contract_path = require_path(
+        DUPLICATE_EXCLUSION_CONTRACT_PATH,
+        'DUPLICATE_EXCLUSION_CONTRACT_PATH',
+        kind='file',
+    )
+    duplicate_audit_payload, duplicate_audit_verification = load_msp_audio_duplicate_audit(audit_path)
+    _, duplicate_contract_verification = load_msp_audio_duplicate_exclusion_contract(
+        duplicate_contract_path,
+        duplicate_audit_payload,
+    )
+    duplicate_contract_verification_report = {
+        'audit': duplicate_audit_verification,
+        'exclusion_contract': duplicate_contract_verification,
+    }
+    persist_report(
+        duplicate_contract_verification_report,
+        REPORT_DIR / 'duplicate_exclusion_contract_verification.json',
+    )
+else:
+    duplicate_contract_verification_report = {'status': 'disabled_by_default'}
+duplicate_contract_verification_report
+        """,
+        "duplicate-contract-verification",
+    ),
+    markdown(
+        """
+## 9. 重複除外契約SHAの承認
+
+上の検証結果と手動判断を確認後、重複除外契約の`normalized_sha256`を設定します。除外0件でも、cross-split候補が残っていないことを証明する監査連結済み契約として承認が必要です。
+        """,
+        "duplicate-approval-heading",
+    ),
+    code(
+        """
+APPROVED_MSP_DUPLICATE_EXCLUSION_SHA256 = None
+# 例: APPROVED_MSP_DUPLICATE_EXCLUSION_SHA256 = '64桁の検証済みSHA-256'
+        """,
+        "duplicate-approval",
+    ),
+    markdown(
+        """
+## 10. strict manifest作成
+
+`RUN_MSP_BUILD_MANIFEST = True`にすると、欠損契約・重複監査・重複除外契約と両方の承認SHAを照合します。現在の全対象音声SHAが監査JSONと一致しなければ「監査が古い」として停止し、承認済みIDだけを`msp_audio_duplicate_exclusion_approved_v1`で`included: false`にします。最終件数は欠損除外後件数から重複契約件数を引いた契約値で検証されます。
         """,
         "manifest-build-heading",
     ),
@@ -293,8 +527,12 @@ APPROVED_MSP_EXCLUSION_SHA256 = None
 if RUN_MSP_BUILD_MANIFEST:
     if APPROVED_MSP_EXCLUSION_SHA256 is None:
         raise RuntimeError('Set APPROVED_MSP_EXCLUSION_SHA256 after reviewing the exclusion contract')
+    if APPROVED_MSP_DUPLICATE_EXCLUSION_SHA256 is None:
+        raise RuntimeError('Set APPROVED_MSP_DUPLICATE_EXCLUSION_SHA256 after reviewing duplicate exclusions')
     msp_root = require_path(MSP_ROOT, 'MSP_ROOT', kind='directory')
     require_path(EXCLUSION_CONTRACT_PATH, 'EXCLUSION_CONTRACT_PATH', kind='file')
+    require_path(DUPLICATE_AUDIT_PATH, 'DUPLICATE_AUDIT_PATH', kind='file')
+    require_path(DUPLICATE_EXCLUSION_CONTRACT_PATH, 'DUPLICATE_EXCLUSION_CONTRACT_PATH', kind='file')
     manifest_build_report = build_manifest(
         'msp_podcast',
         msp_root,
@@ -303,6 +541,9 @@ if RUN_MSP_BUILD_MANIFEST:
         inspect_excluded_audio=True,
         approved_exclusion_contract=EXCLUSION_CONTRACT_PATH,
         expected_exclusion_sha256=APPROVED_MSP_EXCLUSION_SHA256,
+        duplicate_audit=DUPLICATE_AUDIT_PATH,
+        approved_duplicate_exclusion_contract=DUPLICATE_EXCLUSION_CONTRACT_PATH,
+        expected_duplicate_exclusion_sha256=APPROVED_MSP_DUPLICATE_EXCLUSION_SHA256,
     )
     persist_report(manifest_build_report, REPORT_DIR / 'manifest_build.json')
 else:
@@ -313,7 +554,7 @@ manifest_build_report
     ),
     markdown(
         """
-## 7. manifestと実音声の完全検証
+## 11. manifestと実音声の完全検証
 
 `RUN_MSP_VALIDATE_MANIFEST = True`にすると、included音声のmetadataとSHA-256を再計算します。結果が`status: ok`で、`audio.verified_audio`と`included`が一致したことを確認してください。
         """,
@@ -334,7 +575,7 @@ manifest_validation_report
     ),
     markdown(
         """
-## 8. 実音声1件のCPU benchmark
+## 12. 実音声1件のCPU benchmark
 
 manifestで`included: true`のWAVを`BENCHMARK_AUDIO`へ指定します。manifest検証結果を確認後、`CONFIRM_MANIFEST_VALIDATED = True`と`RUN_MSP_BENCHMARK = True`にします。
         """,
@@ -363,7 +604,7 @@ benchmark_report
     ),
     markdown(
         """
-## 9. 全件所要時間・容量+20%ゲート
+## 13. 全件所要時間・容量+20%ゲート
 
 `RUN_MSP_CAPACITY_GATE = True`にすると、manifestの対象総時間と1件benchmarkから全件見積りを作ります。`capacity.passes`が`True`でなければ全件抽出へ進みません。
         """,
@@ -402,7 +643,7 @@ capacity_report
     ),
     markdown(
         """
-## 10. MSP-Podcast全件特徴抽出
+## 14. MSP-Podcast全件特徴抽出
 
 manifest検証、benchmark、容量判定を確認した後だけ、2つの確認フラグと`RUN_FULL_EXTRACTION`を`True`にします。deviceはCPU、layerは`final`固定です。中断した場合はcacheを削除せず、同じ設定でこのセルを再実行すると完成済みshardを再利用します。
         """,
@@ -449,7 +690,7 @@ extraction_report
     ),
     markdown(
         """
-## 11. cache最終検証
+## 15. cache最終検証
 
 抽出完了後に`RUN_VALIDATE_CACHE = True`として実行します。manifest対象件数、768次元、有限float32、shard/index hash、全splitの`_SUCCESS`、cache完了フラグ、checkpoint SHA-256を検証します。
         """,
@@ -545,17 +786,28 @@ def load_study_artifacts():
         if not os.environ.get(cache_key):
             missing.append(cache_key)
         exclusion_contract_path = None
+        duplicate_audit_path = None
+        duplicate_exclusion_contract_path = None
         if name == 'msp_podcast':
             exclusion_key = 'SER_MSP_PODCAST_EXCLUSION_CONTRACT'
-            if not os.environ.get(exclusion_key):
-                missing.append(exclusion_key)
-            else:
+            duplicate_audit_key = 'SER_MSP_PODCAST_DUPLICATE_AUDIT'
+            duplicate_exclusion_key = 'SER_MSP_PODCAST_DUPLICATE_EXCLUSION_CONTRACT'
+            for provenance_key in (exclusion_key, duplicate_audit_key, duplicate_exclusion_key):
+                if not os.environ.get(provenance_key):
+                    missing.append(provenance_key)
+            if exclusion_key not in missing:
                 exclusion_contract_path = Path(os.environ[exclusion_key])
+            if duplicate_audit_key not in missing:
+                duplicate_audit_path = Path(os.environ[duplicate_audit_key])
+            if duplicate_exclusion_key not in missing:
+                duplicate_exclusion_contract_path = Path(os.environ[duplicate_exclusion_key])
         if manifest_key not in missing and cache_key not in missing:
             artifacts[name] = DatasetArtifacts(
                 manifest_path=Path(os.environ[manifest_key]),
                 cache_root=Path(os.environ[cache_key]),
                 exclusion_contract_path=exclusion_contract_path,
+                duplicate_audit_path=duplicate_audit_path,
+                duplicate_exclusion_contract_path=duplicate_exclusion_contract_path,
             )
     if missing:
         raise ValueError(f'Missing study artifact environment variables: {missing}')

@@ -9,20 +9,22 @@ from collections import Counter
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable, Mapping
 
+from .duplicates import MSP_DUPLICATE_EXCLUSION_REASON
+
 
 MSP_EXCLUSION_SCHEMA_VERSION = "msp_missing_audio_exclusions_v1"
 MSP_EXCLUSION_REASON = "msp_missing_audio_exclusion_approved_v1"
-MSP_EXPECTED_EXCLUDED_COUNT = 874
-MSP_EXPECTED_INCLUDED_COUNT = 25_111
+MSP_EXPECTED_EXCLUDED_COUNT = 1_128
+MSP_EXPECTED_INCLUDED_COUNT = 24_857
 MSP_EXPECTED_ELIGIBLE_COUNT = MSP_EXPECTED_EXCLUDED_COUNT + MSP_EXPECTED_INCLUDED_COUNT
-MSP_EXPECTED_ORIGINAL_LABEL_COUNTS = {"A": 378, "D": 24, "H": 392, "S": 80}
+MSP_EXPECTED_ORIGINAL_LABEL_COUNTS = {"A": 416, "D": 29, "H": 576, "S": 107}
 MSP_EXPECTED_MAPPED_LABEL_COUNTS = {
-    "anger": 378,
-    "disgust": 24,
-    "happy": 392,
-    "sadness": 80,
+    "anger": 416,
+    "disgust": 29,
+    "happy": 576,
+    "sadness": 107,
 }
-MSP_EXPECTED_SOURCE_SPLIT_COUNTS = {"Development": 210, "Test1": 144, "Train": 520}
+MSP_EXPECTED_SOURCE_SPLIT_COUNTS = {"Development": 219, "Test1": 330, "Train": 579}
 MSP_ORIGINAL_TO_MAPPED = {"A": "anger", "D": "disgust", "H": "happy", "S": "sadness"}
 MSP_SOURCE_TO_SPLIT = {"Development": "validation", "Test1": "test", "Train": "train"}
 
@@ -269,7 +271,7 @@ def reconcile_msp_exclusion_contract(
     if unapproved:
         raise ValueError(f"MSP eligible audio is missing outside the approved exclusion contract: {unapproved[:5]}")
     if len(eligible) - len(contract_ids) != MSP_EXPECTED_INCLUDED_COUNT:
-        raise ValueError("MSP final included count does not equal 25,111")
+        raise ValueError(f"MSP final included count does not equal {MSP_EXPECTED_INCLUDED_COUNT:,}")
     return {
         "eligible_metadata": len(eligible),
         "approved_missing": len(contract_ids),
@@ -305,8 +307,15 @@ def manifest_exclusion_contract_signature(records: Iterable[Mapping[str, Any]]) 
         raise ValueError("manifest approved MSP exclusion count mismatch")
     if any(bool(row.get("included")) for row in excluded):
         raise ValueError("manifest approved MSP exclusions must have included=false")
-    if sum(bool(row.get("included")) for row in rows) != MSP_EXPECTED_INCLUDED_COUNT:
-        raise ValueError("manifest final included count does not equal 25,111")
+    duplicate_excluded = [
+        row for row in rows if MSP_DUPLICATE_EXCLUSION_REASON in row.get("exclusion_reasons", [])
+    ]
+    expected_final = MSP_EXPECTED_INCLUDED_COUNT - len(duplicate_excluded)
+    if sum(bool(row.get("included")) for row in rows) != expected_final:
+        raise ValueError(
+            "manifest final included count does not equal the missing-audio contract count "
+            "minus approved duplicate exclusions"
+        )
     _require_expected_counts(
         "manifest original label counts",
         dict(sorted(Counter(str(row["original_emotion"]) for row in excluded).items())),

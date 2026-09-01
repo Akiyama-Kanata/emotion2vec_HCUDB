@@ -232,7 +232,7 @@ HCUDB側は実音声の特徴cache準備まで完了した。これは実験準�
 - 標準WSL環境ではCUDAを利用できないため、ユーザー判断に基づき実データ1 epoch疎通と正式学習は`device='cpu'`で実行する。
 - HCUDB manifest/cacheは準備済みとのユーザー申告を前提とし、学習直前に現行validatorで完全性を再確認する。Codexは実データの所在や内容を参照しない。
 - MSP-Podcastは実データを現行4クラスと公式splitに沿って整理し、`audit-data`、`build-manifest`、`validate-manifest`、1件CPU特徴抽出benchmark、必要容量+20%の容量ゲート、全特徴cache検証をユーザーが順に実行する。
-- `msp_podcast_unavailable_wav_filenames.txt`は参考情報にとどめ、manifestの除外条件には使用しない。現在不足している正確な874件だけを承認済み除外契約で固定し、残る25,111件をstrict manifestの採用対象とする。存在する対象音声にデコード失敗などがあれば自動除外せず停止する。
+- `msp_podcast_unavailable_wav_filenames.txt`は参考情報にとどめ、manifestの除外条件には使用しない。現在欠損している音声と0バイトWAVの正確な1,128件だけを承認済み除外契約で固定し、残る24,857件をstrict manifestの採用対象とする。0バイト以外の対象音声にデコード失敗などがあれば自動除外せず停止する。
 - 実データ1 epoch疎通はseed 42だけで行い、MSP親学習、HCUDB継続学習、両データセットの追加学習前後評価までを確認する。この出力は`smoke/`へ隔離し、正式集計には含めない。
 - 疎通後、CPU時間と学習履歴を基に正式epoch数を正の整数として固定する。未設定の場合、正式実行を拒否する。
 - 正式学習はまずseed 42だけを実行する。親子checkpoint ID・SHA-256、両評価集合signature、seed、各cache ID、設定値を確認した後、確認フラグを立ててseed 43・44を別出力で実行する。
@@ -240,16 +240,16 @@ HCUDB側は実音声の特徴cache準備まで完了した。これは実験準�
 - 特徴抽出、benchmark、合成または実データで`train_decoder`を呼ぶテスト、実学習はユーザーが実行する。Codexが実行するのはmapping、split、manifest、cache、Notebook境界など、学習を伴わない検査だけとする。
 - `msp_unavailable_label_audit.ipynb`は復元候補の確認が済むまで再生成しない。Notebook builderの通常対象から外し、明示選択時だけ生成またはJSON内容検査の対象にする。
 
-## 16. 2026-08-30 MSP-Podcast不足874件の固定除外契約
+## 16. 2026-08-31 MSP-Podcast利用不能音声1,128件の固定除外契約
 
 本節は、MSP-Podcast対象音声を欠損0件まで再取得してから開始するという従来条件を置き換える。公式split、4クラスmapping、既知話者条件は変更しない。
 
-- metadata上の4クラス対象25,985件のうち、現在不足している874件だけを`msp_missing_audio_exclusions_v1`として固定除外し、正式採用数を25,111件とする。
-- 固定除外の元ラベル内訳は`A 378 / H 392 / S 80 / D 24`、公式split内訳は`Train 520 / Development 210 / Test1 144`とする。angerの欠損率は7.63%であり、欠損がランダムであるとは主張しない。
-- 公式`Train / Development / Test1`の割当ては組み替えない。MSP-Podcastの主testは、公式Test1から固定144件を除いた利用可能部分集合として扱う。
+- metadata上の4クラス対象25,985件のうち、現在欠損している音声と0バイトWAVの1,128件だけを`msp_missing_audio_exclusions_v1`として固定除外し、正式採用数を24,857件とする。
+- 固定除外の元ラベル内訳は`A 416 / H 576 / S 107 / D 29`、公式split内訳は`Train 579 / Development 219 / Test1 330`とする。利用不能がランダムであるとは主張しない。
+- 公式`Train / Development / Test1`の割当ては組み替えない。MSP-Podcastの主testは、公式Test1から固定330件を除いた利用可能部分集合として扱う。
 - 将来報告するMSP-Podcast評価値は、完全な公式Test1全体ではなく、事前に固定した利用可能部分集合に対する結果であることを明記する。
-- 添付1,128件の候補一覧は除外条件に使わない。その一覧に含まれていても現在存在する254件は、metadata上の対象条件を満たす限り通常どおり採用・デコード・音声metadata・SHA-256検証を行う。
+- 添付1,128件の候補一覧自体は除外条件に使わない。metadataと現行inventoryから再計算し、0バイトWAV 254件は入手不能な欠損音声として扱う。
 - 除外契約はファイル名順で保存し、utterance ID、元ラベル、4クラス変換後ラベル、公式split、除外理由、固定件数内訳、正規化SHA-256を含める。件数・内訳・metadata・現在の欠損集合・承認SHAのどれかが一致しなければmanifestを作成しない。
 - 契約対象音声が後日復旧しても自動採用しない。採用方針を変える場合は新versionの除外契約として再生成・再承認する。
-- manifest build reportに除外契約SHA、内訳、最終採用25,111件を保存する。cache metadataと評価集合signatureにも同じ契約signatureを伝播し、正式成果物のprovenanceへ契約JSON、manifest SHA-256、cache IDを同梱する。
+- manifest build reportに除外契約SHA、内訳、最終採用24,857件を保存する。cache metadataと評価集合signatureにも同じ契約signatureを伝播し、正式成果物のprovenanceへ契約JSON、manifest SHA-256、cache IDを同梱する。
 - 実データmanifest作成、特徴抽出、benchmark、cache生成、学習、評価はユーザーが実行する。Codexは除外契約・manifest・cache metadata・評価signature・Notebook境界などの非学習テストだけを実行する。

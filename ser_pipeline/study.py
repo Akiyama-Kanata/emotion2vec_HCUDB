@@ -10,6 +10,13 @@ from typing import Any, Mapping, Sequence
 from .audio import sha256_file
 from .checkpoints import load_decoder_checkpoint
 from .evaluation import assert_same_evaluation_sets
+from .duplicates import (
+    load_msp_audio_duplicate_audit,
+    load_msp_audio_duplicate_exclusion_contract,
+    manifest_duplicate_provenance_signature,
+    write_msp_audio_duplicate_audit,
+    write_msp_audio_duplicate_exclusion_contract,
+)
 from .exclusions import (
     load_msp_missing_audio_exclusion_contract,
     manifest_exclusion_contract_signature,
@@ -28,6 +35,8 @@ class DatasetArtifacts:
     manifest_path: Path
     cache_root: Path
     exclusion_contract_path: Path | None = None
+    duplicate_audit_path: Path | None = None
+    duplicate_exclusion_contract_path: Path | None = None
 
 
 def require_formal_epochs(epochs: int | None) -> int:
@@ -80,6 +89,58 @@ def bundle_msp_exclusion_contract(
     }
 
 
+def bundle_msp_duplicate_provenance(
+    artifact: DatasetArtifacts,
+    output_dir: str | Path,
+) -> dict[str, Any] | None:
+    """Copy validated duplicate audit and exclusion contracts into study provenance."""
+    signature = manifest_duplicate_provenance_signature(load_manifest(artifact.manifest_path))
+    supplied = (artifact.duplicate_audit_path, artifact.duplicate_exclusion_contract_path)
+    if signature is None:
+        if any(path is not None for path in supplied):
+            raise ValueError("duplicate artifacts were supplied for a manifest without duplicate provenance")
+        return None
+    if any(path is None for path in supplied):
+        raise ValueError("MSP manifest duplicate provenance requires both audit and exclusion contract paths")
+    audit_payload, audit_report = load_msp_audio_duplicate_audit(
+        artifact.duplicate_audit_path,
+        expected_sha256=signature["audit"]["normalized_sha256"],
+    )
+    contract_payload, contract_report = load_msp_audio_duplicate_exclusion_contract(
+        artifact.duplicate_exclusion_contract_path,
+        audit_payload,
+        expected_sha256=signature["exclusion_contract"]["normalized_sha256"],
+    )
+    cache_meta_path = artifact.cache_root / "cache_meta.json"
+    try:
+        cache_meta = json.loads(cache_meta_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"invalid MSP cache metadata: {cache_meta_path}") from exc
+    if cache_meta.get("duplicate_audit") != signature["audit"]:
+        raise ValueError("MSP cache and manifest duplicate audit provenance differ")
+    if cache_meta.get("duplicate_exclusion_contract") != signature["exclusion_contract"]:
+        raise ValueError("MSP cache and manifest duplicate exclusion provenance differ")
+    provenance_dir = Path(output_dir) / "provenance"
+    audit_destination = provenance_dir / "msp_audio_duplicate_audit_v1.json"
+    contract_destination = provenance_dir / "msp_audio_duplicate_exclusions_v1.json"
+    write_msp_audio_duplicate_audit(audit_payload, audit_destination)
+    write_msp_audio_duplicate_exclusion_contract(contract_payload, audit_payload, contract_destination)
+    return {
+        "audit": {
+            "path": str(audit_destination),
+            "normalized_sha256": audit_report["normalized_sha256"],
+        },
+        "exclusion_contract": {
+            "path": str(contract_destination),
+            "normalized_sha256": contract_report["normalized_sha256"],
+            "count": contract_report["count"],
+            "final_included": contract_report["post_exclusion_counts"]["final_included"],
+        },
+        "manifest_sha256": manifest_sha256(artifact.manifest_path),
+        "cache_id": cache_meta.get("cache_id"),
+    }
+
+
 def run_transfer_study(
     artifacts: Mapping[str, DatasetArtifacts],
     output_dir: str | Path,
@@ -95,6 +156,10 @@ def run_transfer_study(
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
     exclusion_contract_artifact = bundle_msp_exclusion_contract(
+        _artifact(artifacts, "msp_podcast"),
+        output,
+    )
+    duplicate_provenance_artifact = bundle_msp_duplicate_provenance(
         _artifact(artifacts, "msp_podcast"),
         output,
     )
@@ -190,6 +255,7 @@ def run_transfer_study(
                         for dataset in EVALUATION_DATASETS
                     },
                     "exclusion_contract_artifact": exclusion_contract_artifact,
+                    "duplicate_provenance_artifact": duplicate_provenance_artifact,
                     "training_configs": {
                         "parent": parent["config"],
                         "child": child["config"],
@@ -201,6 +267,7 @@ def run_transfer_study(
         "seeds": [int(seed) for seed in seeds],
         "evaluation_datasets": list(EVALUATION_DATASETS),
         "exclusion_contract_artifact": exclusion_contract_artifact,
+        "duplicate_provenance_artifact": duplicate_provenance_artifact,
         "runs": runs,
     }
     summary_path = output / "study_summary.json"
@@ -217,6 +284,7 @@ __all__ = [
     "EVALUATION_DATASETS",
     "STUDY_SEEDS",
     "bundle_msp_exclusion_contract",
+    "bundle_msp_duplicate_provenance",
     "require_formal_epochs",
     "run_msp_hcudb_study",
     "run_transfer_study",

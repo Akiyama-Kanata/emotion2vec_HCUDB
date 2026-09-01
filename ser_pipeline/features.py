@@ -241,6 +241,8 @@ def extract_feature_cache(
         "git_commit": _git_commit(),
         "manifest_sha256": manifest_sha256(manifest_path),
         "exclusion_contract": manifest_validation["exclusion_contract"],
+        "duplicate_audit": manifest_validation["duplicate_audit"],
+        "duplicate_exclusion_contract": manifest_validation["duplicate_exclusion_contract"],
         "mapping_versions": mapping_versions,
         "split_versions": split_versions,
         "audio_preprocessing": {

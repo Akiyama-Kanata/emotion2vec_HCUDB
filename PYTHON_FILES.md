@@ -35,7 +35,8 @@ Git の履歴を復元手段として使います。`*_old.py`、`*_backup.py`�
 - `ser_pipeline/__main__.py`: `python -m ser_pipeline` の入口。
 - `ser_pipeline/cli.py`: マニフェスト作成、特徴抽出、実験の CLI。
 - `ser_pipeline/contracts.py`: ラベル対応、スキーマ版、固定値の契約。
-- `ser_pipeline/exclusions.py`: MSP-Podcast不足874件の固定除外契約の生成・SHA・整合性検証。
+- `ser_pipeline/exclusions.py`: MSP-Podcastの欠損・0バイト音声1,128件に対する固定除外契約の生成・SHA・整合性検証。
+- `ser_pipeline/duplicates.py`: MSP-Podcast音声の二段階完全一致監査、候補CSV、承認済み重複除外契約、監査鮮度を検証。
 - `ser_pipeline/readers.py`: MSP-Podcast、HCUDB1、IEMOCAP のメタデータ読込。
 - `ser_pipeline/manifest.py`: JSONL マニフェストの作成、監査、検証。
 - `ser_pipeline/splits.py`: データ分割と話者・音声リークの検査。
@@ -98,6 +99,7 @@ CSV と音声パスを入力にして特徴抽出・キャッシュも扱い、�
 - `tests/test_parallel_emotion_vad.py`: 並列カテゴリ感情・VAD経路を検証。
 - `tests/test_ser_cache.py`: SER 特徴キャッシュと事前検査を検証。
 - `tests/test_ser_decoder.py`: SER デコーダ、評価、チェックポイント互換性を検証。
+- `tests/test_ser_duplicates.py`: 合成WAVでMSP完全一致重複監査・承認契約・SHA伝播を検証。
 - `tests/test_ser_e2e.py`: SER パイプライン全体を小規模データで検証。
 - `tests/test_ser_manifest.py`: マニフェスト生成と監査を検証。
 - `tests/test_ser_mappings.py`: データセット別ラベル対応を検証。

@@ -24,6 +24,10 @@ from ser_pipeline.exclusions import (
     write_msp_missing_audio_exclusion_contract,
 )
 from ser_pipeline.evaluation import evaluation_set_signature
+from ser_pipeline.duplicates import (
+    MSP_DUPLICATE_AUDIT_SCHEMA_VERSION,
+    MSP_DUPLICATE_EXCLUSION_SCHEMA_VERSION,
+)
 from ser_pipeline.manifest import (
     build_manifest,
     generate_msp_missing_audio_exclusion_contract,
@@ -72,8 +76,8 @@ def metadata_row(index: int, original: str, source_split: str) -> dict:
 
 
 def fixed_missing_rows() -> list[dict]:
-    labels = ["A"] * 378 + ["H"] * 392 + ["S"] * 80 + ["D"] * 24
-    splits = ["Train"] * 520 + ["Development"] * 210 + ["Test1"] * 144
+    labels = ["A"] * 416 + ["H"] * 576 + ["S"] * 107 + ["D"] * 29
+    splits = ["Train"] * 579 + ["Development"] * 219 + ["Test1"] * 330
     return [metadata_row(index, label, split) for index, (label, split) in enumerate(zip(labels, splits))]
 
 
@@ -95,14 +99,14 @@ class MspExclusionContractTest(unittest.TestCase):
         cls.contract_ids = {record["utterance_id"] for record in cls.payload["records"]}
 
     def test_fixed_contract_generation_is_deterministic(self):
-        self.assertEqual(MSP_EXPECTED_EXCLUDED_COUNT, 874)
-        self.assertEqual(MSP_EXPECTED_INCLUDED_COUNT, 25_111)
-        self.assertEqual(self.payload["count"], 874)
-        self.assertEqual(self.payload["expected_included_count"], 25_111)
-        self.assertEqual(self.payload["counts"]["original_emotion"], {"A": 378, "D": 24, "H": 392, "S": 80})
+        self.assertEqual(MSP_EXPECTED_EXCLUDED_COUNT, 1_128)
+        self.assertEqual(MSP_EXPECTED_INCLUDED_COUNT, 24_857)
+        self.assertEqual(self.payload["count"], 1_128)
+        self.assertEqual(self.payload["expected_included_count"], 24_857)
+        self.assertEqual(self.payload["counts"]["original_emotion"], {"A": 416, "D": 29, "H": 576, "S": 107})
         self.assertEqual(
             self.payload["counts"]["official_split"],
-            {"Development": 210, "Test1": 144, "Train": 520},
+            {"Development": 219, "Test1": 330, "Train": 579},
         )
         filenames = [record["filename"] for record in self.payload["records"]]
         self.assertEqual(filenames, sorted(filenames, key=lambda value: (value.casefold(), value)))
@@ -113,12 +117,12 @@ class MspExclusionContractTest(unittest.TestCase):
             second = root / "second.json"
             with (
                 patch("ser_pipeline.manifest.read_dataset", return_value=iter(self.missing_rows)),
-                patch("ser_pipeline.manifest._audio_inventory", return_value=({}, 0)),
+                patch("ser_pipeline.manifest._audio_inventory", return_value=({}, 0, {})),
             ):
                 first_report = generate_msp_missing_audio_exclusion_contract(root, first)
             with (
                 patch("ser_pipeline.manifest.read_dataset", return_value=iter(self.missing_rows)),
-                patch("ser_pipeline.manifest._audio_inventory", return_value=({}, 0)),
+                patch("ser_pipeline.manifest._audio_inventory", return_value=({}, 0, {})),
             ):
                 second_report = generate_msp_missing_audio_exclusion_contract(root, second)
             self.assertEqual(first.read_bytes(), second.read_bytes())
@@ -150,8 +154,50 @@ class MspExclusionContractTest(unittest.TestCase):
 
             with (
                 patch("ser_pipeline.manifest.read_dataset", return_value=iter(rows)),
-                patch("ser_pipeline.manifest._audio_inventory", return_value=(available, 0)),
+                patch("ser_pipeline.manifest._audio_inventory", return_value=(available, 0, {})),
                 patch("ser_pipeline.manifest.inspect_audio", side_effect=fake_inspect_audio),
+                patch(
+                    "ser_pipeline.manifest.load_msp_audio_duplicate_audit",
+                    return_value=(
+                        {
+                            "missing_audio_exclusion_contract": {
+                                "schema_version": "msp_missing_audio_exclusions_v1",
+                                "normalized_sha256": self.payload["normalized_sha256"],
+                            }
+                        },
+                        {
+                            "schema_version": MSP_DUPLICATE_AUDIT_SCHEMA_VERSION,
+                            "normalized_sha256": "a" * 64,
+                            "target_count": MSP_EXPECTED_INCLUDED_COUNT,
+                        },
+                    ),
+                ),
+                patch(
+                    "ser_pipeline.manifest.verify_msp_audio_duplicate_audit_freshness",
+                    return_value={
+                        "status": "ok",
+                        "audit_normalized_sha256": "a" * 64,
+                        "verified_audio": MSP_EXPECTED_INCLUDED_COUNT,
+                    },
+                ),
+                patch(
+                    "ser_pipeline.manifest.load_msp_audio_duplicate_exclusion_contract",
+                    return_value=(
+                        {"records": []},
+                        {
+                            "schema_version": MSP_DUPLICATE_EXCLUSION_SCHEMA_VERSION,
+                            "normalized_sha256": "c" * 64,
+                            "audit_normalized_sha256": "a" * 64,
+                            "count": 0,
+                            "post_exclusion_counts": {
+                                "audited_available": MSP_EXPECTED_INCLUDED_COUNT,
+                                "approved_duplicate_exclusions": 0,
+                                "final_included": MSP_EXPECTED_INCLUDED_COUNT,
+                                "split_counts": {},
+                            },
+                        },
+                    ),
+                ),
             ):
                 report = build_manifest(
                     "msp_podcast",
@@ -161,18 +207,23 @@ class MspExclusionContractTest(unittest.TestCase):
                     inspect_excluded_audio=False,
                     approved_exclusion_contract=contract_path,
                     expected_exclusion_sha256=self.payload["normalized_sha256"],
+                    duplicate_audit=root / "duplicate_audit.json",
+                    approved_duplicate_exclusion_contract=root / "duplicate_exclusions.json",
+                    expected_duplicate_exclusion_sha256="c" * 64,
                 )
 
-            self.assertEqual(report["included"], 25_111)
-            self.assertEqual(report["approved_missing_audio_exclusions"], 874)
+            self.assertEqual(report["included"], 24_857)
+            self.assertEqual(report["approved_missing_audio_exclusions"], 1_128)
             self.assertEqual(report["missing_included_audio"], 0)
             self.assertEqual(report["exclusion_contract_sha256"], self.payload["normalized_sha256"])
+            self.assertEqual(report["duplicate_audit_sha256"], "a" * 64)
+            self.assertEqual(report["duplicate_exclusion_contract_sha256"], "c" * 64)
             manifest_rows = load_manifest(manifest_path)
             excluded = [row for row in manifest_rows if MSP_EXCLUSION_REASON in row["exclusion_reasons"]]
-            self.assertEqual(len(excluded), 874)
+            self.assertEqual(len(excluded), 1_128)
             self.assertTrue(all(not row["included"] for row in excluded))
             validation = validate_manifest_records(manifest_rows)
-            self.assertEqual(validation["included"], 25_111)
+            self.assertEqual(validation["included"], 24_857)
             self.assertEqual(
                 validation["exclusion_contract"]["normalized_sha256"],
                 self.payload["normalized_sha256"],
@@ -232,7 +283,7 @@ class MspExclusionContractTest(unittest.TestCase):
             validate_msp_missing_audio_exclusion_contract(duplicate)
 
         wrong_count = copy.deepcopy(self.payload)
-        wrong_count["count"] = 873
+        wrong_count["count"] = MSP_EXPECTED_EXCLUDED_COUNT - 1
         wrong_count["normalized_sha256"] = normalized_exclusion_contract_sha256(wrong_count)
         with self.assertRaisesRegex(ValueError, "count mismatch"):
             validate_msp_missing_audio_exclusion_contract(wrong_count)
@@ -257,6 +308,14 @@ class MspExclusionContractTest(unittest.TestCase):
                 Path("unused"),
                 Path("unused.jsonl"),
                 approved_exclusion_contract=Path("contract.json"),
+            )
+        with self.assertRaisesRegex(ValueError, "require duplicate audit"):
+            build_manifest(
+                "msp_podcast",
+                Path("unused"),
+                Path("unused.jsonl"),
+                approved_exclusion_contract=Path("contract.json"),
+                expected_exclusion_sha256="a" * 64,
             )
 
     def test_cli_exposes_generation_and_approval_options(self):

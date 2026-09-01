@@ -247,6 +247,9 @@ def _write_demo_cache(cache_root: Path, manifest_path: Path, rows: list[dict[str
             "extraction_code_version": EXTRACTION_CODE_VERSION,
             "git_commit": "demo",
             "manifest_sha256": manifest_sha256(manifest_path),
+            "exclusion_contract": None,
+            "duplicate_audit": None,
+            "duplicate_exclusion_contract": None,
             "mapping_versions": mapping_versions,
             "split_versions": split_versions,
             "audio_preprocessing": {

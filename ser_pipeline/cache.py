@@ -156,6 +156,8 @@ def cache_signature(meta: Mapping[str, Any]) -> dict[str, Any]:
         "extraction_code_version",
         "manifest_sha256",
         "exclusion_contract",
+        "duplicate_audit",
+        "duplicate_exclusion_contract",
         "mapping_versions",
         "split_versions",
         "audio_preprocessing",
@@ -191,6 +193,10 @@ def validate_cache(
     manifest_validation = validate_manifest_records(all_manifest_rows)
     if meta.get("exclusion_contract") != manifest_validation["exclusion_contract"]:
         raise ValueError("cache exclusion contract provenance mismatch")
+    if meta.get("duplicate_audit") != manifest_validation["duplicate_audit"]:
+        raise ValueError("cache duplicate audit provenance mismatch")
+    if meta.get("duplicate_exclusion_contract") != manifest_validation["duplicate_exclusion_contract"]:
+        raise ValueError("cache duplicate exclusion contract provenance mismatch")
     manifest_rows = [row for row in all_manifest_rows if row["included"]]
     expected = {(row["dataset"], row["split"], row["utterance_id"]): row for row in manifest_rows}
     observed: dict[tuple[str, str, str], CacheIndexEntry] = {}
@@ -224,6 +230,8 @@ def validate_cache(
         "cache_id": meta.get("cache_id"),
         "manifest_sha256": actual_manifest_hash,
         "exclusion_contract": manifest_validation["exclusion_contract"],
+        "duplicate_audit": manifest_validation["duplicate_audit"],
+        "duplicate_exclusion_contract": manifest_validation["duplicate_exclusion_contract"],
         "utterances": len(observed),
         "feature_dim": int(meta["feature_dim"]),
         "splits": split_reports,

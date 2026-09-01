@@ -7,9 +7,11 @@ import json
 from pathlib import Path
 
 from .contracts import SUPPORTED_DATASETS
+from .duplicates import generate_msp_audio_duplicate_exclusion_contract
 from .manifest import (
     audit_dataset,
     build_manifest,
+    generate_msp_audio_duplicate_audit,
     generate_msp_missing_audio_exclusion_contract,
     validate_manifest,
 )
@@ -30,6 +32,24 @@ def build_parser() -> argparse.ArgumentParser:
     exclusions.add_argument("--root", type=Path, required=True)
     exclusions.add_argument("--output", type=Path, required=True)
 
+    duplicate_audit = subparsers.add_parser(
+        "audit-msp-audio-duplicates",
+        help="Generate msp_audio_duplicate_audit_v1 JSON and candidate CSV",
+    )
+    duplicate_audit.add_argument("--root", type=Path, required=True)
+    duplicate_audit.add_argument("--audit-output", type=Path, required=True)
+    duplicate_audit.add_argument("--candidates-csv-output", type=Path, required=True)
+    duplicate_audit.add_argument("--approved-missing-exclusion-contract", type=Path, required=True)
+    duplicate_audit.add_argument("--expected-missing-exclusion-sha256", required=True)
+
+    duplicate_exclusions = subparsers.add_parser(
+        "generate-msp-duplicate-exclusion-contract",
+        help="Generate msp_audio_duplicate_exclusions_v1 from explicitly approved candidate IDs",
+    )
+    duplicate_exclusions.add_argument("--audit", type=Path, required=True)
+    duplicate_exclusions.add_argument("--approved-id", action="append", default=[])
+    duplicate_exclusions.add_argument("--output", type=Path, required=True)
+
     build = subparsers.add_parser("build-manifest", help="Build a ser_manifest_v1 JSONL file")
     build.add_argument("--dataset", choices=SUPPORTED_DATASETS, required=True)
     build.add_argument("--root", type=Path, required=True)
@@ -44,6 +64,16 @@ def build_parser() -> argparse.ArgumentParser:
     build.add_argument(
         "--expected-exclusion-sha256",
         help="approved normalized SHA-256 for the MSP exclusion contract",
+    )
+    build.add_argument("--duplicate-audit", type=Path, help="validated msp_audio_duplicate_audit_v1 JSON")
+    build.add_argument(
+        "--approved-duplicate-exclusion-contract",
+        type=Path,
+        help="approved msp_audio_duplicate_exclusions_v1 JSON",
+    )
+    build.add_argument(
+        "--expected-duplicate-exclusion-sha256",
+        help="approved normalized SHA-256 for the MSP duplicate exclusion contract",
     )
 
     validate = subparsers.add_parser("validate-manifest", help="Validate a ser_manifest_v1 JSONL file")
@@ -102,6 +132,20 @@ def main(argv: list[str] | None = None) -> int:
         result = audit_dataset(args.dataset, args.root)
     elif args.command == "generate-msp-exclusion-contract":
         result = generate_msp_missing_audio_exclusion_contract(args.root, args.output)
+    elif args.command == "audit-msp-audio-duplicates":
+        result = generate_msp_audio_duplicate_audit(
+            args.root,
+            args.audit_output,
+            args.candidates_csv_output,
+            approved_missing_audio_exclusion_contract=args.approved_missing_exclusion_contract,
+            expected_missing_audio_exclusion_sha256=args.expected_missing_exclusion_sha256,
+        )
+    elif args.command == "generate-msp-duplicate-exclusion-contract":
+        result = generate_msp_audio_duplicate_exclusion_contract(
+            args.audit,
+            args.approved_id,
+            args.output,
+        )
     elif args.command == "build-manifest":
         result = build_manifest(
             args.dataset,
@@ -111,6 +155,9 @@ def main(argv: list[str] | None = None) -> int:
             inspect_excluded_audio=not args.skip_excluded_audio_inspection,
             approved_exclusion_contract=args.approved_exclusion_contract,
             expected_exclusion_sha256=args.expected_exclusion_sha256,
+            duplicate_audit=args.duplicate_audit,
+            approved_duplicate_exclusion_contract=args.approved_duplicate_exclusion_contract,
+            expected_duplicate_exclusion_sha256=args.expected_duplicate_exclusion_sha256,
         )
     elif args.command == "validate-manifest":
         result = validate_manifest(args.manifest, audio_root=args.root)

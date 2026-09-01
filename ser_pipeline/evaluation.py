@@ -118,16 +118,27 @@ def build_evaluation_result(
             }
         )
     limitations = [dict(item) for item in RESULT_LIMITATIONS]
-    if dataset == "msp_podcast":
+    if dataset == "msp_podcast" and (
+        set_signature.get("exclusion_contract") is not None
+        or set_signature.get("duplicate_exclusion_contract") is not None
+    ):
+        missing_contract = set_signature.get("exclusion_contract") or {}
+        duplicate_contract = set_signature.get("duplicate_exclusion_contract") or {}
+        missing_counts = missing_contract.get("counts") or {}
+        missing_split_counts = missing_counts.get("official_split") or {}
+        duplicate_split_counts = duplicate_contract.get("excluded_split_counts") or {}
+        included_count = duplicate_contract.get("final_included", missing_contract.get("final_included"))
         limitations.append(
             {
-                "id": "msp_podcast_r1_10_fixed_available_subset_v1",
-                "status": "fixed_subset",
-                "excluded_missing_utterances": 874,
-                "excluded_test1_utterances": 144,
-                "included_utterances": 25111,
+                "id": "msp_podcast_r1_10_approved_contract_subset_v1",
+                "status": "contract_defined_subset",
+                "excluded_missing_utterances": int(missing_contract.get("count", 0)),
+                "excluded_missing_test1_utterances": int(missing_split_counts.get("Test1", 0)),
+                "excluded_duplicate_utterances": int(duplicate_contract.get("count", 0)),
+                "excluded_duplicate_test_utterances": int(duplicate_split_counts.get("test", 0)),
+                "included_utterances": int(included_count) if included_count is not None else None,
                 "missingness_assumption": "none",
-                "implication": "Metrics apply to the pre-approved available subset, not the complete official Test1 set.",
+                "implication": "Metrics apply to the SHA-approved missing-audio and duplicate-exclusion contracts.",
             }
         )
     if dataset == "iemocap":
@@ -168,6 +179,10 @@ def evaluation_set_signature(manifest_path: str | Path, dataset: str, split: str
         "split": split,
         "manifest_sha256": manifest_sha256(manifest_path),
         "exclusion_contract": manifest_validation["exclusion_contracts"].get(dataset),
+        "duplicate_audit": manifest_validation["duplicate_provenance"].get(dataset, {}).get("audit"),
+        "duplicate_exclusion_contract": manifest_validation["duplicate_provenance"].get(dataset, {}).get(
+            "exclusion_contract"
+        ),
         "utterance_id_sha256": ids_hash,
         "utterance_count": len(ids),
     }
@@ -179,6 +194,8 @@ def assert_same_evaluation_sets(before: Mapping[str, Any], after: Mapping[str, A
         "split",
         "manifest_sha256",
         "exclusion_contract",
+        "duplicate_audit",
+        "duplicate_exclusion_contract",
         "utterance_id_sha256",
         "utterance_count",
     )

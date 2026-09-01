@@ -10,7 +10,7 @@ wsl -d Ubuntu-Recovered --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec -e /ho
 Expected result:
 
 ```text
-Ran 101 tests in ...s
+Ran 122 tests in ...s
 OK
 ```
 
@@ -97,21 +97,44 @@ The user-run MSP exclusion/manifest sequence is:
 python -m ser_pipeline generate-msp-exclusion-contract \
   --root /path/to/MSP_PODCAST \
   --output runs/ser_manifests/msp_missing_audio_exclusions_v1.json
+python -m ser_pipeline audit-msp-audio-duplicates \
+  --root /path/to/MSP_PODCAST \
+  --audit-output runs/ser_manifests/msp_audio_duplicate_audit_v1.json \
+  --candidates-csv-output runs/ser_manifests/msp_audio_duplicate_candidates_v1.csv \
+  --approved-missing-exclusion-contract runs/ser_manifests/msp_missing_audio_exclusions_v1.json \
+  --expected-missing-exclusion-sha256 APPROVED_MISSING_64_HEX_SHA256
+python -m ser_pipeline generate-msp-duplicate-exclusion-contract \
+  --audit runs/ser_manifests/msp_audio_duplicate_audit_v1.json \
+  --approved-id REVIEWED_UTTERANCE_ID \
+  --output runs/ser_manifests/msp_audio_duplicate_exclusions_v1.json
 python -m ser_pipeline build-manifest \
   --dataset msp_podcast \
   --root /path/to/MSP_PODCAST \
   --output runs/ser_manifests/msp_podcast_4class_v1.jsonl \
   --approved-exclusion-contract runs/ser_manifests/msp_missing_audio_exclusions_v1.json \
-  --expected-exclusion-sha256 APPROVED_64_HEX_SHA256
+  --expected-exclusion-sha256 APPROVED_MISSING_64_HEX_SHA256 \
+  --duplicate-audit runs/ser_manifests/msp_audio_duplicate_audit_v1.json \
+  --approved-duplicate-exclusion-contract runs/ser_manifests/msp_audio_duplicate_exclusions_v1.json \
+  --expected-duplicate-exclusion-sha256 APPROVED_DUPLICATE_64_HEX_SHA256
 ```
 
-The second command refuses an unset or mismatched approval SHA. Both commands
-are real-data operations and are not run by Codex.
+The audit and manifest commands refuse unset or mismatched approval SHAs. The
+duplicate-contract command accepts `--approved-id` repeatedly; omit it only when
+the reviewed audit has no unresolved cross-split group. These are real-data
+operations and are not run by Codex.
 
 Final implementation verification on 2026-08-23:
 
 ```text
 Ran 101 tests in 16.030s
+OK
+Separated SER demo notebooks completed
+```
+
+MSP exact-duplicate audit implementation verification on 2026-09-01:
+
+```text
+Ran 122 tests in 17.821s
 OK
 Separated SER demo notebooks completed
 ```

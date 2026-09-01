@@ -80,12 +80,29 @@ class SerManifestTest(unittest.TestCase):
         self.assertEqual(audit["missing_eligible_original_label_counts"], {"A": 1})
         self.assertEqual(audit["missing_eligible_mapped_label_counts"], {"anger": 1})
         self.assertEqual(audit["missing_eligible_source_split_counts"], {"Train": 1})
+        self.assertEqual(audit["missing_eligible_kind_counts"], {"absent": 1})
+        self.assertEqual(audit["missing_eligible_original_by_source_split_counts"], {"Train": {"A": 1}})
         self.assertEqual(
             audit["available_eligible_mapped_label_counts"],
             {"happy": 1, "sadness": 1},
         )
         with self.assertRaisesRegex(ValueError, "strict manifest"):
             build_manifest("msp_podcast", self.root, self.root / "manifest.jsonl")
+
+    def test_zero_byte_audio_is_treated_as_missing(self):
+        self._write_msp()
+        (self.root / "Audio" / "train.wav").write_bytes(b"")
+
+        audit = audit_dataset("msp_podcast", self.root)
+
+        self.assertEqual(audit["missing_eligible_audio"], 1)
+        self.assertEqual(audit["first_missing_audio_id"], "train")
+        self.assertEqual(audit["zero_byte_audio_files_treated_as_missing"], 1)
+        self.assertEqual(audit["missing_eligible_kind_counts"], {"zero_byte": 1})
+        self.assertEqual(audit["wav_files_found"], 5)
+        self.assertEqual(audit["candidate_audio_files"], 4)
+        with self.assertRaisesRegex(ValueError, "strict manifest"):
+            build_manifest("msp_podcast", self.root, self.root / "manifest.jsonl", strict=True)
 
     def test_nested_msp_audio_is_resolved_by_unique_filename(self):
         self._write_msp(nested_audio=True)
@@ -112,6 +129,18 @@ class SerManifestTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unreadable audio"):
             build_manifest("msp_podcast", self.root, self.root / "manifest.jsonl", strict=True)
         self.assertFalse((self.root / "manifest.jsonl").exists())
+
+    def test_split_validation_failure_does_not_write_manifest(self):
+        self._write_msp()
+        train = self.root / "Audio" / "train.wav"
+        valid = self.root / "Audio" / "valid.wav"
+        valid.write_bytes(train.read_bytes())
+        manifest = self.root / "manifest.jsonl"
+
+        with self.assertRaisesRegex(ValueError, "audio hash leakage"):
+            build_manifest("msp_podcast", self.root, manifest, strict=True)
+
+        self.assertFalse(manifest.exists())
 
     def test_invalid_json_and_absolute_paths_are_rejected(self):
         invalid = self.root / "invalid.jsonl"

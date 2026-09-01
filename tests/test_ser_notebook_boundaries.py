@@ -48,6 +48,9 @@ class SerNotebookBoundaryTest(unittest.TestCase):
             "RUN_MSP_AUDIT = False",
             "RUN_MSP_GENERATE_EXCLUSION_CONTRACT = False",
             "RUN_MSP_VERIFY_EXCLUSION_CONTRACT = False",
+            "RUN_MSP_DUPLICATE_AUDIT = False",
+            "RUN_MSP_GENERATE_DUPLICATE_EXCLUSION_CONTRACT = False",
+            "RUN_MSP_VERIFY_DUPLICATE_EXCLUSION_CONTRACT = False",
             "RUN_MSP_BUILD_MANIFEST = False",
             "RUN_MSP_VALIDATE_MANIFEST = False",
             "RUN_MSP_BENCHMARK = False",
@@ -62,13 +65,31 @@ class SerNotebookBoundaryTest(unittest.TestCase):
         self.assertIn("generate_msp_missing_audio_exclusion_contract", code_source)
         self.assertIn("load_msp_missing_audio_exclusion_contract", code_source)
         self.assertIn("APPROVED_MSP_EXCLUSION_SHA256 = None", code_source)
+        self.assertIn("MSP_APPROVED_DUPLICATE_EXCLUDE_IDS = [", code_source)
+        self.assertIn("APPROVED_MSP_DUPLICATE_EXCLUSION_SHA256 = None", code_source)
+        self.assertIn("generate_msp_audio_duplicate_audit", code_source)
+        self.assertIn("generate_msp_audio_duplicate_exclusion_contract", code_source)
+        self.assertIn("load_msp_audio_duplicate_audit", code_source)
+        self.assertIn("load_msp_audio_duplicate_exclusion_contract", code_source)
         self.assertIn("approved_exclusion_contract=EXCLUSION_CONTRACT_PATH", code_source)
         self.assertIn("expected_exclusion_sha256=APPROVED_MSP_EXCLUSION_SHA256", code_source)
+        self.assertIn("duplicate_audit=DUPLICATE_AUDIT_PATH", code_source)
+        self.assertIn(
+            "approved_duplicate_exclusion_contract=DUPLICATE_EXCLUSION_CONTRACT_PATH",
+            code_source,
+        )
+        self.assertIn(
+            "expected_duplicate_exclusion_sha256=APPROVED_MSP_DUPLICATE_EXCLUSION_SHA256",
+            code_source,
+        )
         self.assertIn("build_manifest", code_source)
         self.assertIn("validate_manifest", code_source)
         self.assertIn("missing_eligible_original_label_counts", code_source)
         self.assertIn("missing_eligible_source_split_counts", code_source)
+        self.assertIn("missing_eligible_kind_counts", code_source)
+        self.assertIn("missing_eligible_original_by_source_split_counts", code_source)
         self.assertIn("missing_label_summary", code_source)
+        self.assertIn("missing_label_split_cross", code_source)
         self.assertIn("mapping_summary", code_source)
         self.assertIn("split_summary", code_source)
         self.assertIn("benchmark_audio_extraction", code_source)
@@ -88,6 +109,12 @@ class SerNotebookBoundaryTest(unittest.TestCase):
                 "exclusion-verification",
                 "exclusion-approval",
                 "manifest-build",
+                "missing-distribution",
+                "duplicate-audit",
+                "duplicate-decision",
+                "duplicate-contract-generation",
+                "duplicate-contract-verification",
+                "duplicate-approval",
             }.issubset(cell_ids)
         )
         for forbidden in ("optimizer", "train_decoder", "run_transfer_study", "BaseModel", "parent-checkpoint", "resume-checkpoint"):
@@ -110,6 +137,8 @@ class SerNotebookBoundaryTest(unittest.TestCase):
         self.assertIn("ARTIFACT_DIR / 'formal' / 'initial-seed-42'", code_source)
         self.assertIn("ARTIFACT_DIR / 'formal' / 'followup-seeds-43-44'", code_source)
         self.assertIn("SER_MSP_PODCAST_EXCLUSION_CONTRACT", code_source)
+        self.assertIn("SER_MSP_PODCAST_DUPLICATE_AUDIT", code_source)
+        self.assertIn("SER_MSP_PODCAST_DUPLICATE_EXCLUSION_CONTRACT", code_source)
         self.assertIn("run_transfer_study", code_source)
         self.assertNotIn("run_demo_transfer_study", code_source)
         self.assertNotIn("train_decoder", code_source)

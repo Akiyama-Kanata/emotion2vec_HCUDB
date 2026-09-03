@@ -13,6 +13,7 @@ import torch
 
 from .contracts import LABEL_ORDER, RESULT_LIMITATIONS, RESULT_SCHEMA_VERSION
 from .manifest import load_manifest, manifest_sha256, validate_manifest_records
+from .timing import measure, timed_batches
 
 
 def confusion_matrix(y_true: Sequence[int], y_pred: Sequence[int], num_classes: int = 4) -> np.ndarray:
@@ -204,31 +205,33 @@ def assert_same_evaluation_sets(before: Mapping[str, Any], after: Mapping[str, A
             raise ValueError(f"before/after evaluation set mismatch for {key}")
 
 
-def evaluate_model(model, loader, device: str | torch.device, *, dataset: str, split: str, set_signature):
+def evaluate_model(model, loader, device: str | torch.device, *, dataset: str, split: str, set_signature, timings=None):
     torch_device = torch.device(device)
     model.eval()
     utterance_ids: list[str] = []
     truths: list[int] = []
     probabilities: list[np.ndarray] = []
     with torch.no_grad():
-        for batch in loader:
-            features = batch["net_input"]["feats"].to(torch_device)
-            mask = batch["net_input"]["padding_mask"].to(torch_device)
-            logits = model(features, mask)
-            probs = torch.softmax(logits, dim=-1).cpu().numpy()
-            probabilities.append(probs)
-            truths.extend(int(value) for value in batch["labels"].tolist())
-            utterance_ids.extend(str(value) for value in batch["utterance_ids"])
+        for batch in timed_batches(loader, timings):
+            with measure(timings, "compute_seconds", torch_device):
+                features = batch["net_input"]["feats"].to(torch_device)
+                mask = batch["net_input"]["padding_mask"].to(torch_device)
+                logits = model(features, mask)
+                probs = torch.softmax(logits, dim=-1).cpu().numpy()
+                probabilities.append(probs)
+                truths.extend(int(value) for value in batch["labels"].tolist())
+                utterance_ids.extend(str(value) for value in batch["utterance_ids"])
     if not probabilities:
         raise ValueError("evaluation loader is empty")
-    return build_evaluation_result(
-        utterance_ids,
-        truths,
-        np.concatenate(probabilities, axis=0),
-        dataset=dataset,
-        split=split,
-        set_signature=set_signature,
-    )
+    with measure(timings, "result_build_seconds"):
+        return build_evaluation_result(
+            utterance_ids,
+            truths,
+            np.concatenate(probabilities, axis=0),
+            dataset=dataset,
+            split=split,
+            set_signature=set_signature,
+        )
 
 
 def save_evaluation_result(result: Mapping[str, Any], output_dir: str | Path) -> dict[str, str]:

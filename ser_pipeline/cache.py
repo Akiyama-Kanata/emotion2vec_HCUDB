@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from time import perf_counter
 from typing import Any, Iterable, Mapping
 
 import numpy as np
 
 from .audio import sha256_file
-from .contracts import CACHE_SCHEMA_VERSION, FEATURE_LAYER, LABEL_ORDER
+from .contracts import CACHE_SCHEMA_VERSION, FEATURE_LAYER
 from .manifest import canonical_json, load_manifest, manifest_sha256, validate_manifest_records
 
 
@@ -166,12 +166,20 @@ def cache_signature(meta: Mapping[str, Any]) -> dict[str, Any]:
     return {field: meta.get(field) for field in fields}
 
 
-def validate_cache(
+@dataclass
+class _ValidatedCache:
+    report: dict[str, Any]
+    meta: dict[str, Any]
+    records: dict[str, dict[str, Any]]
+    entries: dict[str, CacheIndexEntry]
+
+
+def _validate_cache(
     cache_root: str | Path,
     manifest_path: str | Path,
     *,
     expected_signature: Mapping[str, Any] | None = None,
-) -> dict[str, Any]:
+) -> _ValidatedCache:
     root = Path(cache_root)
     meta = _load_json(root / "cache_meta.json")
     if meta.get("cache_schema_version") != CACHE_SCHEMA_VERSION:
@@ -206,6 +214,8 @@ def validate_cache(
         validated = validate_success(directory)
         entries = validated["entries"]
         for entry in entries:
+            if (entry.dataset, entry.split) != (dataset, split):
+                raise ValueError(f"cached dataset/split directory mismatch: {directory}")
             key = (entry.dataset, entry.split, entry.utterance_id)
             if key in observed:
                 raise ValueError(f"duplicate cached utterance: {key}")
@@ -225,7 +235,11 @@ def validate_cache(
         raise ValueError(f"included manifest utterances are missing from cache: {missing[:5]}")
     if not bool(meta.get("complete")):
         raise ValueError("cache metadata is not marked complete")
-    return {
+    records_by_id = {row["utterance_id"]: row for row in manifest_rows}
+    entries_by_id = {entry.utterance_id: entry for entry in observed.values()}
+    if len(entries_by_id) != len(observed):
+        raise ValueError("duplicate cache utterance_id")
+    report = {
         "status": "ok",
         "cache_id": meta.get("cache_id"),
         "manifest_sha256": actual_manifest_hash,
@@ -236,26 +250,103 @@ def validate_cache(
         "feature_dim": int(meta["feature_dim"]),
         "splits": split_reports,
     }
+    return _ValidatedCache(report, meta, records_by_id, entries_by_id)
+
+
+def validate_cache(
+    cache_root: str | Path,
+    manifest_path: str | Path,
+    *,
+    expected_signature: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Fully validate a cache, retaining the public JSON-compatible report API."""
+    return _validate_cache(cache_root, manifest_path, expected_signature=expected_signature).report
 
 
 class ShardedFeatureStore:
-    """Read-only, lazily mmap-backed utterance feature lookup."""
+    """Process-local validated index and lazy, read-only mmap feature lookup.
+
+    Call ensure_validated before reusing the store in another operation. File
+    identity, size and timestamps detect ordinary changes; this is not a lock
+    against concurrent writers or metadata-preserving tampering. Cache inputs
+    must remain read-only during a training/evaluation operation.
+    """
 
     def __init__(self, cache_root: str | Path, manifest_path: str | Path, *, validate: bool = True):
-        self.cache_root = Path(cache_root)
-        self.manifest_path = Path(manifest_path)
-        if validate:
-            validate_cache(self.cache_root, self.manifest_path)
-        self.meta = _load_json(self.cache_root / "cache_meta.json")
-        self.records = {row["utterance_id"]: row for row in load_manifest(self.manifest_path) if row["included"]}
+        # Retain the old keyword for callers, but never use False as proof that
+        # a cache was validated. Reuse this object to avoid a second full pass.
+        self.cache_root = Path(cache_root).resolve()
+        self.manifest_path = Path(manifest_path).resolve()
+        self.meta: dict[str, Any] = {}
+        self.records: dict[str, dict[str, Any]] = {}
         self.entries: dict[str, CacheIndexEntry] = {}
-        for dataset, split in sorted({(row["dataset"], row["split"]) for row in self.records.values()}):
-            validated = validate_success(self.cache_root / dataset / split)
-            for entry in validated["entries"]:
-                if entry.utterance_id in self.entries:
-                    raise ValueError(f"duplicate cache utterance_id: {entry.utterance_id}")
-                self.entries[entry.utterance_id] = entry
         self._arrays: dict[Path, np.ndarray] = {}
+        self._snapshot = None
+        self._validation_pid: int | None = None
+        self.validation_report: dict[str, Any] = {}
+        self.validation_seconds = 0.0
+        self.validation_count = 0
+        self.ensure_validated()
+
+    def _input_snapshot(self) -> dict[Path, tuple]:
+        paths = {self.manifest_path, self.cache_root / "cache_meta.json"}
+        paths.update(self.cache_root.glob("*/*/_SUCCESS"))
+        paths.update(self.cache_root.glob("*/*/shard-*"))
+        # Follow referenced payload names as well as the writer's usual names.
+        # Only these small JSON files are read during an unchanged reuse check.
+        for meta_path in self.cache_root.glob("*/*/shard-*.meta.json"):
+            meta = _load_json(meta_path)
+            paths.update(meta_path.parent / str(meta.get(key)) for key in ("shard", "index"))
+        snapshot = {}
+        for path in paths:
+            try:
+                stat = path.stat()
+            except OSError as exc:
+                raise ValueError(f"cache input is missing or inaccessible: {path}") from exc
+            snapshot[path] = (
+                str(path.resolve()), stat.st_dev, stat.st_ino, stat.st_size,
+                stat.st_mtime_ns, stat.st_ctime_ns,
+            )
+        return snapshot
+
+    def ensure_validated(self) -> dict[str, Any]:
+        """Reuse an unchanged validation, otherwise discard old maps and revalidate."""
+        try:
+            snapshot = self._input_snapshot()
+        except ValueError:
+            self._invalidate()
+            raise
+        if self._snapshot == snapshot and self._validation_pid == os.getpid():
+            return self.validation_report
+        self._invalidate()
+        started = perf_counter()
+        try:
+            validated = _validate_cache(self.cache_root, self.manifest_path)
+            if snapshot != self._input_snapshot():
+                raise ValueError("cache inputs changed during full validation; retry with stable inputs")
+        finally:
+            self.validation_seconds += perf_counter() - started
+        self.meta = validated.meta
+        self.records = validated.records
+        self.entries = validated.entries
+        self.validation_report = validated.report
+        self._snapshot = snapshot
+        self._validation_pid = os.getpid()
+        self.validation_count += 1
+        return self.validation_report
+
+    def _invalidate(self) -> None:
+        self._snapshot = None
+        self._validation_pid = None
+        self._arrays.clear()
+        self.meta.clear()
+        self.records.clear()
+        self.entries.clear()
+        self.validation_report = {}
+
+    def require_paths(self, cache_root: str | Path, manifest_path: str | Path) -> None:
+        if (Path(cache_root).resolve(), Path(manifest_path).resolve()) != (self.cache_root, self.manifest_path):
+            raise ValueError("supplied feature store cache/manifest paths do not match")
 
     def __len__(self) -> int:
         return len(self.entries)
@@ -268,6 +359,8 @@ class ShardedFeatureStore:
         ]
 
     def get(self, utterance_id: str) -> np.ndarray:
+        if self._snapshot is None:
+            raise ValueError("feature store has no successful validation")
         try:
             entry = self.entries[utterance_id]
         except KeyError as exc:

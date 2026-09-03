@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import copy
-import json
 import random
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 import numpy as np
@@ -14,7 +14,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
-from .cache import ShardedFeatureStore
+from .cache import ShardedFeatureStore, _atomic_json
 from .checkpoints import (
     decoder_signature,
     load_decoder_checkpoint,
@@ -31,6 +31,7 @@ from .evaluation import (
     save_evaluation_result,
 )
 from .model import BaseModel
+from .timing import measure, timed_batches
 
 
 @dataclass(frozen=True)
@@ -44,6 +45,33 @@ class TrainingConfig:
     hidden_dim: int = 256
     dropout: float = 0.0
     patience: int | None = None
+    class_weighting: str = "none"
+
+
+def training_loss_config(store: ShardedFeatureStore, dataset: str, weighting: str) -> dict[str, Any]:
+    """Describe cross entropy using included training utterances only, without reading features."""
+    if weighting not in {"none", "balanced"}:
+        raise ValueError("class_weighting must be none or balanced")
+    counts = [0] * len(LABEL_ORDER)
+    for utterance_id in store.utterance_ids(dataset=dataset, split="train"):
+        row = store.records[utterance_id]
+        if not row["included"]:
+            continue
+        counts[int(row["class_index"])] += 1
+    total = sum(counts)
+    if not total:
+        raise ValueError(f"training split is empty: {dataset}")
+    if weighting == "balanced" and any(count == 0 for count in counts):
+        raise ValueError("balanced class weights require every class in the training split")
+    weights = [total / (len(LABEL_ORDER) * count) for count in counts] if weighting == "balanced" else None
+    return {
+        "name": "cross_entropy",
+        "class_weighting": weighting,
+        "label_order": list(LABEL_ORDER),
+        "train_class_counts": counts,
+        "class_weights": weights,
+        "reduction": "mean",
+    }
 
 
 class CachedFeatureDataset(Dataset):
@@ -61,7 +89,7 @@ class CachedFeatureDataset(Dataset):
     def __getitem__(self, index: int):
         utterance_id = self.ids[index]
         row = self.store.records[utterance_id]
-        features = torch.from_numpy(self.store.get(utterance_id).copy()).float()
+        features = self.store.get(utterance_id)
         return features, int(row["class_index"]), utterance_id
 
 
@@ -75,11 +103,19 @@ def collate_features(samples):
     if len(dimensions) != 1:
         raise ValueError("batch contains inconsistent feature dimensions")
     max_frames = max(int(feature.shape[0]) for feature in features)
-    batch = features[0].new_zeros((len(features), max_frames, features[0].shape[1]))
+    shape = (len(features), max_frames, features[0].shape[1])
+    # Copy read-only mmap slices directly into the writable batch. Constructing
+    # a tensor over a read-only numpy source would expose an unsafe write view.
+    numpy_features = isinstance(features[0], np.ndarray)
+    batch = torch.zeros(shape, dtype=torch.float32) if numpy_features else features[0].new_zeros(shape)
+    batch_array = batch.numpy() if numpy_features else None
     padding_mask = torch.ones((len(features), max_frames), dtype=torch.bool)
     for index, feature in enumerate(features):
         frames = int(feature.shape[0])
-        batch[index, :frames] = feature
+        if numpy_features:
+            np.copyto(batch_array[index, :frames], feature, casting="no")
+        else:
+            batch[index, :frames] = feature
         padding_mask[index, :frames] = False
     return {
         "net_input": {"feats": batch, "padding_mask": padding_mask},
@@ -123,43 +159,59 @@ def make_loader(
     )
 
 
-def train_one_epoch(model, optimizer, loader, device: torch.device) -> float:
+def train_one_epoch(model, optimizer, loader, device: torch.device, *, timings=None, class_weights=None) -> float:
     model.train()
-    criterion = nn.CrossEntropyLoss()
+    weights = torch.tensor(class_weights, dtype=torch.float32, device=device) if class_weights is not None else None
+    criterion = nn.CrossEntropyLoss(weight=weights)
     losses: list[float] = []
-    for batch in loader:
-        features = batch["net_input"]["feats"].to(device)
-        mask = batch["net_input"]["padding_mask"].to(device)
-        labels = batch["labels"].to(device)
-        optimizer.zero_grad(set_to_none=True)
-        logits = model(features, mask)
-        loss = criterion(logits, labels)
-        if not torch.isfinite(loss):
-            raise ValueError("training loss is non-finite")
-        loss.backward()
-        optimizer.step()
-        losses.append(float(loss.detach().cpu()))
+    for batch in timed_batches(loader, timings):
+        with measure(timings, "compute_seconds", device):
+            features = batch["net_input"]["feats"].to(device)
+            mask = batch["net_input"]["padding_mask"].to(device)
+            labels = batch["labels"].to(device)
+            optimizer.zero_grad(set_to_none=True)
+            logits = model(features, mask)
+            loss = criterion(logits, labels)
+            if not torch.isfinite(loss):
+                raise ValueError("training loss is non-finite")
+            loss.backward()
+            optimizer.step()
+            losses.append(float(loss.detach().cpu()))
     if not losses:
         raise ValueError("training loader is empty")
     return float(np.mean(losses))
 
 
-def evaluate_loader_metrics(model, loader, device: torch.device) -> dict[str, Any]:
+def evaluate_loader_metrics(model, loader, device: torch.device, *, timings=None) -> dict[str, Any]:
     model.eval()
     truth: list[int] = []
     probabilities: list[np.ndarray] = []
     with torch.no_grad():
-        for batch in loader:
-            logits = model(
-                batch["net_input"]["feats"].to(device),
-                batch["net_input"]["padding_mask"].to(device),
-            )
-            probabilities.append(torch.softmax(logits, dim=-1).cpu().numpy())
-            truth.extend(int(value) for value in batch["labels"].tolist())
+        for batch in timed_batches(loader, timings):
+            with measure(timings, "compute_seconds", device):
+                logits = model(
+                    batch["net_input"]["feats"].to(device),
+                    batch["net_input"]["padding_mask"].to(device),
+                )
+                probabilities.append(torch.softmax(logits, dim=-1).cpu().numpy())
+                truth.extend(int(value) for value in batch["labels"].tolist())
     if not probabilities:
         raise ValueError("evaluation loader is empty")
-    probs = np.concatenate(probabilities, axis=0)
-    return classification_metrics(truth, probs.argmax(axis=1), probs)
+    with measure(timings, "metrics_seconds"):
+        probs = np.concatenate(probabilities, axis=0)
+        return classification_metrics(truth, probs.argmax(axis=1), probs)
+
+
+def _prepare_store(cache_root, manifest_path, store, timings):
+    previous_validation_seconds = store.validation_seconds if store is not None else 0.0
+    with measure(timings, "cache_access_seconds"):
+        if store is None:
+            store = ShardedFeatureStore(cache_root, manifest_path)
+        else:
+            store.require_paths(cache_root, manifest_path)
+            store.ensure_validated()
+    timings["cache_validation_seconds"] = store.validation_seconds - previous_validation_seconds
+    return store
 
 
 def selection_key(metrics: dict[str, Any]) -> tuple[float, float, float]:
@@ -181,7 +233,10 @@ def train_decoder(
     training_stage: str,
     parent_checkpoint: str | Path | None = None,
     resume_checkpoint: str | Path | None = None,
+    store: ShardedFeatureStore | None = None,
 ) -> dict[str, Any]:
+    started = perf_counter()
+    timings: dict[str, Any] = {"epochs": []}
     if parent_checkpoint is not None and resume_checkpoint is not None:
         raise ValueError("--parent-checkpoint and --resume-checkpoint are mutually exclusive")
     if training_stage == "msp_train" and dataset != "msp_podcast":
@@ -192,9 +247,12 @@ def train_decoder(
         raise ValueError("hcudb_continue requires a parent or resume checkpoint")
     if config.epochs <= 0 or config.batch_size <= 0:
         raise ValueError("epochs and batch_size must be positive")
+    if config.class_weighting not in {"none", "balanced"}:
+        raise ValueError("class_weighting must be none or balanced")
     seed_everything(config.seed)
     device = resolve_device(config.device)
-    store = ShardedFeatureStore(cache_root, manifest_path)
+    store = _prepare_store(cache_root, manifest_path, store, timings)
+    loss_config = training_loss_config(store, dataset, config.class_weighting)
     input_dim = int(store.meta["feature_dim"])
     model = BaseModel(
         input_dim=input_dim,
@@ -221,7 +279,10 @@ def train_decoder(
     preserved_parent_id = None
     preserved_parent_hash = None
     if resume_checkpoint is not None:
-        resume_payload = restore_resume(model, optimizer, resume_checkpoint, signature, training_stage)
+        resume_payload = restore_resume(
+            model, optimizer, resume_checkpoint, signature, training_stage,
+            expected_loss_config=loss_config,
+        )
         start_epoch = int(resume_payload["epoch"]) + 1
         history = list(resume_payload["history"])
         run_id = str(resume_payload["run_id"])
@@ -248,11 +309,22 @@ def train_decoder(
     output.mkdir(parents=True, exist_ok=True)
     best_path = output / f"{training_stage}_seed{config.seed}_best.pt"
     last_path = output / f"{training_stage}_seed{config.seed}_last.pt"
+    timing_path = output / f"{training_stage}_seed{config.seed}_timings.json"
+    timings["setup_seconds"] = perf_counter() - started - timings["cache_access_seconds"]
     epochs_without_improvement = 0
+    print(f"[{dataset} seed={config.seed}] training loss: {loss_config}", flush=True)
     for epoch in range(start_epoch, config.epochs + 1):
-        train_loss = train_one_epoch(model, optimizer, train_loader, device)
-        validation = evaluate_loader_metrics(model, validation_loader, device)
+        epoch_started = perf_counter()
+        epoch_timing: dict[str, Any] = {"epoch": epoch, "train": {}, "validation": {}}
+        train_loss = train_one_epoch(
+            model, optimizer, train_loader, device, timings=epoch_timing["train"],
+            class_weights=loss_config["class_weights"],
+        )
+        validation_started = perf_counter()
+        validation = evaluate_loader_metrics(model, validation_loader, device, timings=epoch_timing["validation"])
+        epoch_timing["validation_seconds"] = perf_counter() - validation_started
         history.append({"epoch": epoch, "train_loss": train_loss, "validation": validation})
+        save_started = perf_counter()
         improved = best_metrics is None or selection_key(validation) > selection_key(best_metrics)
         if improved:
             best_metrics = validation
@@ -279,6 +351,7 @@ def train_decoder(
                 best_epoch=best_epoch,
                 parent_checkpoint_id=preserved_parent_id,
                 parent_checkpoint_sha256=preserved_parent_hash,
+                loss_config=loss_config,
             )
         else:
             epochs_without_improvement += 1
@@ -302,11 +375,26 @@ def train_decoder(
             best_epoch=best_epoch,
             parent_checkpoint_id=preserved_parent_id,
             parent_checkpoint_sha256=preserved_parent_hash,
+            loss_config=loss_config,
+        )
+        epoch_timing["save_seconds"] = perf_counter() - save_started
+        epoch_timing["total_seconds"] = perf_counter() - epoch_started
+        timings["epochs"].append(epoch_timing)
+        _atomic_json(timings, timing_path)
+        print(
+            f"[{dataset} seed={config.seed} epoch={epoch}/{config.epochs}] "
+            f"loss={train_loss:.5f} val_uar={validation['uar']:.4f} "
+            f"batch={epoch_timing['train']['batch_prepare_seconds']:.2f}s "
+            f"train={epoch_timing['train']['compute_seconds']:.2f}s "
+            f"validation={epoch_timing['validation_seconds']:.2f}s "
+            f"save={epoch_timing['save_seconds']:.2f}s",
+            flush=True,
         )
         if config.patience is not None and epochs_without_improvement >= config.patience:
             break
     if best_metrics is None:
         raise RuntimeError("training did not produce a best validation checkpoint")
+    final_save_started = perf_counter()
     if not best_path.is_file():
         model.load_state_dict(best_state, strict=True)
         save_decoder_checkpoint(
@@ -329,8 +417,12 @@ def train_decoder(
             best_epoch=best_epoch,
             parent_checkpoint_id=preserved_parent_id,
             parent_checkpoint_sha256=preserved_parent_hash,
+            loss_config=loss_config,
         )
     model.load_state_dict(best_state, strict=True)
+    timings["finalize_seconds"] = perf_counter() - final_save_started
+    timings["total_seconds"] = perf_counter() - started
+    _atomic_json(timings, timing_path)
     return {
         "training_stage": training_stage,
         "dataset": dataset,
@@ -343,6 +435,9 @@ def train_decoder(
         "history": history,
         "parent_checkpoint_id": parent_payload["checkpoint_id"] if parent_payload else None,
         "config": asdict(config),
+        "loss_config": loss_config,
+        "timings": timings,
+        "timings_path": str(timing_path),
     }
 
 
@@ -356,9 +451,12 @@ def evaluate_checkpoint(
     split: str = "test",
     batch_size: int = 16,
     device: str = "auto",
+    store: ShardedFeatureStore | None = None,
 ) -> dict[str, Any]:
+    started = perf_counter()
+    timings: dict[str, float] = {}
     selected_device = resolve_device(device)
-    store = ShardedFeatureStore(cache_root, manifest_path)
+    store = _prepare_store(cache_root, manifest_path, store, timings)
     payload = load_decoder_checkpoint(checkpoint_path, map_location=selected_device)
     model_config = dict(payload["signature"]["model_config"])
     model = BaseModel(**model_config).to(selected_device)
@@ -371,6 +469,8 @@ def evaluate_checkpoint(
         store, dataset, split, batch_size=batch_size, shuffle=False, seed=int(payload["signature"]["seed"])
     )
     set_signature = evaluation_set_signature(manifest_path, dataset, split)
+    timings["setup_seconds"] = perf_counter() - started - timings["cache_access_seconds"]
+    evaluation_started = perf_counter()
     result = evaluate_model(
         model,
         loader,
@@ -378,12 +478,25 @@ def evaluate_checkpoint(
         dataset=dataset,
         split=split,
         set_signature=set_signature,
+        timings=timings,
     )
+    timings["evaluation_seconds"] = perf_counter() - evaluation_started
     result["checkpoint_id"] = payload["checkpoint_id"]
     result["training_stage"] = payload["training_stage"]
     result["cache_id"] = str(store.meta["cache_id"])
-    paths = save_evaluation_result(result, output_dir)
-    return {"result": result, "paths": paths}
+    with measure(timings, "save_seconds"):
+        paths = save_evaluation_result(result, output_dir)
+    timings["total_seconds"] = perf_counter() - started
+    timing_path = Path(output_dir) / "timings.json"
+    _atomic_json(timings, timing_path)
+    paths["timings"] = str(timing_path)
+    print(
+        f"[evaluation {dataset}/{split} {payload['training_stage']}] "
+        f"uar={result['metrics_4class']['uar']:.4f} "
+        f"evaluation={timings['evaluation_seconds']:.2f}s save={timings['save_seconds']:.2f}s "
+        f"output={output_dir}", flush=True,
+    )
+    return {"result": result, "paths": paths, "timings": timings}
 
 
 __all__ = [
@@ -398,4 +511,5 @@ __all__ = [
     "selection_key",
     "train_decoder",
     "train_one_epoch",
+    "training_loss_config",
 ]

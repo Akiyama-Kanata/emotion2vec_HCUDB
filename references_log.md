@@ -118,3 +118,37 @@ emotion2vec論文、HCUDB公式配布情報、MSP-Podcast公式コーパス仕�
 | 論文 | 著者 | 年 | エビデンス強度 | DOI/URL | 使用した主張 |
 |------|------|----|--------------|---------|-------------|
 | The Importance of Calibration: Rethinking Confidence and Performance of Speech Multi-label Emotion Classifiers（再引用） | Chou et al. | 2023 | [高・Web本文確認] | https://doi.org/10.21437/Interspeech.2023-1113 | Release 1.10のTrain／Development／Test構成と、primary emotionにdisgustが含まれることの確認。正確な件数はローカルmetadataを一次根拠として集計 |
+
+## 2026-09-03 — キャッシュを利用する感情分類モデルの改善候補
+
+**質問/文脈**: 「モデル改善案は何か何？」への回答。保存済みのseed 42・43・44の結果と現行実装を確認し、HCUDB追加学習の学習率、Dropout、クラス重み付き損失、Attention poolingを比較候補として整理した。今回提示した設定値は未検証の実験候補であり、精度向上を確認した値ではない。新たな学習は実行していない。
+
+PyTorch公式CrossEntropyLoss資料とChen et al. (2024), *1st Place Solution to Odyssey Emotion Recognition Challenge Task 1: Tackling Class Imbalance Problem* は既存記録を再引用し、重複行を追加しない。前者は学習クラスごとの損失重みを設定できること、後者はクラス重み付けにも多数派・少数派間の性能のトレードオフがあることの根拠として参照した。
+
+| 論文 | 著者 | 年 | エビデンス強度 | DOI/URL | 使用した主張 |
+|------|------|----|--------------|---------|-------------|
+| Dropout: A Simple Way to Prevent Neural Networks from Overfitting | Srivastava, Hinton, Krizhevsky, Sutskever, & Salakhutdinov | 2014 | [高・査読誌・出版社の公開要旨確認] | https://jmlr.org/papers/v15/srivastava14a.html | Dropoutは過学習を抑えるための手法。現行モデルのdropout=0.0から0.1・0.2を比較する提案の根拠であり、この研究条件での改善幅は不明 |
+| An Attention Pooling Based Representation Learning Method for Speech Emotion Recognition | Li, Song, McLoughlin, Guo, & Dai | 2018 | [査読会議・出版社の公開要旨確認] | https://doi.org/10.21437/Interspeech.2018-1242 | 音声感情認識でAttention poolingを利用する研究例がある。既存emotion2vecフレーム特徴に適用する案は別の実験であり、論文の構成・結果を再現すると主張しない |
+
+**書誌情報（APA）**
+
+- Srivastava, N., Hinton, G., Krizhevsky, A., Sutskever, I., & Salakhutdinov, R. (2014). Dropout: A simple way to prevent neural networks from overfitting. *Journal of Machine Learning Research, 15*(56), 1929–1958. https://jmlr.org/papers/v15/srivastava14a.html
+- Li, P., Song, Y., McLoughlin, I., Guo, W., & Dai, L. (2018). An attention pooling based representation learning method for speech emotion recognition. *Proceedings of Interspeech 2018*, 3087–3091. https://doi.org/10.21437/Interspeech.2018-1242
+
+## 2026-09-03 — MSP単体の性能を先に改善する方針
+
+**質問/文脈**: ユーザーの「そもそも，mspの成績が低いなと考えている」を受け、HCUDB適応後のMSP性能維持よりも、MSP単体の分類性能の改善を優先するよう提案を修正した。
+
+ローカルの `runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/before/msp_podcast/class_metrics.csv` と混同行列を確認。seed 42のMSP testはhappyが3,723/5,692件（65.4076%）、モデルの正解数は3,891件（68.3591%）で、全件happy予測との差は2.9515ポイント。クラス別再現率はanger 45.3441%、happy 84.6092%、sadness 44.0313%、disgust 25.1046%。これはクラスごとの成績差を確認する記述であり、原因が学習データの件数差だけであると断定するものではない。MSP validationによる設定選択を提案し、新たな学習・test評価は実行していない。
+
+**再引用**: Srivastava et al. (2014) のDropout論文とChen et al. (2024) のOdysseyクラス不均衡対策論文について、出版社の公開要旨を再確認した。前者は過学習対策の根拠、後者はクラス重み付けに多数派・少数派間の性能トレードオフがあり得ることの根拠として用いる。既存の書誌情報と重複するため文献行は追加しない。今回の4クラス実験の成績をOdysseyの異なる実験条件の数値と比較していない。
+
+## 2026-09-03 — クラス重み付き損失の比較方法と実装
+
+**質問/文脈**: MSP単体で重みなし/ありを比較する実行経路を追加。balanced重みをtrainのincluded発話から `N / (4 * n_class)` として計算し、PyTorchの標準weighted-mean cross entropyへ渡す。validation lossと評価指標は従来の重みなし計算を維持する。公式資料の本文で式とAPI仕様を確認した。効果検証の実データ学習はユーザーが行う。
+
+| 資料 | 著者 | 年 | 根拠 | DOI/URL | 使用した主張 |
+|------|------|----|------|---------|-------------|
+| compute_class_weight | scikit-learn developers | n.d. | [公式API資料・Web本文確認] | https://scikit-learn.org/stable/modules/generated/sklearn.utils.class_weight.compute_class_weight.html | balanced方式はサンプル総数をクラス数と各クラス件数の積で割る。今回scikit-learn依存は追加せず同じ式を直接計算 |
+
+PyTorch CrossEntropyLoss公式資料（https://docs.pytorch.org/docs/2.12/generated/torch.nn.CrossEntropyLoss.html）は再引用。クラス重み指定と、mean reductionがバッチ内の正解クラス重みの和で正規化される仕様を確認した。

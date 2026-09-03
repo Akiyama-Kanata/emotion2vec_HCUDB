@@ -3,12 +3,15 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
+
+import torch
 
 from ser_pipeline.audio import sha256_file
 from ser_pipeline.checkpoints import load_decoder_checkpoint
 from ser_pipeline.notebook_api import make_demo_artifacts, run_demo_transfer_study
 from ser_pipeline.study import EVALUATION_DATASETS, STUDY_SEEDS, require_formal_epochs
-from ser_pipeline.training import TrainingConfig, train_decoder
+from ser_pipeline.training import CachedFeatureDataset, TrainingConfig, train_decoder
 
 
 class SerEndToEndTest(unittest.TestCase):
@@ -110,6 +113,41 @@ class SerEndToEndTest(unittest.TestCase):
         resumed_child_payload = load_decoder_checkpoint(resumed_child["resume_checkpoint"])
         self.assertEqual(resumed_child_payload["parent_checkpoint_id"], child_payload["parent_checkpoint_id"])
         self.assertEqual(resumed_child_payload["parent_checkpoint_sha256"], child_payload["parent_checkpoint_sha256"])
+
+    def test_direct_copy_training_matches_legacy_history_and_weights(self):
+        """User-run optimization regression; this test invokes train_decoder."""
+        artifacts = make_demo_artifacts(self.root / "artifacts", datasets=("msp_podcast",))
+        artifact = artifacts["msp_podcast"]
+
+        class LegacyDataset(CachedFeatureDataset):
+            def __getitem__(self, index):
+                features, label, utterance_id = super().__getitem__(index)
+                return torch.from_numpy(features.copy()).float(), label, utterance_id
+
+        config = TrainingConfig(seed=42, device="cpu", epochs=2, batch_size=3, hidden_dim=8)
+        optimized = train_decoder(
+            artifact.manifest_path, artifact.cache_root, "msp_podcast", self.root / "direct",
+            config, training_stage="msp_train",
+        )
+        with patch("ser_pipeline.training.CachedFeatureDataset", LegacyDataset):
+            legacy = train_decoder(
+                artifact.manifest_path, artifact.cache_root, "msp_podcast", self.root / "legacy",
+                config, training_stage="msp_train",
+            )
+        self.assertEqual(optimized["history"], legacy["history"])
+        self.assertEqual(optimized["best_epoch"], legacy["best_epoch"])
+        for key in ("best_checkpoint", "resume_checkpoint"):
+            optimized_weights = load_decoder_checkpoint(optimized[key])["model_state_dict"]
+            legacy_weights = load_decoder_checkpoint(legacy[key])["model_state_dict"]
+            for name in optimized_weights:
+                self.assertTrue(torch.equal(optimized_weights[name], legacy_weights[name]), name)
+        self.assertTrue(Path(optimized["timings_path"]).is_file())
+        self.assertEqual(len(optimized["timings"]["epochs"]), 2)
+        for epoch in optimized["timings"]["epochs"]:
+            self.assertGreater(epoch["train"]["batch_prepare_seconds"], 0)
+            self.assertGreater(epoch["train"]["compute_seconds"], 0)
+            self.assertGreater(epoch["validation_seconds"], 0)
+            self.assertGreater(epoch["save_seconds"], 0)
 
 
 if __name__ == "__main__":

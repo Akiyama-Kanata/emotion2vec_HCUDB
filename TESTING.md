@@ -58,6 +58,53 @@ Notes:
 
 ## Latest verification
 
+### MSP class-weight comparison (2026-09-03)
+
+Notebook 02 now ends with `6. MSP単体：クラス重み付き損失の比較`.
+Execute only 6.1 through 6.4. Section 6.1 reloads checkpoints, training and study
+in dependency order so an already-open kernel picks up the added comparison
+functions and configuration fields. Section 6.1 defaults to
+`RUN_MSP_WEIGHTED_TRAINING = False` and `MSP_COMPARISON_SEEDS = (42,)`.
+Set the flag to `True` to run weighted MSP training, then repeat with `(43, 44)`.
+The output directory includes the selected seeds; a nonempty directory is
+rejected to preserve existing results. Section 6.4 can also read saved results.
+
+`TrainingConfig.class_weighting` accepts `none` (unchanged default) or `balanced`.
+Balanced weights are `N / (4 * n_class)`, calculated solely from included
+training utterances in label order `anger, happy, sadness, disgust`. Missing
+training classes are rejected for balanced weighting. PyTorch cross entropy
+uses its standard weighted-mean reduction (sum of weighted per-item losses
+divided by the sum of the observed label weights in each batch). Training loss
+is the mean of these batch losses, so weighted and unweighted training losses
+must not be compared as the same objective. Validation loss and all metrics
+retain the existing unweighted calculation and best-checkpoint selection.
+
+`run_msp_loss_comparison` reuses saved **unweighted validation results**, then
+trains weighted MSP models from scratch with the same seed, model, 10 epochs,
+batch size 8, learning rate and batch ordering. It runs neither HCUDB training
+nor test evaluation. Before training it checks baseline configuration, complete
+epoch history, manifest hash, feature cache ID, checkpoint hash/signature and
+agreement between summary and checkpoint validation metrics. Both runs use the
+same manifest and therefore the same training/validation sets. The cache is
+fully validated once and its store reused for the comparison.
+
+Weights, training counts and loss mode are saved in both training summaries
+and checkpoints. Existing unweighted checkpoints remain loadable. Resuming
+with a different loss configuration is rejected; parent-model loading remains
+independent of training loss because the model architecture has not changed.
+
+Non-training regression command (optimizer updates are mocked):
+
+```bash
+wsl -d Ubuntu-Recovered --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec -e /home/akiyama/miniforge/envs/emotion2vec-py310/bin/python -m unittest discover -s tests -p test_ser_class_weights.py -v
+```
+
+Verified on 2026-09-03: 24 non-training tests across class weights, decoder,
+cache reuse and notebook boundaries passed in 13.196 seconds. The independent
+comparison settings/disabled gate were executed, and the saved real seed
+42/43/44 baseline checkpoint signatures, hashes, manifest hashes and validation
+metrics were checked read-only. No real training or full feature scan was run.
+
 Before the MSP/HCUDB implementation, the baseline suite passed on 2026-08-23:
 
 ```text
@@ -90,6 +137,86 @@ the one-item CPU benchmark, the +20% capacity margin, an explicitly fixed formal
 epoch count, and separated smoke/formal output directories. Formal training runs
 seed 42 first; seeds 43 and 44 remain disabled until the seed 42 artifacts are
 confirmed.
+
+## Notebook 02 cache reuse and timing (2026-09-03)
+
+The non-training optimization checks are:
+
+```bash
+wsl -d Ubuntu-Recovered --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec -e /home/akiyama/miniforge/envs/emotion2vec-py310/bin/python -m unittest tests.test_ser_cache_reuse tests.test_ser_decoder tests.test_ser_cache tests.test_ser_notebook_boundaries
+```
+
+These use synthetic caches and initialized checkpoints. No optimizer step or
+`train_decoder` call is executed. They check full-validation counts, changed and
+missing files, non-finite features, read-only mmap reuse, direct-copy batch
+values/labels/order, evaluation signatures, checkpoint compatibility, prediction
+files, and the two-seed study with training replaced by checkpoint-only I/O.
+
+The training regression remains **user-run**:
+
+```bash
+wsl -d Ubuntu-Recovered --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec -e /home/akiyama/miniforge/envs/emotion2vec-py310/bin/python -m unittest tests.test_ser_e2e
+```
+
+It includes a comparison of the original per-utterance tensor-copy route and the
+direct-to-batch route, asserting equal training history and checkpoint weights on
+small CPU inputs. Real-data comparison and speed measurements are also user-run.
+
+The working Notebook 02 may contain user settings, additional cells and saved
+results. Boundary tests check disabled defaults generated in a temporary
+directory and verify that the working execution cells match those defaults.
+Do not regenerate the working notebook to clear a `--check` mismatch, or run
+`tests/execute_ser_demo_notebooks.py` on a working notebook whose execution flags
+are enabled. For code changes, restart the notebook kernel and rerun setup before
+the desired execution cell.
+The working setup was missing definitions for the existing
+`CONFIRM_CACHE_VALIDATION` and `CONFIRM_BENCHMARK_AND_CAPACITY` gates. Both are
+restored with the original `False` defaults; set them to the reviewed values
+before a real run. The working `FORMAL_EPOCHS = 10` and other user settings are
+preserved.
+
+`prepare_study_stores()` performs the entry-gate validation and passes the same
+stores to `run_transfer_study(..., stores=...)`. Each unchanged dataset has one
+full validation across all selected seeds and their training/before/after stages.
+Standalone `train_decoder()` and `evaluate_checkpoint()` fully validate by
+default. Reuse is explicit through `store=...`; `validate=False` is retained for
+compatibility but does not bypass validation. No validation proof is persisted.
+
+Before reuse, the store checks the manifest, root metadata, success markers,
+shard metadata, indices and feature files by file identity, size, modification
+time and change time. A change invalidates old maps and causes revalidation;
+invalid/missing inputs are rejected. This assumes inputs remain read-only during
+each training/evaluation operation; it is not a concurrent-writer lock or a
+defense against metadata-preserving tampering.
+
+Timing files are saved separately from checkpoint history:
+
+- `*_timings.json` beside training checkpoints: cache access/full validation,
+  setup, each epoch's batch preparation, computation, validation, checkpoint
+  saving, finalization and total. Per-epoch checkpoint saving includes best-state
+  selection/copying; timing-file writes are outside that interval.
+- `timings.json` in each before/after dataset directory: batch preparation,
+  computation, result building, evaluation total and result-file saving.
+- `study_timings.json`: full-validation count/seconds per dataset, before/after
+  evaluation totals, summary saving and study-call duration. This is the final
+  timing record referenced by `timings_path` in `study_summary.json`; the summary
+  itself is written before its own save duration is known. Study-call duration
+  excludes an entry-gate validation done before the call, which is recorded in
+  the per-dataset cache-validation times.
+
+Computation timing includes device transfers. CUDA is synchronized at timing
+boundaries; the current Notebook 02 configuration uses CPU. Notebook display
+uses `summarize_study()`; full returned results and all prediction files remain
+available. Historical results without timing data display `None` for seconds.
+
+This change leaves model computation, epoch/seed selection, batch size, learning
+rate, batch order and evaluation rules unchanged. Skipping padded computation,
+moving caches to WSL storage, changing CPU thread counts and changing loader
+workers remain separate measurement steps; no speedup factor is claimed.
+
+Verified on 2026-09-03 in the designated WSL environment: all 48 selected
+non-training SER tests passed in 25.409 seconds. The training regressions and
+real-data speed comparison were not executed by Codex.
 
 The user-run MSP exclusion/manifest sequence is:
 

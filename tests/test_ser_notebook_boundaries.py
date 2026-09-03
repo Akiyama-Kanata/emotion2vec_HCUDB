@@ -1,6 +1,7 @@
 """生成した SER ノートブック間で処理責務が混在していないことを検証する。"""
 
 import json
+import runpy
 import subprocess
 import sys
 import tempfile
@@ -17,6 +18,38 @@ def source_text(cell):
 
 
 class SerNotebookBoundaryTest(unittest.TestCase):
+    def test_comparison_settings_refresh_already_imported_modules(self):
+        probe = """
+import json
+from pathlib import Path
+import ser_pipeline.study as study
+import ser_pipeline.training as training
+import ser_pipeline.checkpoints as checkpoints
+
+# Simulate a kernel retaining modules from before the comparison feature.
+del study.load_msp_comparison_baselines
+del study.run_msp_loss_comparison
+del training.training_loss_config
+training.TrainingConfig = object
+checkpoints.save_decoder_checkpoint = None
+notebook = json.loads(Path('notebooks/02_train_and_evaluate_decoder.ipynb').read_text(encoding='utf-8'))
+cell = next(cell for cell in notebook['cells'] if cell['id'] == 'msp-loss-settings')
+source = cell['source']
+namespace = {}
+exec(''.join(source) if isinstance(source, list) else source, namespace)
+assert callable(namespace['load_msp_comparison_baselines'])
+assert callable(namespace['run_msp_loss_comparison'])
+assert callable(namespace['training_loss_config'])
+assert namespace['MSP_COMPARISON_CONFIG'].class_weighting == 'none'
+assert training.save_decoder_checkpoint is checkpoints.save_decoder_checkpoint
+assert callable(checkpoints.save_decoder_checkpoint)
+assert study.train_decoder is training.train_decoder
+assert not namespace['RUN_MSP_WEIGHTED_TRAINING']
+print('stale-kernel-refresh-ok')
+"""
+        result = subprocess.run([sys.executable, "-c", probe], cwd=ROOT, check=True, capture_output=True, text=True)
+        self.assertIn("stale-kernel-refresh-ok", result.stdout)
+
     def test_builder_check_is_write_free_and_ignores_line_endings(self):
         paths = [
             ROOT / "notebooks" / "01_extract_emotion2vec_features.ipynb",
@@ -25,23 +58,35 @@ class SerNotebookBoundaryTest(unittest.TestCase):
         ]
         before = [path.read_bytes() for path in paths]
         command = [sys.executable, str(ROOT / "scripts" / "build_ser_notebooks.py"), "--check"]
-        subprocess.run(command, cwd=ROOT, check=True, capture_output=True)
-        self.assertEqual(before, [path.read_bytes() for path in paths])
+        # Check generated defaults in a temporary directory. The working
+        # notebook can legitimately contain user settings and saved results.
         with tempfile.TemporaryDirectory() as directory:
             output_dir = Path(directory)
+            subprocess.run(command[:-1] + ["--output-dir", str(output_dir)], cwd=ROOT, check=True, capture_output=True)
+            generated_before = {}
             for path in paths[:2]:
-                lf_bytes = path.read_bytes().replace(b"\r\n", b"\n")
+                generated_path = output_dir / path.name
+                lf_bytes = generated_path.read_bytes().replace(b"\r\n", b"\n")
                 (output_dir / path.name).write_bytes(lf_bytes.replace(b"\n", b"\r\n"))
+                generated_before[path.name] = generated_path.read_bytes()
             subprocess.run(
                 command + ["--output-dir", str(output_dir)],
                 cwd=ROOT,
                 check=True,
                 capture_output=True,
             )
+            self.assertEqual(generated_before, {name: (output_dir / name).read_bytes() for name in generated_before})
+            altered = output_dir / paths[1].name
+            payload = json.loads(altered.read_text(encoding="utf-8"))
+            payload["cells"][0]["source"] = ["unexpected edit"]
+            altered.write_text(json.dumps(payload), encoding="utf-8")
+            rejected = subprocess.run(command + ["--output-dir", str(output_dir)], cwd=ROOT, capture_output=True)
+            self.assertNotEqual(rejected.returncode, 0)
         self.assertEqual(before, [path.read_bytes() for path in paths])
 
     def test_feature_notebook_has_no_training_boundary_violations(self):
-        notebook = json.loads((ROOT / "notebooks" / "01_extract_emotion2vec_features.ipynb").read_text(encoding="utf-8"))
+        builder = runpy.run_path(str(ROOT / "scripts" / "build_ser_notebooks.py"))
+        notebook = builder["notebook"](builder["feature_cells"])
         code_source = "\n".join(source_text(cell) for cell in notebook["cells"] if cell["cell_type"] == "code")
         self.assertIn("STUDY_DATASETS = ('msp_podcast', 'hcudb1')", code_source)
         for flag in (
@@ -119,9 +164,19 @@ class SerNotebookBoundaryTest(unittest.TestCase):
         )
         for forbidden in ("optimizer", "train_decoder", "run_transfer_study", "BaseModel", "parent-checkpoint", "resume-checkpoint"):
             self.assertNotIn(forbidden, code_source)
+        working = json.loads((ROOT / "notebooks" / "01_extract_emotion2vec_features.ipynb").read_text(encoding="utf-8"))
+        working_source = "\n".join(source_text(cell) for cell in working["cells"] if cell["cell_type"] == "code")
+        for forbidden in ("optimizer", "train_decoder", "run_transfer_study", "BaseModel", "parent-checkpoint", "resume-checkpoint"):
+            self.assertNotIn(forbidden, working_source)
 
     def test_decoder_notebook_is_cache_only_and_formal_run_is_disabled(self):
-        notebook = json.loads((ROOT / "notebooks" / "02_train_and_evaluate_decoder.ipynb").read_text(encoding="utf-8"))
+        builder = runpy.run_path(str(ROOT / "scripts" / "build_ser_notebooks.py"))
+        notebook = builder["notebook"](builder["decoder_cells"])
+        working = json.loads((ROOT / "notebooks" / "02_train_and_evaluate_decoder.ipynb").read_text(encoding="utf-8"))
+        working_cells = {cell["id"]: cell for cell in working["cells"]}
+        for cell in notebook["cells"]:
+            if cell["id"] in {"smoke-gate", "formal-seed-42-gate", "formal-followup-gate"} or cell["id"].startswith("msp-loss-"):
+                self.assertEqual(source_text(working_cells[cell["id"]]), source_text(cell))
         all_source = "\n".join(source_text(cell) for cell in notebook["cells"])
         code_source = "\n".join(source_text(cell) for cell in notebook["cells"] if cell["cell_type"] == "code")
         self.assertIn("STUDY_DATASETS = ('msp_podcast', 'hcudb1')", code_source)
@@ -140,6 +195,12 @@ class SerNotebookBoundaryTest(unittest.TestCase):
         self.assertIn("SER_MSP_PODCAST_DUPLICATE_AUDIT", code_source)
         self.assertIn("SER_MSP_PODCAST_DUPLICATE_EXCLUSION_CONTRACT", code_source)
         self.assertIn("run_transfer_study", code_source)
+        self.assertIn("prepare_study_stores(artifacts)", code_source)
+        self.assertIn("stores=followup_stores", code_source)
+        self.assertIn("summarize_study(formal_followup_summary)", code_source)
+        self.assertIn("RUN_MSP_WEIGHTED_TRAINING = False", code_source)
+        self.assertIn("MSP_COMPARISON_SEEDS = (42,)", code_source)
+        self.assertIn("run_msp_loss_comparison", code_source)
         self.assertNotIn("run_demo_transfer_study", code_source)
         self.assertNotIn("train_decoder", code_source)
         for forbidden in (".wav", "soundfile", "fairseq", "EMOTION2VEC_CHECKPOINT", "EMOTION2VEC_USER_DIR", "extract_feature_cache"):

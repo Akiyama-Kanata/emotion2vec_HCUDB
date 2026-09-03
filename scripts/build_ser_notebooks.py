@@ -755,9 +755,11 @@ if not (PROJECT_ROOT / 'ser_pipeline').is_dir():
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from ser_pipeline.cache import validate_cache
 from ser_pipeline.notebook_api import environment_summary
-from ser_pipeline.study import DatasetArtifacts, require_formal_epochs, run_transfer_study
+from ser_pipeline.study import (
+    DatasetArtifacts, prepare_study_stores, require_formal_epochs,
+    run_transfer_study, summarize_study,
+)
 from ser_pipeline.training import TrainingConfig
 
 STUDY_DATASETS = ('msp_podcast', 'hcudb1')
@@ -820,11 +822,9 @@ def validate_execution_gates():
     if not CONFIRM_BENCHMARK_AND_CAPACITY:
         raise RuntimeError('Confirm the one-item CPU benchmark and the +20% capacity gate')
     artifacts = load_study_artifacts()
-    cache_validation = {
-        name: validate_cache(current.cache_root, current.manifest_path)
-        for name, current in artifacts.items()
-    }
-    return artifacts, cache_validation
+    stores = prepare_study_stores(artifacts)
+    cache_validation = {name: store.validation_report for name, store in stores.items()}
+    return artifacts, cache_validation, stores
         """,
         "setup",
     ),
@@ -855,16 +855,17 @@ seed 42でMSP親学習→HCUDB継続学習→両データセットの前後評�
     code(
         """
 if RUN_REAL_SMOKE:
-    smoke_artifacts, smoke_cache_validation = validate_execution_gates()
+    smoke_artifacts, smoke_cache_validation, smoke_stores = validate_execution_gates()
     smoke_summary = run_transfer_study(
         smoke_artifacts,
         ARTIFACT_DIR / 'smoke',
         seeds=(42,),
         base_config=TrainingConfig(seed=42, device='cpu', epochs=1),
+        stores=smoke_stores,
     )
 else:
     smoke_summary = {'status': 'disabled_by_default', 'seed': 42, 'epochs': 1}
-smoke_summary
+summarize_study(smoke_summary)
         """,
         "smoke-gate",
     ),
@@ -882,18 +883,19 @@ if RUN_FORMAL_SEED_42:
     if not CONFIRM_SMOKE_COMPLETED:
         raise RuntimeError('Confirm the real-data 1 epoch smoke run before formal seed 42')
     formal_epochs = require_formal_epochs(FORMAL_EPOCHS)
-    formal_artifacts, formal_cache_validation = validate_execution_gates()
+    formal_artifacts, formal_cache_validation, formal_stores = validate_execution_gates()
     formal_seed_42_summary = run_transfer_study(
         formal_artifacts,
         ARTIFACT_DIR / 'formal' / 'initial-seed-42',
         seeds=(42,),
         base_config=TrainingConfig(seed=42, device='cpu', epochs=formal_epochs),
+        stores=formal_stores,
     )
 else:
     formal_seed_42_summary = {
         'status': 'disabled_by_default', 'seed': 42, 'formal_epochs': FORMAL_EPOCHS
     }
-formal_seed_42_summary
+summarize_study(formal_seed_42_summary)
         """,
         "formal-seed-42-gate",
     ),
@@ -911,20 +913,158 @@ if RUN_FORMAL_SEEDS_43_44:
     if not CONFIRM_SEED_42_ARTIFACTS:
         raise RuntimeError('Confirm the formal seed 42 artifacts before seeds 43 and 44')
     formal_epochs = require_formal_epochs(FORMAL_EPOCHS)
-    followup_artifacts, followup_cache_validation = validate_execution_gates()
+    followup_artifacts, followup_cache_validation, followup_stores = validate_execution_gates()
     formal_followup_summary = run_transfer_study(
         followup_artifacts,
         ARTIFACT_DIR / 'formal' / 'followup-seeds-43-44',
         seeds=(43, 44),
         base_config=TrainingConfig(seed=43, device='cpu', epochs=formal_epochs),
+        stores=followup_stores,
     )
 else:
     formal_followup_summary = {
         'status': 'disabled_by_default', 'seeds': [43, 44], 'formal_epochs': FORMAL_EPOCHS
     }
-formal_followup_summary
+summarize_study(formal_followup_summary)
         """,
         "formal-followup-gate",
+    ),
+]
+
+
+decoder_cells += [
+    markdown(
+        """
+## 6. MSP単体：クラス重み付き損失の比較
+
+この節の **6.1 → 6.2 → 6.3 → 6.4** だけを実行します。6.1で更新済みの学習コードを読み直します。
+この節は独立しており、上のsetupや「3〜5」の学習セルを実行する必要はありません。
+MSPの重みなし結果を読み込み、同じseedの初期値から重みありモデルを10 epoch学習します。
+バッチサイズ8、学習率0.001、Dropout 0、データ分割と発話順序を維持します。
+重みは **trainの総件数 / (4 × trainのクラス別件数)**。validationのUARを主指標に比較します。
+validationのlossは従来の重みなし計算です。重みあり/なしのtrain lossは同じ尺度として比較しません。
+HCUDBの学習とtest評価はこの節では実行しません。
+        """, "msp-loss-heading",
+    ),
+    markdown("### 6.1 比較設定", "msp-loss-settings-heading"),
+    code(
+        """
+import json, os, sys
+from pathlib import Path
+import pandas as pd
+from IPython.display import display
+
+PROJECT_ROOT = Path.cwd()
+if not (PROJECT_ROOT / 'ser_pipeline').is_dir():
+    PROJECT_ROOT = PROJECT_ROOT.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+import importlib
+importlib.invalidate_caches()
+for _msp_module_name in ('ser_pipeline.checkpoints', 'ser_pipeline.training', 'ser_pipeline.study'):
+    importlib.reload(importlib.import_module(_msp_module_name))
+
+from ser_pipeline.cache import ShardedFeatureStore
+from ser_pipeline.study import DatasetArtifacts, load_msp_comparison_baselines, run_msp_loss_comparison
+from ser_pipeline.training import TrainingConfig, training_loss_config
+
+RUN_MSP_WEIGHTED_TRAINING = False  # 学習を開始するとき True にする
+MSP_COMPARISON_SEEDS = (42,)  # 次に (43, 44) で同じ比較を行う
+MSP_COMPARISON_CONFIG = TrainingConfig(device='cpu', epochs=10, batch_size=8)
+MSP_COMPARISON_OUTPUT = PROJECT_ROOT / 'runs' / 'msp_class_weight_comparison' / (
+    'seeds-' + '-'.join(str(seed) for seed in MSP_COMPARISON_SEEDS)
+)
+
+manifest_dir = PROJECT_ROOT / 'runs' / 'ser_manifests'
+def msp_input(env_key, default):
+    return Path(os.environ.get(env_key) or default)
+
+MSP_COMPARISON_ARTIFACT = DatasetArtifacts(
+    manifest_path=msp_input('SER_MSP_PODCAST_MANIFEST', manifest_dir / 'msp_podcast_4class_v1.jsonl'),
+    cache_root=msp_input('SER_MSP_PODCAST_CACHE', PROJECT_ROOT / 'runs' / 'ser_feature_cache' / 'msp_podcast_base_final_v1'),
+    exclusion_contract_path=msp_input('SER_MSP_PODCAST_EXCLUSION_CONTRACT', manifest_dir / 'msp_missing_audio_exclusions_v1.json'),
+    duplicate_audit_path=msp_input('SER_MSP_PODCAST_DUPLICATE_AUDIT', manifest_dir / 'msp_audio_duplicate_audit_v1.json'),
+    duplicate_exclusion_contract_path=msp_input('SER_MSP_PODCAST_DUPLICATE_EXCLUSION_CONTRACT', manifest_dir / 'msp_audio_duplicate_exclusions_v1.json'),
+)
+MSP_BASELINE_SUMMARIES = [
+    PROJECT_ROOT / 'runs' / 'ser_decoder_timing_check_20260903' / 'formal' / 'initial-seed-42' / 'study_summary.json',
+    PROJECT_ROOT / 'runs' / 'ser_decoder_study' / 'formal' / 'followup-seeds-43-44' / 'study_summary.json',
+]
+print('比較seed:', MSP_COMPARISON_SEEDS, '学習を実行:', RUN_MSP_WEIGHTED_TRAINING)
+print('保存先:', MSP_COMPARISON_OUTPUT)
+        """, "msp-loss-settings",
+    ),
+    markdown(
+        """
+### 6.2 キャッシュ・比較元・クラス重みの確認
+
+初回のキャッシュ完全検証には数分かかります。学習済み比較元と設定・manifest・cache・checkpointを照合します。
+同じカーネルでこのセルを再実行した場合は、入力に変更がなければ検証済みstoreを再利用します。
+        """, "msp-loss-prepare-heading",
+    ),
+    code(
+        """
+if MSP_COMPARISON_OUTPUT.exists() and any(MSP_COMPARISON_OUTPUT.iterdir()):
+    raise ValueError('保存先に結果があります。6.4で確認するか、6.1で別の保存先を設定してください。')
+if 'msp_comparison_store' not in globals():
+    print('MSPキャッシュの完全検証を開始します。', flush=True)
+    msp_comparison_store = ShardedFeatureStore(
+        MSP_COMPARISON_ARTIFACT.cache_root, MSP_COMPARISON_ARTIFACT.manifest_path,
+    )
+else:
+    msp_comparison_store.require_paths(MSP_COMPARISON_ARTIFACT.cache_root, MSP_COMPARISON_ARTIFACT.manifest_path)
+    msp_comparison_store.ensure_validated()
+msp_comparison_baselines = load_msp_comparison_baselines(
+    MSP_BASELINE_SUMMARIES, msp_comparison_store, MSP_COMPARISON_CONFIG, MSP_COMPARISON_SEEDS,
+)
+msp_comparison_loss = training_loss_config(msp_comparison_store, 'msp_podcast', 'balanced')
+display(pd.DataFrame({
+    '感情': msp_comparison_loss['label_order'],
+    'train件数': msp_comparison_loss['train_class_counts'],
+    '重み': msp_comparison_loss['class_weights'],
+}).round(4))
+print('比較元の照合完了。seed:', list(msp_comparison_baselines))
+        """, "msp-loss-prepare",
+    ),
+    markdown("### 6.3 MSPの重みあり学習を実行", "msp-loss-run-heading"),
+    code(
+        """
+if RUN_MSP_WEIGHTED_TRAINING:
+    msp_loss_comparison = run_msp_loss_comparison(
+        MSP_COMPARISON_ARTIFACT, MSP_COMPARISON_OUTPUT, MSP_BASELINE_SUMMARIES,
+        seeds=MSP_COMPARISON_SEEDS, base_config=MSP_COMPARISON_CONFIG, store=msp_comparison_store,
+    )
+else:
+    print('学習は無効です。6.1でRUN_MSP_WEIGHTED_TRAININGをTrueにして実行してください。')
+        """, "msp-loss-run",
+    ),
+    markdown(
+        """
+### 6.4 validation結果を比較
+
+`none`は保存済みの重みなし結果、`balanced`は今回の重みあり結果です。
+差分は **重みあり − 重みなし**。UAR・macro F1・WA・再現率は大きいほど良く、lossは小さいほど良い指標です。
+seed 42で動作を確認したら、6.1のseedを`(43, 44)`に変えて比較し、3 seedでの傾向を確認します。
+        """, "msp-loss-results-heading",
+    ),
+    code(
+        """
+msp_comparison_summary_path = MSP_COMPARISON_OUTPUT / 'comparison_summary.json'
+if msp_comparison_summary_path.is_file():
+    msp_loss_comparison = json.loads(msp_comparison_summary_path.read_text(encoding='utf-8'))
+    print('validation結果:')
+    display(pd.DataFrame(msp_loss_comparison['rows']).round(4))
+    print('validation差分（重みあり − 重みなし）:')
+    display(pd.DataFrame([
+        {'seed': run['seed'], **run['validation_deltas']} for run in msp_loss_comparison['runs']
+    ]).round(4))
+    print('完了seed:', msp_loss_comparison['completed_seeds'], '/', msp_loss_comparison['requested_seeds'])
+    print('比較実行時間（分）:', round(msp_loss_comparison['seconds'] / 60, 2))
+    print('保存先:', msp_comparison_summary_path)
+else:
+    print('比較結果はまだありません。6.3の学習を完了してください。')
+        """, "msp-loss-results",
     ),
 ]
 

@@ -114,6 +114,7 @@ def save_decoder_checkpoint(
     best_epoch: int | None = None,
     parent_checkpoint_id: str | None = None,
     parent_checkpoint_sha256: str | None = None,
+    loss_config: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     if training_stage not in TRAINING_STAGES:
         raise ValueError(f"invalid training_stage: {training_stage}")
@@ -159,6 +160,7 @@ def save_decoder_checkpoint(
         "best_model_state_dict": dict(best_model_state_dict) if best_model_state_dict is not None else None,
         "best_validation_metrics": dict(best_validation_metrics) if best_validation_metrics is not None else None,
         "best_epoch": int(best_epoch) if best_epoch is not None else None,
+        "loss_config": dict(loss_config) if loss_config is not None else None,
     }
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -190,12 +192,22 @@ def restore_resume(
     resume_path: str | Path,
     expected_signature: Mapping[str, Any],
     training_stage: str,
+    *,
+    expected_loss_config: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload = load_decoder_checkpoint(
         resume_path,
         expected_signature=expected_signature,
         expected_stage=training_stage,
     )
+    if expected_loss_config is not None:
+        saved_loss = payload.get("loss_config")
+        if saved_loss is None:
+            # Older checkpoints used unweighted cross entropy exclusively.
+            if expected_loss_config["class_weighting"] != "none":
+                raise ValueError("resume checkpoint loss configuration mismatch: legacy unweighted loss")
+        elif saved_loss != dict(expected_loss_config):
+            raise ValueError("resume checkpoint loss configuration mismatch")
     model.load_state_dict(payload["model_state_dict"], strict=True)
     optimizer.load_state_dict(payload["optimizer_state_dict"])
     return payload

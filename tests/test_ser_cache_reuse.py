@@ -7,6 +7,7 @@ import os
 import tempfile
 import unittest
 from contextlib import redirect_stdout
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -16,11 +17,11 @@ import torch
 from ser_pipeline import cache as cache_module
 from ser_pipeline.audio import sha256_file
 from ser_pipeline.cache import ShardedFeatureStore, _atomic_json
-from ser_pipeline.checkpoints import decoder_signature, save_decoder_checkpoint
+from ser_pipeline.checkpoints import decoder_signature, load_decoder_checkpoint, save_decoder_checkpoint
 from ser_pipeline.evaluation import evaluation_set_signature
 from ser_pipeline.model import BaseModel
 from ser_pipeline.notebook_api import make_demo_artifacts
-from ser_pipeline.study import prepare_study_stores, run_transfer_study, summarize_study
+from ser_pipeline.study import FinalEvaluationTarget, prepare_study_stores, run_final_evaluations, run_transfer_study, summarize_study
 from ser_pipeline.training import (
     CachedFeatureDataset, TrainingConfig, collate_features, evaluate_checkpoint, make_loader,
 )
@@ -192,6 +193,7 @@ class SerCacheReuseTest(unittest.TestCase):
             run_id=f"io-only-{stage}-{config.seed}", validation_metrics=metrics,
             cache_id=store.meta["cache_id"], mapping_versions=store.meta["mapping_versions"],
             split_versions=store.meta["split_versions"], parent_checkpoint=parent,
+            selection="best_validation", best_epoch=1, best_validation_metrics=metrics,
         )
         return {
             "best_checkpoint": str(path), "best_epoch": 1,
@@ -237,7 +239,9 @@ class SerCacheReuseTest(unittest.TestCase):
             cache_module, "_validate_shard_meta", wraps=cache_module._validate_shard_meta,
         ) as validate:
             stores = prepare_study_stores(self.artifacts)
-            with patch("ser_pipeline.study.train_decoder", side_effect=checkpoint_only) as train:
+            with patch("ser_pipeline.study.train_decoder", side_effect=checkpoint_only) as train, patch(
+                "ser_pipeline.study.evaluate_checkpoint", side_effect=AssertionError("training must not run test"),
+            ):
                 summary = run_transfer_study(
                     self.artifacts, self.root / "study", seeds=(43, 44),
                     base_config=TrainingConfig(device="cpu", epochs=10), stores=stores,
@@ -248,12 +252,96 @@ class SerCacheReuseTest(unittest.TestCase):
         original = copy.deepcopy(summary)
         compact = summarize_study(summary)
         self.assertEqual(summary, original)
+        historical = copy.deepcopy(summary)
+        historical.pop("test_evaluated")
+        for run in historical["runs"]:
+            run["before"] = {"msp_podcast": {"result": {"metrics_4class": {"uar": .999}}}}
+            run["after"] = copy.deepcopy(run["before"])
+        old_compact = summarize_study(historical)
+        self.assertTrue(old_compact["test_evaluated"])
+        self.assertNotIn("before", old_compact["runs"][0])
+        self.assertEqual(old_compact["runs"][0]["parent"], compact["runs"][0]["parent"])
         self.assertNotIn('"predictions": [', json.dumps(compact))
         self.assertEqual(compact["seeds"], [43, 44])
+        self.assertFalse(summary["test_evaluated"])
+        for run in summary["runs"]:
+            self.assertNotIn("before", run)
+            self.assertNotIn("after", run)
+            for dataset, splits in run["provenance"]["training_sets"].items():
+                self.assertEqual(set(splits), {"train", "validation"})
+                for split, signature in splits.items():
+                    self.assertEqual(signature, evaluation_set_signature(self.artifacts[dataset].manifest_path, dataset, split))
         self.assertTrue(Path(summary["summary_path"]).is_file())
         self.assertTrue((self.root / "study/study_timings.json").is_file())
         for name in stores:
             self.assertEqual(summary["timings"]["cache_validation"][name]["full_passes"], 1)
+
+    def test_final_evaluation_records_plan_and_reuses_stores_without_training(self):
+        with redirect_stdout(io.StringIO()):
+            stores = prepare_study_stores(self.artifacts)
+        parent = self.root / "parent_best.pt"
+        child = self.root / "child_best.pt"
+        self.untrained_checkpoint(stores["msp_podcast"], parent, TrainingConfig(), "msp_train")
+        self.untrained_checkpoint(stores["hcudb1"], child, TrainingConfig(), "hcudb_continue", parent)
+        targets = [FinalEvaluationTarget(stage, checkpoint, sha256_file(checkpoint), dataset)
+                   for stage, checkpoint in (("parent", parent), ("child", child)) for dataset in self.artifacts]
+        output = self.root / "final"
+        original_evaluate = evaluate_checkpoint
+        def evaluate(*args, **kwargs):
+            plan = json.loads((output / "final_evaluation_plan.json").read_text())
+            self.assertEqual(len(plan["targets"]), 4)
+            self.assertEqual(plan["batch_size"], 8)
+            self.assertEqual(kwargs["split"], "test")
+            return original_evaluate(*args, **kwargs)
+        with patch("ser_pipeline.study.train_decoder", side_effect=AssertionError("final must not train")), patch(
+            "ser_pipeline.study.evaluate_checkpoint", side_effect=evaluate
+        ) as scoring, redirect_stdout(io.StringIO()):
+            summary = run_final_evaluations(self.artifacts, targets, output, device="cpu", stores=stores)
+        self.assertEqual(scoring.call_count, 4)
+        self.assertEqual(summary["status"], "complete")
+        self.assertTrue(summary["test_evaluated"])
+        self.assertFalse((output / "study_summary.json").exists())
+        for record in summary["evaluations"]:
+            self.assertEqual(record["result"]["set_signature"]["split"], "test")
+            self.assertEqual(record["target"]["expected_sha256"], sha256_file(record["target"]["checkpoint_path"]))
+        for dataset in self.artifacts:
+            results = [record["result"]["set_signature"] for record in summary["evaluations"] if record["target"]["dataset"] == dataset]
+            self.assertEqual(results[0], results[1])
+            self.assertEqual(stores[dataset].validation_count, 1)
+        # MSP-only evaluation does not require HCUDB inputs.
+        with redirect_stdout(io.StringIO()), patch("ser_pipeline.study.train_decoder", side_effect=AssertionError("must not train")):
+            single = run_final_evaluations({"msp_podcast": self.artifact}, targets[:1], self.root / "single", device="cpu", stores={"msp_podcast": stores["msp_podcast"]})
+        self.assertEqual(len(single["evaluations"]), 1)
+
+    def test_final_preflight_rejects_all_invalid_targets_before_any_evaluation(self):
+        store = self.store()
+        checkpoint = self.root / "best.pt"
+        self.untrained_checkpoint(store, checkpoint, TrainingConfig(), "msp_train")
+        good = FinalEvaluationTarget("selected", checkpoint, sha256_file(checkpoint), "msp_podcast")
+        original = checkpoint.read_bytes()
+        bad_sets = [[], [replace(good, expected_sha256="0" * 64)], [replace(good, checkpoint_path=self.root / "missing.pt")],
+                    [good, replace(good, checkpoint_path=self.root / "missing-second.pt")], [good, good]]
+        for index, targets in enumerate(bad_sets):
+            with self.subTest(index=index), patch("ser_pipeline.study.evaluate_checkpoint") as evaluate, patch("ser_pipeline.study.train_decoder") as train:
+                with self.assertRaises((ValueError, FileNotFoundError)):
+                    run_final_evaluations(self.artifacts, targets, self.root / f"bad-{index}", device="cpu", stores={"msp_podcast": store})
+                evaluate.assert_not_called()
+                train.assert_not_called()
+        for field in ("selection", "signature", "best_epoch"):
+            with self.subTest(field=field):
+                checkpoint.write_bytes(original)
+                payload = load_decoder_checkpoint(checkpoint)
+                if field == "signature":
+                    payload["signature"]["encoder_signature"]["encoder_checkpoint_sha256"] = "wrong"
+                elif field == "selection":
+                    payload["selection"] = "last"
+                else:
+                    payload["best_epoch"] = 2
+                torch.save(payload, checkpoint)
+                changed = replace(good, expected_sha256=sha256_file(checkpoint))
+                with patch("ser_pipeline.study.evaluate_checkpoint") as evaluate, self.assertRaises(ValueError):
+                    run_final_evaluations(self.artifacts, [changed], self.root / field, device="cpu", stores={"msp_podcast": store})
+                evaluate.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -115,6 +115,7 @@ def save_decoder_checkpoint(
     parent_checkpoint_id: str | None = None,
     parent_checkpoint_sha256: str | None = None,
     loss_config: Mapping[str, Any] | None = None,
+    history_metadata: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     if training_stage not in TRAINING_STAGES:
         raise ValueError(f"invalid training_stage: {training_stage}")
@@ -160,8 +161,11 @@ def save_decoder_checkpoint(
         "best_model_state_dict": dict(best_model_state_dict) if best_model_state_dict is not None else None,
         "best_validation_metrics": dict(best_validation_metrics) if best_validation_metrics is not None else None,
         "best_epoch": int(best_epoch) if best_epoch is not None else None,
+        "best_training_metrics": next((entry.get("train") for entry in history if entry.get("epoch") == best_epoch), None),
         "loss_config": dict(loss_config) if loss_config is not None else None,
     }
+    if history_metadata is not None:
+        payload["history_metadata"] = dict(history_metadata)
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
     partial = output.with_name(output.name + ".partial")

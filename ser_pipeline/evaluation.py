@@ -32,6 +32,16 @@ def classification_metrics(
     *,
     reported_classes: Sequence[int] = (0, 1, 2, 3),
 ) -> dict[str, Any]:
+    """Return UAR, macro F1, accuracy/WA and optional unweighted comparison loss.
+
+    UAR and macro F1 average recall and F1 over ``reported_classes`` (all four
+    classes by default); absent classes and undefined precision/recall/F1 use
+    zero. Accuracy and WA are the same fraction of correctly predicted utterances.
+    Loss is ``-mean(log(clip(p_true, 1e-12, 1)))`` over all input utterances,
+    with equal utterance weights, independent of batching or training weights.
+    This probability-based calculation intentionally differs from the saved
+    mean of optimization batch losses, and is not replaced by a logits formula.
+    """
     truth = np.asarray(y_true, dtype=np.int64)
     prediction = np.asarray(y_pred, dtype=np.int64)
     if truth.ndim != 1 or prediction.ndim != 1 or len(truth) != len(prediction) or len(truth) == 0:

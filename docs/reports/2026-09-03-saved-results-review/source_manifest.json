@@ -1,0 +1,32 @@
+[
+  {
+    "path": "runs/msp_class_weight_comparison/seeds-42/comparison_summary.json",
+    "sha256": "900de845e8dafa2cd92b1a1549b8fb5cce13f191676e463a4b67b4c362e0a797",
+    "bytes": 70998
+  },
+  {
+    "path": "runs/msp_class_weight_comparison/seeds-43-44/comparison_summary.json",
+    "sha256": "62d89fc718398d4cadb85535c789e6cbab453ab3723a7004b0bfc2b28afb7599",
+    "bytes": 125145
+  },
+  {
+    "path": "runs/ser_decoder_study/formal/initial-seed-42/study_summary.json",
+    "sha256": "74dac88ad3f2fe2444a433d07727bede465c5e6e747b5a663360552d361793f4",
+    "bytes": 5658473
+  },
+  {
+    "path": "runs/ser_decoder_study/formal/followup-seeds-43-44/study_summary.json",
+    "sha256": "be5f327c66fef3f4b894ee7ff30beffa3e2ccda6ce50ccdb3ae28ba63d7b34a7",
+    "bytes": 11340514
+  },
+  {
+    "path": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/study_summary.json",
+    "sha256": "712c80a63aa64263bf67cc24553f8e84bd99dfdbf3cb55480b89b6182277c890",
+    "bytes": 5677650
+  },
+  {
+    "path": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/study_timings.json",
+    "sha256": "351422c6b1360816021db58c1891963cf28b1d6c2fa31c28d2d735e7532fa0b7",
+    "bytes": 383
+  }
+]

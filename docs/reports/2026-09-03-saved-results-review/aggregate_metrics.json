@@ -1,0 +1,5103 @@
+{
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "score_units": "fractions in [0, 1]; delta_pp is percentage points",
+  "standard_deviation": "sample standard deviation across the three seeds; not a confidence interval",
+  "msp_validation": {
+    "uar": {
+      "unweighted_mean": 0.5312546917149069,
+      "weighted_mean": 0.5625107389201836,
+      "delta_pp": 3.125604720527664
+    },
+    "macro_f1": {
+      "unweighted_mean": 0.5068864760671506,
+      "weighted_mean": 0.5068923485361924,
+      "delta_pp": 0.0005872469041712236
+    },
+    "wa": {
+      "unweighted_mean": 0.5977777777777777,
+      "weighted_mean": 0.5646296296296296,
+      "delta_pp": -3.314814814814815
+    }
+  },
+  "saved_transfer_test": {
+    "msp_podcast": {
+      "uar": {
+        "before_mean": 0.5101898573188269,
+        "after_mean": 0.47698833733353846,
+        "delta_pp": -3.3201519985288472
+      },
+      "macro_f1": {
+        "before_mean": 0.4880810770899121,
+        "after_mean": 0.3996034996915524,
+        "delta_pp": -8.84775773983597
+      },
+      "wa": {
+        "before_mean": 0.6408995080815179,
+        "after_mean": 0.4583040524713048,
+        "delta_pp": -18.259545561021305
+      }
+    },
+    "hcudb1": {
+      "uar": {
+        "before_mean": 0.26319444444444445,
+        "after_mean": 0.5090277777777779,
+        "delta_pp": 24.58333333333334
+      },
+      "macro_f1": {
+        "before_mean": 0.2199144579681101,
+        "after_mean": 0.5056042464801672,
+        "delta_pp": 28.568978851205713
+      },
+      "wa": {
+        "before_mean": 0.3277777777777778,
+        "after_mean": 0.5533333333333333,
+        "delta_pp": 22.555555555555557
+      }
+    }
+  },
+  "train_classification_scores_available": false,
+  "weighted_test_evaluated": false,
+  "best_validation_rows": [
+    {
+      "seed": 42,
+      "weighting": "none",
+      "best_epoch": 6,
+      "scores": {
+        "uar": 0.5272351616187442,
+        "macro_f1": 0.5221168474984074,
+        "wa": 0.6302777777777778
+      }
+    },
+    {
+      "seed": 42,
+      "weighting": "balanced",
+      "best_epoch": 2,
+      "scores": {
+        "uar": 0.5695029787187248,
+        "macro_f1": 0.5048840156510229,
+        "wa": 0.5675
+      }
+    },
+    {
+      "seed": 43,
+      "weighting": "none",
+      "best_epoch": 9,
+      "scores": {
+        "uar": 0.5354925894005083,
+        "macro_f1": 0.5003594948571375,
+        "wa": 0.5852777777777778
+      }
+    },
+    {
+      "seed": 43,
+      "weighting": "balanced",
+      "best_epoch": 3,
+      "scores": {
+        "uar": 0.5613940344066984,
+        "macro_f1": 0.5029606085048415,
+        "wa": 0.5505555555555556
+      }
+    },
+    {
+      "seed": 44,
+      "weighting": "none",
+      "best_epoch": 10,
+      "scores": {
+        "uar": 0.5310363241254682,
+        "macro_f1": 0.4981830858459072,
+        "wa": 0.5777777777777777
+      }
+    },
+    {
+      "seed": 44,
+      "weighting": "balanced",
+      "best_epoch": 6,
+      "scores": {
+        "uar": 0.5566352036351274,
+        "macro_f1": 0.5128324214527127,
+        "wa": 0.5758333333333333
+      }
+    }
+  ],
+  "msp_training": {
+    "42": {
+      "none": {
+        "config": {
+          "batch_size": 8,
+          "device": "cpu",
+          "dropout": 0.0,
+          "epochs": 10,
+          "hidden_dim": 256,
+          "learning_rate": 0.001,
+          "patience": null,
+          "seed": 42,
+          "weight_decay": 0.0001
+        },
+        "best_epoch": 6,
+        "best_validation_metrics": {
+          "uar": 0.5272351616187442,
+          "macro_f1": 0.5221168474984074,
+          "wa": 0.6302777777777778,
+          "loss": 0.9615271460824942,
+          "class_metrics": [
+            {
+              "class_index": 0,
+              "class_label": "anger",
+              "f1": 0.574279379157428,
+              "precision": 0.6815789473684211,
+              "recall": 0.49616858237547895,
+              "support": 1044
+            },
+            {
+              "class_index": 1,
+              "class_label": "happy",
+              "f1": 0.7643378519290928,
+              "precision": 0.722879684418146,
+              "recall": 0.8108407079646017,
+              "support": 1808
+            },
+            {
+              "class_index": 2,
+              "class_label": "sadness",
+              "f1": 0.4407796101949026,
+              "precision": 0.39622641509433965,
+              "recall": 0.4966216216216216,
+              "support": 296
+            },
+            {
+              "class_index": 3,
+              "class_label": "disgust",
+              "f1": 0.309070548712206,
+              "precision": 0.3129251700680272,
+              "recall": 0.3053097345132743,
+              "support": 452
+            }
+          ]
+        },
+        "history": [
+          {
+            "epoch": 1,
+            "train_loss": 0.8736875104549495,
+            "validation": {
+              "uar": 0.46601907827876704,
+              "macro_f1": 0.45142850990410816,
+              "wa": 0.6633333333333333,
+              "loss": 0.872211251915573,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.6635987114588127,
+                  "precision": 0.6386182462356067,
+                  "recall": 0.6906130268199234,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7705078125,
+                  "precision": 0.6896853146853147,
+                  "recall": 0.8727876106194691,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.37160751565762,
+                  "precision": 0.48633879781420764,
+                  "recall": 0.30067567567567566,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 2,
+            "train_loss": 0.7589379410609212,
+            "validation": {
+              "uar": 0.5022829512454169,
+              "macro_f1": 0.4885707885033202,
+              "wa": 0.6591666666666667,
+              "loss": 0.8658391810581536,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.6529006882989185,
+                  "precision": 0.6707070707070707,
+                  "recall": 0.6360153256704981,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7722277722277723,
+                  "precision": 0.7040072859744991,
+                  "recall": 0.8550884955752213,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.421875,
+                  "precision": 0.39244186046511625,
+                  "recall": 0.4560810810810811,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.10727969348659004,
+                  "precision": 0.4,
+                  "recall": 0.061946902654867256,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 3,
+            "train_loss": 0.6918319414481559,
+            "validation": {
+              "uar": 0.49386864931761176,
+              "macro_f1": 0.47662340921886026,
+              "wa": 0.6508333333333334,
+              "loss": 0.8938223143247047,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.6472361809045226,
+                  "precision": 0.6807610993657506,
+                  "recall": 0.6168582375478927,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.767888307155323,
+                  "precision": 0.699046754425783,
+                  "recall": 0.8517699115044248,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.3911764705882353,
+                  "precision": 0.3463541666666667,
+                  "recall": 0.44932432432432434,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.10019267822736032,
+                  "precision": 0.3880597014925373,
+                  "recall": 0.05752212389380531,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 4,
+            "train_loss": 0.636297514384813,
+            "validation": {
+              "uar": 0.49281501806200456,
+              "macro_f1": 0.49646947085407817,
+              "wa": 0.6272222222222222,
+              "loss": 0.9483920221352665,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.5215782983970407,
+                  "precision": 0.7318339100346021,
+                  "recall": 0.4051724137931034,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7581295988606693,
+                  "precision": 0.664033264033264,
+                  "recall": 0.8832964601769911,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.42006269592476486,
+                  "precision": 0.391812865497076,
+                  "recall": 0.4527027027027027,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.2861072902338377,
+                  "precision": 0.3781818181818182,
+                  "recall": 0.23008849557522124,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 5,
+            "train_loss": 0.5747505776595664,
+            "validation": {
+              "uar": 0.4858260428951991,
+              "macro_f1": 0.4916340572102968,
+              "wa": 0.655,
+              "loss": 0.9164595554605431,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.634441087613293,
+                  "precision": 0.6687898089171974,
+                  "recall": 0.603448275862069,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.768967205090553,
+                  "precision": 0.689640035118525,
+                  "recall": 0.8689159292035398,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.3875685557586837,
+                  "precision": 0.42231075697211157,
+                  "recall": 0.3581081081081081,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.17555938037865748,
+                  "precision": 0.3953488372093023,
+                  "recall": 0.11283185840707964,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 6,
+            "train_loss": 0.5099557067763246,
+            "validation": {
+              "uar": 0.5272351616187442,
+              "macro_f1": 0.5221168474984074,
+              "wa": 0.6302777777777778,
+              "loss": 0.9615271460824942,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.574279379157428,
+                  "precision": 0.6815789473684211,
+                  "recall": 0.49616858237547895,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7643378519290928,
+                  "precision": 0.722879684418146,
+                  "recall": 0.8108407079646017,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.4407796101949026,
+                  "precision": 0.39622641509433965,
+                  "recall": 0.4966216216216216,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.309070548712206,
+                  "precision": 0.3129251700680272,
+                  "recall": 0.3053097345132743,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 7,
+            "train_loss": 0.45253684793563925,
+            "validation": {
+              "uar": 0.48788313317131593,
+              "macro_f1": 0.4936114107133041,
+              "wa": 0.6172222222222222,
+              "loss": 1.0585674502803673,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.5185185185185185,
+                  "precision": 0.7081260364842454,
+                  "recall": 0.40900383141762453,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7589263728145778,
+                  "precision": 0.683976919662672,
+                  "recall": 0.8523230088495575,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.38327526132404177,
+                  "precision": 0.39568345323741005,
+                  "recall": 0.3716216216216216,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.3137254901960784,
+                  "precision": 0.3090128755364807,
+                  "recall": 0.3185840707964602,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 8,
+            "train_loss": 0.3908613661499881,
+            "validation": {
+              "uar": 0.4546852791913061,
+              "macro_f1": 0.46617986624186464,
+              "wa": 0.615,
+              "loss": 1.1899160895183547,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.4809308338720104,
+                  "precision": 0.7395626242544732,
+                  "recall": 0.3563218390804598,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7564575645756456,
+                  "precision": 0.6487341772151899,
+                  "recall": 0.9070796460176991,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.34962406015037595,
+                  "precision": 0.3940677966101695,
+                  "recall": 0.3141891891891892,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.27770700636942675,
+                  "precision": 0.32732732732732733,
+                  "recall": 0.2411504424778761,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 9,
+            "train_loss": 0.33139295949629904,
+            "validation": {
+              "uar": 0.5170203580144074,
+              "macro_f1": 0.5111532759247378,
+              "wa": 0.6086111111111111,
+              "loss": 1.1250950614666573,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.5784518828451883,
+                  "precision": 0.6370967741935484,
+                  "recall": 0.5296934865900383,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7464593168564287,
+                  "precision": 0.7495817066369214,
+                  "recall": 0.7433628318584071,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.4019448946515397,
+                  "precision": 0.3862928348909657,
+                  "recall": 0.4189189189189189,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.3177570093457944,
+                  "precision": 0.2750809061488673,
+                  "recall": 0.37610619469026546,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 10,
+            "train_loss": 0.2769102791232133,
+            "validation": {
+              "uar": 0.42747576211396016,
+              "macro_f1": 0.4412050632106679,
+              "wa": 0.6011111111111112,
+              "loss": 1.4908392674068365,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.43779741672331746,
+                  "precision": 0.7540983606557377,
+                  "recall": 0.30842911877394635,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7363776748290315,
+                  "precision": 0.6124770642201834,
+                  "recall": 0.9231194690265486,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.33064516129032256,
+                  "precision": 0.41,
+                  "recall": 0.27702702702702703,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.25999999999999995,
+                  "precision": 0.36693548387096775,
+                  "recall": 0.2013274336283186,
+                  "support": 452
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "balanced": {
+        "config": {
+          "batch_size": 8,
+          "class_weighting": "balanced",
+          "device": "cpu",
+          "dropout": 0.0,
+          "epochs": 10,
+          "hidden_dim": 256,
+          "learning_rate": 0.001,
+          "patience": null,
+          "seed": 42,
+          "weight_decay": 0.0001
+        },
+        "best_epoch": 2,
+        "best_validation_metrics": {
+          "uar": 0.5695029787187248,
+          "macro_f1": 0.5048840156510229,
+          "wa": 0.5675,
+          "loss": 1.0420437887800318,
+          "class_metrics": [
+            {
+              "class_index": 0,
+              "class_label": "anger",
+              "f1": 0.629898403483309,
+              "precision": 0.6363636363636364,
+              "recall": 0.6235632183908046,
+              "support": 1044
+            },
+            {
+              "class_index": 1,
+              "class_label": "happy",
+              "f1": 0.6794483686511941,
+              "precision": 0.8669527896995708,
+              "recall": 0.5586283185840708,
+              "support": 1808
+            },
+            {
+              "class_index": 2,
+              "class_label": "sadness",
+              "f1": 0.408745247148289,
+              "precision": 0.2843915343915344,
+              "recall": 0.7263513513513513,
+              "support": 296
+            },
+            {
+              "class_index": 3,
+              "class_label": "disgust",
+              "f1": 0.30144404332129965,
+              "precision": 0.2545731707317073,
+              "recall": 0.3694690265486726,
+              "support": 452
+            }
+          ]
+        },
+        "history": [
+          {
+            "epoch": 1,
+            "train_loss": 1.164155900048448,
+            "validation": {
+              "uar": 0.5458527550284493,
+              "macro_f1": 0.4897225547150548,
+              "wa": 0.6011111111111112,
+              "loss": 1.0226750386651247,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.6499162479061976,
+                  "precision": 0.5773809523809523,
+                  "recall": 0.7432950191570882,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7141041931385006,
+                  "precision": 0.8388059701492537,
+                  "recall": 0.6216814159292036,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.41146366427840336,
+                  "precision": 0.29515418502202645,
+                  "recall": 0.6790540540540541,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.1834061135371179,
+                  "precision": 0.2680851063829787,
+                  "recall": 0.13938053097345132,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 2,
+            "train_loss": 1.0144353483077608,
+            "validation": {
+              "uar": 0.5695029787187248,
+              "macro_f1": 0.5048840156510229,
+              "wa": 0.5675,
+              "loss": 1.0420437887800318,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.629898403483309,
+                  "precision": 0.6363636363636364,
+                  "recall": 0.6235632183908046,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.6794483686511941,
+                  "precision": 0.8669527896995708,
+                  "recall": 0.5586283185840708,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.408745247148289,
+                  "precision": 0.2843915343915344,
+                  "recall": 0.7263513513513513,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.30144404332129965,
+                  "precision": 0.2545731707317073,
+                  "recall": 0.3694690265486726,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 3,
+            "train_loss": 0.9163874767409779,
+            "validation": {
+              "uar": 0.5454461651917404,
+              "macro_f1": 0.48628240990945826,
+              "wa": 0.5944444444444444,
+              "loss": 1.0094103541806356,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.619532044760936,
+                  "precision": 0.6605206073752712,
+                  "recall": 0.5833333333333334,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7375971309025702,
+                  "precision": 0.8023407022106632,
+                  "recall": 0.6825221238938053,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.3712374581939799,
+                  "precision": 0.24666666666666667,
+                  "recall": 0.75,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.21676300578034682,
+                  "precision": 0.3125,
+                  "recall": 0.16592920353982302,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 4,
+            "train_loss": 0.8396744599804812,
+            "validation": {
+              "uar": 0.5522139042842049,
+              "macro_f1": 0.5157760574033992,
+              "wa": 0.5794444444444444,
+              "loss": 1.0084341002497346,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.5831148400629261,
+                  "precision": 0.6442641946697567,
+                  "recall": 0.5325670498084292,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7136179495169835,
+                  "precision": 0.8172733761598858,
+                  "recall": 0.6332964601769911,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.43328929986789966,
+                  "precision": 0.3557483731019523,
+                  "recall": 0.5540540540540541,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.33308214016578747,
+                  "precision": 0.25257142857142856,
+                  "recall": 0.4889380530973451,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 5,
+            "train_loss": 0.7469991628792653,
+            "validation": {
+              "uar": 0.5487705912351166,
+              "macro_f1": 0.5172674297777019,
+              "wa": 0.6027777777777777,
+              "loss": 1.0015953509512208,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.6369529983792545,
+                  "precision": 0.5519662921348315,
+                  "recall": 0.7528735632183908,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7027724049000645,
+                  "precision": 0.8423493044822257,
+                  "recall": 0.6028761061946902,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.42519685039370075,
+                  "precision": 0.34763948497854075,
+                  "recall": 0.5472972972972973,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.30414746543778803,
+                  "precision": 0.3173076923076923,
+                  "recall": 0.2920353982300885,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 6,
+            "train_loss": 0.6580013973251684,
+            "validation": {
+              "uar": 0.5519141452254818,
+              "macro_f1": 0.49357024392175475,
+              "wa": 0.5469444444444445,
+              "loss": 1.1470827100957168,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.5374449339207049,
+                  "precision": 0.6321243523316062,
+                  "recall": 0.4674329501915709,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.6921818776578346,
+                  "precision": 0.8470776621297038,
+                  "recall": 0.5851769911504425,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.41273326015367723,
+                  "precision": 0.3056910569105691,
+                  "recall": 0.6351351351351351,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.3319209039548022,
+                  "precision": 0.2437759336099585,
+                  "recall": 0.5199115044247787,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 7,
+            "train_loss": 0.5817782185369088,
+            "validation": {
+              "uar": 0.5256809391784216,
+              "macro_f1": 0.466627497327879,
+              "wa": 0.51,
+              "loss": 1.2933935748638425,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.46586826347305393,
+                  "precision": 0.6214057507987221,
+                  "recall": 0.3726053639846743,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.6708987637821585,
+                  "precision": 0.8472573839662447,
+                  "recall": 0.5553097345132744,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.408812729498164,
+                  "precision": 0.32053742802303264,
+                  "recall": 0.5641891891891891,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.32093023255813957,
+                  "precision": 0.21766561514195584,
+                  "recall": 0.6106194690265486,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 8,
+            "train_loss": 0.4997229980576413,
+            "validation": {
+              "uar": 0.5085682550875563,
+              "macro_f1": 0.4882515302921082,
+              "wa": 0.5727777777777778,
+              "loss": 1.178880217193407,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.4959802102659246,
+                  "precision": 0.699825479930192,
+                  "recall": 0.38409961685823757,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7381489841986455,
+                  "precision": 0.7534562211981567,
+                  "recall": 0.7234513274336283,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.3943217665615142,
+                  "precision": 0.3698224852071006,
+                  "recall": 0.4222972972972973,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.32455516014234875,
+                  "precision": 0.23924449108079748,
+                  "recall": 0.504424778761062,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 9,
+            "train_loss": 0.4272820312128676,
+            "validation": {
+              "uar": 0.5230917998407318,
+              "macro_f1": 0.5012394644283383,
+              "wa": 0.5744444444444444,
+              "loss": 1.2109857316164567,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.5558441558441559,
+                  "precision": 0.6072644721906924,
+                  "recall": 0.5124521072796935,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7166163141993958,
+                  "precision": 0.7896138482023968,
+                  "recall": 0.6559734513274337,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.4060606060606061,
+                  "precision": 0.36813186813186816,
+                  "recall": 0.4527027027027027,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.32643678160919537,
+                  "precision": 0.24970691676436108,
+                  "recall": 0.47123893805309736,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 10,
+            "train_loss": 0.36910263290326506,
+            "validation": {
+              "uar": 0.4683040627597387,
+              "macro_f1": 0.467610327895215,
+              "wa": 0.595,
+              "loss": 1.3276942315694376,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.4363143631436314,
+                  "precision": 0.7453703703703703,
+                  "recall": 0.30842911877394635,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7515092972711905,
+                  "precision": 0.6669524217745392,
+                  "recall": 0.8606194690265486,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.36785714285714277,
+                  "precision": 0.39015151515151514,
+                  "recall": 0.34797297297297297,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.31476050830889535,
+                  "precision": 0.2819614711033275,
+                  "recall": 0.3561946902654867,
+                  "support": 452
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "43": {
+      "none": {
+        "config": {
+          "batch_size": 8,
+          "device": "cpu",
+          "dropout": 0.0,
+          "epochs": 10,
+          "hidden_dim": 256,
+          "learning_rate": 0.001,
+          "patience": null,
+          "seed": 43,
+          "weight_decay": 0.0001
+        },
+        "best_epoch": 9,
+        "best_validation_metrics": {
+          "uar": 0.5354925894005083,
+          "macro_f1": 0.5003594948571375,
+          "wa": 0.5852777777777778,
+          "loss": 1.224340573058555,
+          "class_metrics": [
+            {
+              "class_index": 0,
+              "class_label": "anger",
+              "f1": 0.5355064027939465,
+              "precision": 0.6824925816023739,
+              "recall": 0.44061302681992337,
+              "support": 1044
+            },
+            {
+              "class_index": 1,
+              "class_label": "happy",
+              "f1": 0.7408685648547597,
+              "precision": 0.7717195925704015,
+              "recall": 0.7123893805309734,
+              "support": 1808
+            },
+            {
+              "class_index": 2,
+              "class_label": "sadness",
+              "f1": 0.392018779342723,
+              "precision": 0.30035971223021585,
+              "recall": 0.5641891891891891,
+              "support": 296
+            },
+            {
+              "class_index": 3,
+              "class_label": "disgust",
+              "f1": 0.3330442324371206,
+              "precision": 0.2738944365192582,
+              "recall": 0.4247787610619469,
+              "support": 452
+            }
+          ]
+        },
+        "history": [
+          {
+            "epoch": 1,
+            "train_loss": 0.8775856162947764,
+            "validation": {
+              "uar": 0.4080313148058037,
+              "macro_f1": 0.3960189388663892,
+              "wa": 0.6041666666666666,
+              "loss": 0.957101130666096,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.5050505050505051,
+                  "precision": 0.7407407407407407,
+                  "recall": 0.3831417624521073,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7271153429993507,
+                  "precision": 0.5972271596160682,
+                  "recall": 0.9292035398230089,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.34750462107208874,
+                  "precision": 0.3836734693877551,
+                  "recall": 0.31756756756756754,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.004405286343612335,
+                  "precision": 0.5,
+                  "recall": 0.0022123893805309734,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 2,
+            "train_loss": 0.7608206043579356,
+            "validation": {
+              "uar": 0.4920295448026605,
+              "macro_f1": 0.47515515540222863,
+              "wa": 0.6688888888888889,
+              "loss": 0.8465177106964861,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.6816578483245149,
+                  "precision": 0.6315359477124183,
+                  "recall": 0.7404214559386973,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7750511247443763,
+                  "precision": 0.720532319391635,
+                  "recall": 0.838495575221239,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.3977900552486188,
+                  "precision": 0.43724696356275305,
+                  "recall": 0.36486486486486486,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.04612159329140462,
+                  "precision": 0.44,
+                  "recall": 0.024336283185840708,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 3,
+            "train_loss": 0.6953925121535289,
+            "validation": {
+              "uar": 0.5183560219511547,
+              "macro_f1": 0.5174947541060165,
+              "wa": 0.6611111111111111,
+              "loss": 0.8526415551985504,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.6684397163120568,
+                  "precision": 0.6221122112211221,
+                  "recall": 0.7222222222222222,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7712523464735853,
+                  "precision": 0.7485684539302446,
+                  "recall": 0.7953539823008849,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.41811846689895465,
+                  "precision": 0.4316546762589928,
+                  "recall": 0.40540540540540543,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.2121684867394696,
+                  "precision": 0.35978835978835977,
+                  "recall": 0.1504424778761062,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 4,
+            "train_loss": 0.631539333168377,
+            "validation": {
+              "uar": 0.5000020905097957,
+              "macro_f1": 0.490615711978877,
+              "wa": 0.6619444444444444,
+              "loss": 0.8878633253570317,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.6626337831549559,
+                  "precision": 0.644343891402715,
+                  "recall": 0.6819923371647509,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7762720531833289,
+                  "precision": 0.7218259629101283,
+                  "recall": 0.8396017699115044,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.4020100502512563,
+                  "precision": 0.39867109634551495,
+                  "recall": 0.40540540540540543,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.12154696132596685,
+                  "precision": 0.3626373626373626,
+                  "recall": 0.07300884955752213,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 5,
+            "train_loss": 0.5687573344966359,
+            "validation": {
+              "uar": 0.5008909151369862,
+              "macro_f1": 0.4927433149615991,
+              "wa": 0.6311111111111111,
+              "loss": 0.9889786769060124,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.5744555620953503,
+                  "precision": 0.7450381679389313,
+                  "recall": 0.4674329501915709,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7562454523405286,
+                  "precision": 0.6734341252699784,
+                  "recall": 0.8622787610619469,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.4086603518267929,
+                  "precision": 0.34085778781038373,
+                  "recall": 0.5101351351351351,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.23161189358372458,
+                  "precision": 0.39572192513368987,
+                  "recall": 0.16371681415929204,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 6,
+            "train_loss": 0.5073222969166862,
+            "validation": {
+              "uar": 0.5061402711454207,
+              "macro_f1": 0.4969554843625344,
+              "wa": 0.5975,
+              "loss": 1.0370710519514876,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.4962025316455696,
+                  "precision": 0.7313432835820896,
+                  "recall": 0.37547892720306514,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7642666666666666,
+                  "precision": 0.7378990731204943,
+                  "recall": 0.7925884955752213,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.40277777777777773,
+                  "precision": 0.4142857142857143,
+                  "recall": 0.3918918918918919,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.32457496136012365,
+                  "precision": 0.2494061757719715,
+                  "recall": 0.4646017699115044,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 7,
+            "train_loss": 0.4436608631065953,
+            "validation": {
+              "uar": 0.456879526956007,
+              "macro_f1": 0.4612178975405404,
+              "wa": 0.6183333333333333,
+              "loss": 1.1688797963973623,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.5118362124120281,
+                  "precision": 0.7707129094412332,
+                  "recall": 0.3831417624521073,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7489187343501025,
+                  "precision": 0.6363636363636364,
+                  "recall": 0.9098451327433629,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.37459283387622155,
+                  "precision": 0.36163522012578614,
+                  "recall": 0.3885135135135135,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.20952380952380953,
+                  "precision": 0.3707865168539326,
+                  "recall": 0.14601769911504425,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 8,
+            "train_loss": 0.38540137198162044,
+            "validation": {
+              "uar": 0.49758331340189743,
+              "macro_f1": 0.4830853099988194,
+              "wa": 0.6172222222222222,
+              "loss": 1.180586293743863,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.5285540704738761,
+                  "precision": 0.7225913621262459,
+                  "recall": 0.4166666666666667,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7558054265460767,
+                  "precision": 0.6771791502409111,
+                  "recall": 0.8550884955752213,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.4082156611039795,
+                  "precision": 0.32919254658385094,
+                  "recall": 0.5371621621621622,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.23976608187134504,
+                  "precision": 0.35344827586206895,
+                  "recall": 0.18141592920353983,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 9,
+            "train_loss": 0.3272501608728211,
+            "validation": {
+              "uar": 0.5354925894005083,
+              "macro_f1": 0.5003594948571375,
+              "wa": 0.5852777777777778,
+              "loss": 1.224340573058555,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.5355064027939465,
+                  "precision": 0.6824925816023739,
+                  "recall": 0.44061302681992337,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7408685648547597,
+                  "precision": 0.7717195925704015,
+                  "recall": 0.7123893805309734,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.392018779342723,
+                  "precision": 0.30035971223021585,
+                  "recall": 0.5641891891891891,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.3330442324371206,
+                  "precision": 0.2738944365192582,
+                  "recall": 0.4247787610619469,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 10,
+            "train_loss": 0.28131232174264054,
+            "validation": {
+              "uar": 0.5223738815486221,
+              "macro_f1": 0.525232570083837,
+              "wa": 0.6308333333333334,
+              "loss": 1.1621103175106124,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.602990834539315,
+                  "precision": 0.6073858114674441,
+                  "recall": 0.5986590038314177,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7635153867479899,
+                  "precision": 0.7654252362423568,
+                  "recall": 0.7616150442477876,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.41591320072332727,
+                  "precision": 0.4474708171206226,
+                  "recall": 0.3885135135135135,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.3185108583247156,
+                  "precision": 0.29902912621359223,
+                  "recall": 0.3407079646017699,
+                  "support": 452
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "balanced": {
+        "config": {
+          "batch_size": 8,
+          "class_weighting": "balanced",
+          "device": "cpu",
+          "dropout": 0.0,
+          "epochs": 10,
+          "hidden_dim": 256,
+          "learning_rate": 0.001,
+          "patience": null,
+          "seed": 43,
+          "weight_decay": 0.0001
+        },
+        "best_epoch": 3,
+        "best_validation_metrics": {
+          "uar": 0.5613940344066984,
+          "macro_f1": 0.5029606085048415,
+          "wa": 0.5505555555555556,
+          "loss": 1.066542425249793,
+          "class_metrics": [
+            {
+              "class_index": 0,
+              "class_label": "anger",
+              "f1": 0.590955806783145,
+              "precision": 0.6374722838137472,
+              "recall": 0.5507662835249042,
+              "support": 1044
+            },
+            {
+              "class_index": 1,
+              "class_label": "happy",
+              "f1": 0.6741880341880342,
+              "precision": 0.88272157564906,
+              "recall": 0.5453539823008849,
+              "support": 1808
+            },
+            {
+              "class_index": 2,
+              "class_label": "sadness",
+              "f1": 0.4225988700564972,
+              "precision": 0.3174872665534805,
+              "recall": 0.6317567567567568,
+              "support": 296
+            },
+            {
+              "class_index": 3,
+              "class_label": "disgust",
+              "f1": 0.32409972299168976,
+              "precision": 0.23588709677419356,
+              "recall": 0.5176991150442478,
+              "support": 452
+            }
+          ]
+        },
+        "history": [
+          {
+            "epoch": 1,
+            "train_loss": 1.16784449243349,
+            "validation": {
+              "uar": 0.5359889136542707,
+              "macro_f1": 0.4682870676622583,
+              "wa": 0.5577777777777778,
+              "loss": 1.095629969307227,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.5987780040733197,
+                  "precision": 0.6391304347826087,
+                  "recall": 0.5632183908045977,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7027715833067856,
+                  "precision": 0.8287002253944402,
+                  "recall": 0.610066371681416,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.36235294117647054,
+                  "precision": 0.23595505617977527,
+                  "recall": 0.7804054054054054,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.20924574209245742,
+                  "precision": 0.23243243243243245,
+                  "recall": 0.1902654867256637,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 2,
+            "train_loss": 1.023835513355006,
+            "validation": {
+              "uar": 0.5417033508180137,
+              "macro_f1": 0.51249351596738,
+              "wa": 0.6263888888888889,
+              "loss": 0.9301543453444892,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.6630660573327793,
+                  "precision": 0.5854732208363903,
+                  "recall": 0.764367816091954,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7354368932038835,
+                  "precision": 0.8145161290322581,
+                  "recall": 0.6703539823008849,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.4289473684210527,
+                  "precision": 0.35129310344827586,
+                  "recall": 0.5506756756756757,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.22252374491180463,
+                  "precision": 0.28771929824561404,
+                  "recall": 0.18141592920353983,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 3,
+            "train_loss": 0.932193760732779,
+            "validation": {
+              "uar": 0.5613940344066984,
+              "macro_f1": 0.5029606085048415,
+              "wa": 0.5505555555555556,
+              "loss": 1.066542425249793,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.590955806783145,
+                  "precision": 0.6374722838137472,
+                  "recall": 0.5507662835249042,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.6741880341880342,
+                  "precision": 0.88272157564906,
+                  "recall": 0.5453539823008849,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.4225988700564972,
+                  "precision": 0.3174872665534805,
+                  "recall": 0.6317567567567568,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.32409972299168976,
+                  "precision": 0.23588709677419356,
+                  "recall": 0.5176991150442478,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 4,
+            "train_loss": 0.8444915229376906,
+            "validation": {
+              "uar": 0.5486271765357056,
+              "macro_f1": 0.5139671812498452,
+              "wa": 0.6002777777777778,
+              "loss": 0.9877830152012917,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.6368620835090679,
+                  "precision": 0.5689525244913338,
+                  "recall": 0.7231800766283525,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.707161125319693,
+                  "precision": 0.8378787878787879,
+                  "recall": 0.6117256637168141,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.41687344913151364,
+                  "precision": 0.32941176470588235,
+                  "recall": 0.5675675675675675,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.29497206703910617,
+                  "precision": 0.2979683972911964,
+                  "recall": 0.2920353982300885,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 5,
+            "train_loss": 0.7530611522000576,
+            "validation": {
+              "uar": 0.542421784578292,
+              "macro_f1": 0.49776685407370713,
+              "wa": 0.5952777777777778,
+              "loss": 1.0337928234413793,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.5725714285714286,
+                  "precision": 0.7096317280453258,
+                  "recall": 0.47988505747126436,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7404279279279279,
+                  "precision": 0.7540137614678899,
+                  "recall": 0.7273230088495575,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.38862559241706157,
+                  "precision": 0.27009222661396576,
+                  "recall": 0.6925675675675675,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.28944246737841045,
+                  "precision": 0.31202046035805625,
+                  "recall": 0.26991150442477874,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 6,
+            "train_loss": 0.6729675920479602,
+            "validation": {
+              "uar": 0.5146187774973631,
+              "macro_f1": 0.4728053523255857,
+              "wa": 0.5466666666666666,
+              "loss": 1.141164103565521,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.43037974683544306,
+                  "precision": 0.7067833698030634,
+                  "recall": 0.30938697318007663,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.736842105263158,
+                  "precision": 0.7967845659163987,
+                  "recall": 0.6852876106194691,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.398876404494382,
+                  "precision": 0.34134615384615385,
+                  "recall": 0.4797297297297297,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.3251231527093596,
+                  "precision": 0.22525597269624573,
+                  "recall": 0.584070796460177,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 7,
+            "train_loss": 0.5890075350194662,
+            "validation": {
+              "uar": 0.508796435663616,
+              "macro_f1": 0.4935982298728031,
+              "wa": 0.6166666666666667,
+              "loss": 1.0741334996988157,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.5520094562647755,
+                  "precision": 0.720679012345679,
+                  "recall": 0.44731800766283525,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7605921388463502,
+                  "precision": 0.7061611374407583,
+                  "recall": 0.8241150442477876,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.3929471032745592,
+                  "precision": 0.3132530120481928,
+                  "recall": 0.527027027027027,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.26884422110552764,
+                  "precision": 0.311046511627907,
+                  "recall": 0.23672566371681417,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 8,
+            "train_loss": 0.5106194101654028,
+            "validation": {
+              "uar": 0.5272915194718674,
+              "macro_f1": 0.48607624019923945,
+              "wa": 0.5905555555555555,
+              "loss": 1.1764378587994564,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.5631608235948803,
+                  "precision": 0.6719787516600265,
+                  "recall": 0.4846743295019157,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7412823397075365,
+                  "precision": 0.7540045766590389,
+                  "recall": 0.7289823008849557,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.3693181818181819,
+                  "precision": 0.2565789473684211,
+                  "recall": 0.6587837837837838,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.27054361567635904,
+                  "precision": 0.31563421828908556,
+                  "recall": 0.23672566371681417,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 9,
+            "train_loss": 0.43336176444449603,
+            "validation": {
+              "uar": 0.5277907074376788,
+              "macro_f1": 0.4697125901913677,
+              "wa": 0.5277777777777778,
+              "loss": 1.3618274514628625,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.46339987900786445,
+                  "precision": 0.6288998357963875,
+                  "recall": 0.3668582375478927,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.6917721518987342,
+                  "precision": 0.8084319526627219,
+                  "recall": 0.6045353982300885,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.38789237668161436,
+                  "precision": 0.2902684563758389,
+                  "recall": 0.5844594594594594,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.3357859531772575,
+                  "precision": 0.24065196548418025,
+                  "recall": 0.5553097345132744,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 10,
+            "train_loss": 0.372063167207039,
+            "validation": {
+              "uar": 0.5262587933142174,
+              "macro_f1": 0.5040718828034768,
+              "wa": 0.5780555555555555,
+              "loss": 1.2426369083368847,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.579045837231057,
+                  "precision": 0.5658135283363802,
+                  "recall": 0.592911877394636,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7084893882646691,
+                  "precision": 0.8130372492836676,
+                  "recall": 0.6277654867256637,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.4094955489614243,
+                  "precision": 0.36507936507936506,
+                  "recall": 0.46621621621621623,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.3192567567567568,
+                  "precision": 0.2581967213114754,
+                  "recall": 0.41814159292035397,
+                  "support": 452
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "44": {
+      "none": {
+        "config": {
+          "batch_size": 8,
+          "device": "cpu",
+          "dropout": 0.0,
+          "epochs": 10,
+          "hidden_dim": 256,
+          "learning_rate": 0.001,
+          "patience": null,
+          "seed": 44,
+          "weight_decay": 0.0001
+        },
+        "best_epoch": 10,
+        "best_validation_metrics": {
+          "uar": 0.5310363241254682,
+          "macro_f1": 0.4981830858459072,
+          "wa": 0.5777777777777777,
+          "loss": 1.233201343361302,
+          "class_metrics": [
+            {
+              "class_index": 0,
+              "class_label": "anger",
+              "f1": 0.5851272015655576,
+              "precision": 0.598,
+              "recall": 0.5727969348659003,
+              "support": 1044
+            },
+            {
+              "class_index": 1,
+              "class_label": "happy",
+              "f1": 0.7104697574455019,
+              "precision": 0.7984817115251898,
+              "recall": 0.639933628318584,
+              "support": 1808
+            },
+            {
+              "class_index": 2,
+              "class_label": "sadness",
+              "f1": 0.39806996381182147,
+              "precision": 0.30956848030018763,
+              "recall": 0.5574324324324325,
+              "support": 296
+            },
+            {
+              "class_index": 3,
+              "class_label": "disgust",
+              "f1": 0.2990654205607477,
+              "precision": 0.2588996763754045,
+              "recall": 0.35398230088495575,
+              "support": 452
+            }
+          ]
+        },
+        "history": [
+          {
+            "epoch": 1,
+            "train_loss": 0.8745641062657038,
+            "validation": {
+              "uar": 0.46816253811027997,
+              "macro_f1": 0.4477767095795224,
+              "wa": 0.6538888888888889,
+              "loss": 0.8889924936487615,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.6535239034006899,
+                  "precision": 0.6730964467005076,
+                  "recall": 0.6350574712643678,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.76410998552822,
+                  "precision": 0.6775021385799829,
+                  "recall": 0.8761061946902655,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.37347294938917974,
+                  "precision": 0.3862815884476534,
+                  "recall": 0.3614864864864865,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.0,
+                  "precision": 0.0,
+                  "recall": 0.0,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 2,
+            "train_loss": 0.7586943304174835,
+            "validation": {
+              "uar": 0.46945647776247407,
+              "macro_f1": 0.4814230435577912,
+              "wa": 0.6613888888888889,
+              "loss": 0.8562212226223797,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.641925777331996,
+                  "precision": 0.6736842105263158,
+                  "recall": 0.6130268199233716,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7713603818615751,
+                  "precision": 0.6784214945424013,
+                  "recall": 0.8938053097345132,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.35526315789473684,
+                  "precision": 0.50625,
+                  "recall": 0.27364864864864863,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.15714285714285714,
+                  "precision": 0.4074074074074074,
+                  "recall": 0.09734513274336283,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 3,
+            "train_loss": 0.6970028521695559,
+            "validation": {
+              "uar": 0.4650983805364718,
+              "macro_f1": 0.46853580739939305,
+              "wa": 0.6547222222222222,
+              "loss": 0.8630388407777821,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.640748031496063,
+                  "precision": 0.6589068825910931,
+                  "recall": 0.6235632183908046,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7683752417794971,
+                  "precision": 0.6825601374570447,
+                  "recall": 0.8788716814159292,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.3469387755102041,
+                  "precision": 0.4381443298969072,
+                  "recall": 0.28716216216216217,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.11808118081180811,
+                  "precision": 0.35555555555555557,
+                  "recall": 0.07079646017699115,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 4,
+            "train_loss": 0.6343407011919572,
+            "validation": {
+              "uar": 0.5270375798059274,
+              "macro_f1": 0.5010503068187033,
+              "wa": 0.6322222222222222,
+              "loss": 0.9272137970052846,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.6171310629514963,
+                  "precision": 0.668903803131991,
+                  "recall": 0.5727969348659003,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7586571504097277,
+                  "precision": 0.7265822784810126,
+                  "recall": 0.7936946902654868,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.4132231404958678,
+                  "precision": 0.3176043557168784,
+                  "recall": 0.5912162162162162,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.21518987341772153,
+                  "precision": 0.37777777777777777,
+                  "recall": 0.1504424778761062,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 5,
+            "train_loss": 0.5706436779467118,
+            "validation": {
+              "uar": 0.49717682379511036,
+              "macro_f1": 0.4797543316401595,
+              "wa": 0.6555555555555556,
+              "loss": 0.9337995365005688,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.6569548872180451,
+                  "precision": 0.6448339483394834,
+                  "recall": 0.6695402298850575,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7677845528455285,
+                  "precision": 0.7100563909774437,
+                  "recall": 0.8357300884955752,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.416,
+                  "precision": 0.3951367781155015,
+                  "recall": 0.4391891891891892,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.07827788649706457,
+                  "precision": 0.3389830508474576,
+                  "recall": 0.04424778761061947,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 6,
+            "train_loss": 0.5095578573494459,
+            "validation": {
+              "uar": 0.5291105636839158,
+              "macro_f1": 0.5252766617942823,
+              "wa": 0.6441666666666667,
+              "loss": 0.9383455566464161,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.6144896879957695,
+                  "precision": 0.6859504132231405,
+                  "recall": 0.5565134099616859,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7720857292211187,
+                  "precision": 0.7319127849355798,
+                  "recall": 0.816924778761062,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.4188790560471976,
+                  "precision": 0.3717277486910995,
+                  "recall": 0.4797297297297297,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.29565217391304355,
+                  "precision": 0.3371104815864023,
+                  "recall": 0.26327433628318586,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 7,
+            "train_loss": 0.4428958810034838,
+            "validation": {
+              "uar": 0.5278555848341475,
+              "macro_f1": 0.5069837175127087,
+              "wa": 0.6066666666666667,
+              "loss": 1.0534280421312918,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.5475910693301997,
+                  "precision": 0.7082066869300911,
+                  "recall": 0.446360153256705,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7594660855352765,
+                  "precision": 0.7482555018786903,
+                  "recall": 0.7710176991150443,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.3963494132985658,
+                  "precision": 0.3227176220806794,
+                  "recall": 0.5135135135135135,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.32452830188679244,
+                  "precision": 0.28289473684210525,
+                  "recall": 0.3805309734513274,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 8,
+            "train_loss": 0.39165835185955283,
+            "validation": {
+              "uar": 0.4696093140745261,
+              "macro_f1": 0.44650017073124976,
+              "wa": 0.5852777777777778,
+              "loss": 1.3797317901275246,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.3207401696222051,
+                  "precision": 0.8221343873517787,
+                  "recall": 0.19923371647509577,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7511563367252544,
+                  "precision": 0.6454689984101749,
+                  "recall": 0.8982300884955752,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.42774566473988446,
+                  "precision": 0.37373737373737376,
+                  "recall": 0.5,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.286358511837655,
+                  "precision": 0.29195402298850576,
+                  "recall": 0.2809734513274336,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 9,
+            "train_loss": 0.33943615410004785,
+            "validation": {
+              "uar": 0.47805603322272533,
+              "macro_f1": 0.4657942276784963,
+              "wa": 0.5963888888888889,
+              "loss": 1.318062072831942,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.4081920903954802,
+                  "precision": 0.7768817204301075,
+                  "recall": 0.2768199233716475,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7526066350710902,
+                  "precision": 0.6583747927031509,
+                  "recall": 0.8783185840707964,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.39941690962099125,
+                  "precision": 0.35128205128205126,
+                  "recall": 0.46283783783783783,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.3029612756264237,
+                  "precision": 0.31220657276995306,
+                  "recall": 0.2942477876106195,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 10,
+            "train_loss": 0.28546265808175453,
+            "validation": {
+              "uar": 0.5310363241254682,
+              "macro_f1": 0.4981830858459072,
+              "wa": 0.5777777777777777,
+              "loss": 1.233201343361302,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.5851272015655576,
+                  "precision": 0.598,
+                  "recall": 0.5727969348659003,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7104697574455019,
+                  "precision": 0.7984817115251898,
+                  "recall": 0.639933628318584,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.39806996381182147,
+                  "precision": 0.30956848030018763,
+                  "recall": 0.5574324324324325,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.2990654205607477,
+                  "precision": 0.2588996763754045,
+                  "recall": 0.35398230088495575,
+                  "support": 452
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "balanced": {
+        "config": {
+          "batch_size": 8,
+          "class_weighting": "balanced",
+          "device": "cpu",
+          "dropout": 0.0,
+          "epochs": 10,
+          "hidden_dim": 256,
+          "learning_rate": 0.001,
+          "patience": null,
+          "seed": 44,
+          "weight_decay": 0.0001
+        },
+        "best_epoch": 6,
+        "best_validation_metrics": {
+          "uar": 0.5566352036351274,
+          "macro_f1": 0.5128324214527127,
+          "wa": 0.5758333333333333,
+          "loss": 1.0778786362639314,
+          "class_metrics": [
+            {
+              "class_index": 0,
+              "class_label": "anger",
+              "f1": 0.5897824987354577,
+              "precision": 0.62486602357985,
+              "recall": 0.5584291187739464,
+              "support": 1044
+            },
+            {
+              "class_index": 1,
+              "class_label": "happy",
+              "f1": 0.7120622568093384,
+              "precision": 0.8605015673981191,
+              "recall": 0.6073008849557522,
+              "support": 1808
+            },
+            {
+              "class_index": 2,
+              "class_label": "sadness",
+              "f1": 0.4088669950738917,
+              "precision": 0.32170542635658916,
+              "recall": 0.5608108108108109,
+              "support": 296
+            },
+            {
+              "class_index": 3,
+              "class_label": "disgust",
+              "f1": 0.3406179351921628,
+              "precision": 0.2582857142857143,
+              "recall": 0.5,
+              "support": 452
+            }
+          ]
+        },
+        "history": [
+          {
+            "epoch": 1,
+            "train_loss": 1.1669233775842074,
+            "validation": {
+              "uar": 0.5227959640675158,
+              "macro_f1": 0.45874780591542147,
+              "wa": 0.6130555555555556,
+              "loss": 0.9847167203257758,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.656,
+                  "precision": 0.5631868131868132,
+                  "recall": 0.7854406130268199,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7229135053110773,
+                  "precision": 0.800941492938803,
+                  "recall": 0.6587389380530974,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.40397350993377484,
+                  "precision": 0.3,
+                  "recall": 0.6182432432432432,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.05210420841683367,
+                  "precision": 0.2765957446808511,
+                  "recall": 0.028761061946902654,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 2,
+            "train_loss": 1.0226433760592581,
+            "validation": {
+              "uar": 0.5424881654235865,
+              "macro_f1": 0.5024502524077445,
+              "wa": 0.5680555555555555,
+              "loss": 1.0062413670660777,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.575192096597146,
+                  "precision": 0.6735218508997429,
+                  "recall": 0.5019157088122606,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7160725453408382,
+                  "precision": 0.8237410071942446,
+                  "recall": 0.6332964601769911,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.41927710843373495,
+                  "precision": 0.3258426966292135,
+                  "recall": 0.5878378378378378,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.2992592592592593,
+                  "precision": 0.22494432071269488,
+                  "recall": 0.4469026548672566,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 3,
+            "train_loss": 0.9332283498745245,
+            "validation": {
+              "uar": 0.5410883256998226,
+              "macro_f1": 0.5263753794550745,
+              "wa": 0.6247222222222222,
+              "loss": 0.9224506014864133,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.6245173745173745,
+                  "precision": 0.6293774319066148,
+                  "recall": 0.6197318007662835,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7557097427002023,
+                  "precision": 0.791641429436705,
+                  "recall": 0.7228982300884956,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.4172661870503597,
+                  "precision": 0.3634085213032581,
+                  "recall": 0.48986486486486486,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.30800821355236147,
+                  "precision": 0.28735632183908044,
+                  "recall": 0.33185840707964603,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 4,
+            "train_loss": 0.8454176098384666,
+            "validation": {
+              "uar": 0.5526920726035771,
+              "macro_f1": 0.4753475156219607,
+              "wa": 0.5344444444444445,
+              "loss": 1.1670497261619013,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.5367264314632736,
+                  "precision": 0.6773722627737226,
+                  "recall": 0.4444444444444444,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.6906095551894563,
+                  "precision": 0.8541157294213529,
+                  "recall": 0.5796460176991151,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.3478260869565218,
+                  "precision": 0.2224316682375118,
+                  "recall": 0.7972972972972973,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.32622798887859134,
+                  "precision": 0.2807017543859649,
+                  "recall": 0.3893805309734513,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 5,
+            "train_loss": 0.7524862824711279,
+            "validation": {
+              "uar": 0.5194495876712844,
+              "macro_f1": 0.5124557309897401,
+              "wa": 0.6544444444444445,
+              "loss": 0.9097748474717053,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.6565566458519179,
+                  "precision": 0.6143572621035058,
+                  "recall": 0.7049808429118773,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7697297297297298,
+                  "precision": 0.7526427061310782,
+                  "recall": 0.7876106194690266,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.41401273885350315,
+                  "precision": 0.39156626506024095,
+                  "recall": 0.4391891891891892,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.20952380952380953,
+                  "precision": 0.3707865168539326,
+                  "recall": 0.14601769911504425,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 6,
+            "train_loss": 0.6675693396707284,
+            "validation": {
+              "uar": 0.5566352036351274,
+              "macro_f1": 0.5128324214527127,
+              "wa": 0.5758333333333333,
+              "loss": 1.0778786362639314,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.5897824987354577,
+                  "precision": 0.62486602357985,
+                  "recall": 0.5584291187739464,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7120622568093384,
+                  "precision": 0.8605015673981191,
+                  "recall": 0.6073008849557522,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.4088669950738917,
+                  "precision": 0.32170542635658916,
+                  "recall": 0.5608108108108109,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.3406179351921628,
+                  "precision": 0.2582857142857143,
+                  "recall": 0.5,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 7,
+            "train_loss": 0.579247976139395,
+            "validation": {
+              "uar": 0.5289326269357548,
+              "macro_f1": 0.4687700331720075,
+              "wa": 0.5425,
+              "loss": 1.2549566398370702,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.4204851752021564,
+                  "precision": 0.7090909090909091,
+                  "recall": 0.2988505747126437,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7345212926608276,
+                  "precision": 0.8090485695276114,
+                  "recall": 0.672566371681416,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.3867403314917127,
+                  "precision": 0.28735632183908044,
+                  "recall": 0.5912162162162162,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.33333333333333337,
+                  "precision": 0.2385496183206107,
+                  "recall": 0.5530973451327433,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 8,
+            "train_loss": 0.5024701206628684,
+            "validation": {
+              "uar": 0.5143842967547957,
+              "macro_f1": 0.44588231758428054,
+              "wa": 0.5461111111111111,
+              "loss": 1.406449018335411,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.34763313609467456,
+                  "precision": 0.762987012987013,
+                  "recall": 0.22509578544061304,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7411279229711141,
+                  "precision": 0.7372742200328407,
+                  "recall": 0.7450221238938053,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.37362637362637363,
+                  "precision": 0.2562814070351759,
+                  "recall": 0.6891891891891891,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.32114183764495985,
+                  "precision": 0.26905829596412556,
+                  "recall": 0.39823008849557523,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 9,
+            "train_loss": 0.43938743768740657,
+            "validation": {
+              "uar": 0.453359867343694,
+              "macro_f1": 0.45065074622097245,
+              "wa": 0.5872222222222222,
+              "loss": 1.3334187452252273,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.37346791636625815,
+                  "precision": 0.7551020408163265,
+                  "recall": 0.24808429118773948,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.7514124293785311,
+                  "precision": 0.6540983606557377,
+                  "recall": 0.8827433628318584,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.3622350674373796,
+                  "precision": 0.42152466367713004,
+                  "recall": 0.31756756756756754,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.31548757170172087,
+                  "precision": 0.2777777777777778,
+                  "recall": 0.36504424778761063,
+                  "support": 452
+                }
+              ]
+            }
+          },
+          {
+            "epoch": 10,
+            "train_loss": 0.3700925653559501,
+            "validation": {
+              "uar": 0.5299944197707014,
+              "macro_f1": 0.45887974050617203,
+              "wa": 0.5080555555555556,
+              "loss": 1.5269039572961531,
+              "class_metrics": [
+                {
+                  "class_index": 0,
+                  "class_label": "anger",
+                  "f1": 0.49200913242009137,
+                  "precision": 0.6087570621468926,
+                  "recall": 0.4128352490421456,
+                  "support": 1044
+                },
+                {
+                  "class_index": 1,
+                  "class_label": "happy",
+                  "f1": 0.6603454114459872,
+                  "precision": 0.851528384279476,
+                  "recall": 0.5392699115044248,
+                  "support": 1808
+                },
+                {
+                  "class_index": 2,
+                  "class_label": "sadness",
+                  "f1": 0.36247723132969034,
+                  "precision": 0.24812967581047382,
+                  "recall": 0.6722972972972973,
+                  "support": 296
+                },
+                {
+                  "class_index": 3,
+                  "class_label": "disgust",
+                  "f1": 0.3206871868289191,
+                  "precision": 0.23703703703703705,
+                  "recall": 0.49557522123893805,
+                  "support": 452
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "hcudb_training": {
+    "42": {
+      "config": {
+        "seed": 42,
+        "device": "cpu",
+        "epochs": 10,
+        "batch_size": 8,
+        "learning_rate": 0.001,
+        "weight_decay": 0.0001,
+        "hidden_dim": 256,
+        "dropout": 0.0,
+        "patience": null
+      },
+      "best_epoch": 4,
+      "best_validation_metrics": {
+        "uar": 0.5458333333333334,
+        "macro_f1": 0.5408799549374108,
+        "wa": 0.5666666666666667,
+        "loss": 1.1181496739195818,
+        "class_metrics": [
+          {
+            "class_index": 0,
+            "class_label": "anger",
+            "precision": 0.53125,
+            "recall": 0.2833333333333333,
+            "f1": 0.3695652173913043,
+            "support": 60
+          },
+          {
+            "class_index": 1,
+            "class_label": "happy",
+            "precision": 0.6610169491525424,
+            "recall": 0.65,
+            "f1": 0.6554621848739496,
+            "support": 120
+          },
+          {
+            "class_index": 2,
+            "class_label": "sadness",
+            "precision": 0.6896551724137931,
+            "recall": 0.6666666666666666,
+            "f1": 0.6779661016949153,
+            "support": 60
+          },
+          {
+            "class_index": 3,
+            "class_label": "disgust",
+            "precision": 0.3804347826086957,
+            "recall": 0.5833333333333334,
+            "f1": 0.46052631578947373,
+            "support": 60
+          }
+        ]
+      },
+      "history": [
+        {
+          "epoch": 1,
+          "train_loss": 1.172596995659331,
+          "validation": {
+            "uar": 0.4895833333333333,
+            "macro_f1": 0.4937062965692295,
+            "wa": 0.5533333333333333,
+            "loss": 1.1211308767236294,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.4666666666666667,
+                "recall": 0.23333333333333334,
+                "f1": 0.31111111111111117,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.5542857142857143,
+                "recall": 0.8083333333333333,
+                "f1": 0.6576271186440678,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.6545454545454545,
+                "recall": 0.6,
+                "f1": 0.6260869565217392,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.475,
+                "recall": 0.31666666666666665,
+                "f1": 0.37999999999999995,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 2,
+          "train_loss": 0.7652055999224491,
+          "validation": {
+            "uar": 0.5166666666666666,
+            "macro_f1": 0.49147815604741313,
+            "wa": 0.5333333333333333,
+            "loss": 1.1279178492895212,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.5,
+                "recall": 0.13333333333333333,
+                "f1": 0.2105263157894737,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.6428571428571429,
+                "recall": 0.6,
+                "f1": 0.6206896551724138,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.6779661016949152,
+                "recall": 0.6666666666666666,
+                "f1": 0.6722689075630253,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.35398230088495575,
+                "recall": 0.6666666666666666,
+                "f1": 0.4624277456647399,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 3,
+          "train_loss": 0.6063803911526152,
+          "validation": {
+            "uar": 0.5354166666666667,
+            "macro_f1": 0.5149176871540424,
+            "wa": 0.5166666666666667,
+            "loss": 1.230565509263093,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.40963855421686746,
+                "recall": 0.5666666666666667,
+                "f1": 0.4755244755244755,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.828125,
+                "recall": 0.44166666666666665,
+                "f1": 0.5760869565217391,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.625,
+                "recall": 0.75,
+                "f1": 0.6818181818181818,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.2839506172839506,
+                "recall": 0.38333333333333336,
+                "f1": 0.3262411347517731,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 4,
+          "train_loss": 0.5000746641308069,
+          "validation": {
+            "uar": 0.5458333333333334,
+            "macro_f1": 0.5408799549374108,
+            "wa": 0.5666666666666667,
+            "loss": 1.1181496739195818,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.53125,
+                "recall": 0.2833333333333333,
+                "f1": 0.3695652173913043,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.6610169491525424,
+                "recall": 0.65,
+                "f1": 0.6554621848739496,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.6896551724137931,
+                "recall": 0.6666666666666666,
+                "f1": 0.6779661016949153,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.3804347826086957,
+                "recall": 0.5833333333333334,
+                "f1": 0.46052631578947373,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 5,
+          "train_loss": 0.3954622344450748,
+          "validation": {
+            "uar": 0.5354166666666667,
+            "macro_f1": 0.5060008738320898,
+            "wa": 0.55,
+            "loss": 1.2186046981276868,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.5333333333333333,
+                "recall": 0.26666666666666666,
+                "f1": 0.3555555555555555,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.6759259259259259,
+                "recall": 0.6083333333333333,
+                "f1": 0.6403508771929824,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.47368421052631576,
+                "recall": 0.9,
+                "f1": 0.6206896551724138,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.4583333333333333,
+                "recall": 0.36666666666666664,
+                "f1": 0.4074074074074074,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 6,
+          "train_loss": 0.3295485113767233,
+          "validation": {
+            "uar": 0.5375000000000001,
+            "macro_f1": 0.5162035121051032,
+            "wa": 0.56,
+            "loss": 1.15773985537309,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.39215686274509803,
+                "recall": 0.3333333333333333,
+                "f1": 0.36036036036036034,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.7090909090909091,
+                "recall": 0.65,
+                "f1": 0.6782608695652174,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.5543478260869565,
+                "recall": 0.85,
+                "f1": 0.6710526315789473,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.40425531914893614,
+                "recall": 0.31666666666666665,
+                "f1": 0.35514018691588783,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 7,
+          "train_loss": 0.2630159333546428,
+          "validation": {
+            "uar": 0.48541666666666666,
+            "macro_f1": 0.4633849242196125,
+            "wa": 0.53,
+            "loss": 1.1840538354690204,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.3,
+                "recall": 0.45,
+                "f1": 0.36000000000000004,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.6910569105691057,
+                "recall": 0.7083333333333334,
+                "f1": 0.6995884773662552,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.6461538461538462,
+                "recall": 0.7,
+                "f1": 0.6719999999999999,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.22727272727272727,
+                "recall": 0.08333333333333333,
+                "f1": 0.1219512195121951,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 8,
+          "train_loss": 0.21257392402262765,
+          "validation": {
+            "uar": 0.4854166666666667,
+            "macro_f1": 0.4674304379770067,
+            "wa": 0.52,
+            "loss": 1.1899867710406762,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.3253012048192771,
+                "recall": 0.45,
+                "f1": 0.3776223776223776,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.6638655462184874,
+                "recall": 0.6583333333333333,
+                "f1": 0.6610878661087867,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.6417910447761194,
+                "recall": 0.7166666666666667,
+                "f1": 0.6771653543307087,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.22580645161290322,
+                "recall": 0.11666666666666667,
+                "f1": 0.15384615384615385,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 9,
+          "train_loss": 0.17123905859610183,
+          "validation": {
+            "uar": 0.51875,
+            "macro_f1": 0.514548566538297,
+            "wa": 0.5466666666666666,
+            "loss": 1.2374519341754537,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.37037037037037035,
+                "recall": 0.3333333333333333,
+                "f1": 0.3508771929824561,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.6752136752136753,
+                "recall": 0.6583333333333333,
+                "f1": 0.6666666666666666,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.6363636363636364,
+                "recall": 0.7,
+                "f1": 0.6666666666666666,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.36507936507936506,
+                "recall": 0.38333333333333336,
+                "f1": 0.3739837398373984,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 10,
+          "train_loss": 0.1344079646440421,
+          "validation": {
+            "uar": 0.53125,
+            "macro_f1": 0.5253196442389267,
+            "wa": 0.5433333333333333,
+            "loss": 1.2927250627395221,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.45454545454545453,
+                "recall": 0.3333333333333333,
+                "f1": 0.3846153846153846,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.6893203883495146,
+                "recall": 0.5916666666666667,
+                "f1": 0.6367713004484306,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.6615384615384615,
+                "recall": 0.7166666666666667,
+                "f1": 0.688,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.32954545454545453,
+                "recall": 0.48333333333333334,
+                "f1": 0.3918918918918919,
+                "support": 60
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "43": {
+      "config": {
+        "seed": 43,
+        "device": "cpu",
+        "epochs": 10,
+        "batch_size": 8,
+        "learning_rate": 0.001,
+        "weight_decay": 0.0001,
+        "hidden_dim": 256,
+        "dropout": 0.0,
+        "patience": null
+      },
+      "best_epoch": 10,
+      "best_validation_metrics": {
+        "uar": 0.55,
+        "macro_f1": 0.5259718576990631,
+        "wa": 0.57,
+        "loss": 1.4208979459119973,
+        "class_metrics": [
+          {
+            "class_index": 0,
+            "class_label": "anger",
+            "precision": 0.75,
+            "recall": 0.2,
+            "f1": 0.31578947368421056,
+            "support": 60
+          },
+          {
+            "class_index": 1,
+            "class_label": "happy",
+            "precision": 0.6842105263157895,
+            "recall": 0.65,
+            "f1": 0.6666666666666667,
+            "support": 120
+          },
+          {
+            "class_index": 2,
+            "class_label": "sadness",
+            "precision": 0.573170731707317,
+            "recall": 0.7833333333333333,
+            "f1": 0.6619718309859154,
+            "support": 60
+          },
+          {
+            "class_index": 3,
+            "class_label": "disgust",
+            "precision": 0.38636363636363635,
+            "recall": 0.5666666666666667,
+            "f1": 0.4594594594594595,
+            "support": 60
+          }
+        ]
+      },
+      "history": [
+        {
+          "epoch": 1,
+          "train_loss": 1.4227895808029682,
+          "validation": {
+            "uar": 0.49583333333333335,
+            "macro_f1": 0.48242146646468986,
+            "wa": 0.5433333333333333,
+            "loss": 1.1976967054611782,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.5909090909090909,
+                "recall": 0.21666666666666667,
+                "f1": 0.3170731707317074,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.5641025641025641,
+                "recall": 0.7333333333333333,
+                "f1": 0.6376811594202899,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.5555555555555556,
+                "recall": 0.75,
+                "f1": 0.6382978723404256,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.4146341463414634,
+                "recall": 0.2833333333333333,
+                "f1": 0.3366336633663366,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 2,
+          "train_loss": 0.7854955865347639,
+          "validation": {
+            "uar": 0.5479166666666667,
+            "macro_f1": 0.5054015397264825,
+            "wa": 0.5733333333333334,
+            "loss": 1.1988981788956035,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.7777777777777778,
+                "recall": 0.11666666666666667,
+                "f1": 0.2028985507246377,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.6377952755905512,
+                "recall": 0.675,
+                "f1": 0.6558704453441295,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.574468085106383,
+                "recall": 0.9,
+                "f1": 0.7012987012987012,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.42857142857142855,
+                "recall": 0.5,
+                "f1": 0.4615384615384615,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 3,
+          "train_loss": 0.5756913118381449,
+          "validation": {
+            "uar": 0.5125,
+            "macro_f1": 0.49268846798809574,
+            "wa": 0.5133333333333333,
+            "loss": 1.1766197947216528,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.4473684210526316,
+                "recall": 0.2833333333333333,
+                "f1": 0.34693877551020413,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.6595744680851063,
+                "recall": 0.5166666666666667,
+                "f1": 0.5794392523364487,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.5365853658536586,
+                "recall": 0.7333333333333333,
+                "f1": 0.6197183098591549,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.36046511627906974,
+                "recall": 0.5166666666666667,
+                "f1": 0.4246575342465753,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 4,
+          "train_loss": 0.4505564007274014,
+          "validation": {
+            "uar": 0.5208333333333333,
+            "macro_f1": 0.5239796429709154,
+            "wa": 0.56,
+            "loss": 1.1516231155546193,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.43902439024390244,
+                "recall": 0.3,
+                "f1": 0.3564356435643565,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.6323529411764706,
+                "recall": 0.7166666666666667,
+                "f1": 0.671875,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.7142857142857143,
+                "recall": 0.6666666666666666,
+                "f1": 0.689655172413793,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.3582089552238806,
+                "recall": 0.4,
+                "f1": 0.3779527559055118,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 5,
+          "train_loss": 0.3487977440211367,
+          "validation": {
+            "uar": 0.5375,
+            "macro_f1": 0.5357447610829188,
+            "wa": 0.5633333333333334,
+            "loss": 1.1595149008270351,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.5,
+                "recall": 0.3,
+                "f1": 0.37499999999999994,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.6349206349206349,
+                "recall": 0.6666666666666666,
+                "f1": 0.6504065040650407,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.6885245901639344,
+                "recall": 0.7,
+                "f1": 0.6942148760330578,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.37662337662337664,
+                "recall": 0.48333333333333334,
+                "f1": 0.4233576642335766,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 6,
+          "train_loss": 0.27405044919949895,
+          "validation": {
+            "uar": 0.5375,
+            "macro_f1": 0.5182125800227972,
+            "wa": 0.5633333333333334,
+            "loss": 1.234449819821884,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.5,
+                "recall": 0.2833333333333333,
+                "f1": 0.36170212765957444,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.6557377049180327,
+                "recall": 0.6666666666666666,
+                "f1": 0.6611570247933883,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.5376344086021505,
+                "recall": 0.8333333333333334,
+                "f1": 0.6535947712418301,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.43137254901960786,
+                "recall": 0.36666666666666664,
+                "f1": 0.39639639639639634,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 7,
+          "train_loss": 0.2313327422524069,
+          "validation": {
+            "uar": 0.5125,
+            "macro_f1": 0.5066417696333426,
+            "wa": 0.53,
+            "loss": 1.3013684477773677,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.4827586206896552,
+                "recall": 0.23333333333333334,
+                "f1": 0.31460674157303375,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.6923076923076923,
+                "recall": 0.6,
+                "f1": 0.6428571428571429,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.7058823529411765,
+                "recall": 0.6,
+                "f1": 0.6486486486486486,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.31896551724137934,
+                "recall": 0.6166666666666667,
+                "f1": 0.42045454545454547,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 8,
+          "train_loss": 0.17460571406805453,
+          "validation": {
+            "uar": 0.5208333333333334,
+            "macro_f1": 0.5259516462869216,
+            "wa": 0.5733333333333334,
+            "loss": 1.268387412905319,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.4857142857142857,
+                "recall": 0.2833333333333333,
+                "f1": 0.35789473684210527,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.6266666666666667,
+                "recall": 0.7833333333333333,
+                "f1": 0.6962962962962963,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.7169811320754716,
+                "recall": 0.6333333333333333,
+                "f1": 0.672566371681416,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.3709677419354839,
+                "recall": 0.38333333333333336,
+                "f1": 0.3770491803278688,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 9,
+          "train_loss": 0.1402420664969039,
+          "validation": {
+            "uar": 0.5395833333333333,
+            "macro_f1": 0.5376488937431292,
+            "wa": 0.5766666666666667,
+            "loss": 1.2756625012114249,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.4146341463414634,
+                "recall": 0.2833333333333333,
+                "f1": 0.3366336633663366,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.6541353383458647,
+                "recall": 0.725,
+                "f1": 0.6877470355731226,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.6885245901639344,
+                "recall": 0.7,
+                "f1": 0.6942148760330578,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.4153846153846154,
+                "recall": 0.45,
+                "f1": 0.43200000000000005,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 10,
+          "train_loss": 0.10572557811169549,
+          "validation": {
+            "uar": 0.55,
+            "macro_f1": 0.5259718576990631,
+            "wa": 0.57,
+            "loss": 1.4208979459119973,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.75,
+                "recall": 0.2,
+                "f1": 0.31578947368421056,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.6842105263157895,
+                "recall": 0.65,
+                "f1": 0.6666666666666667,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.573170731707317,
+                "recall": 0.7833333333333333,
+                "f1": 0.6619718309859154,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.38636363636363635,
+                "recall": 0.5666666666666667,
+                "f1": 0.4594594594594595,
+                "support": 60
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "44": {
+      "config": {
+        "seed": 44,
+        "device": "cpu",
+        "epochs": 10,
+        "batch_size": 8,
+        "learning_rate": 0.001,
+        "weight_decay": 0.0001,
+        "hidden_dim": 256,
+        "dropout": 0.0,
+        "patience": null
+      },
+      "best_epoch": 5,
+      "best_validation_metrics": {
+        "uar": 0.5479166666666666,
+        "macro_f1": 0.5412872628726286,
+        "wa": 0.56,
+        "loss": 1.2071381704998165,
+        "class_metrics": [
+          {
+            "class_index": 0,
+            "class_label": "anger",
+            "precision": 0.4375,
+            "recall": 0.35,
+            "f1": 0.38888888888888884,
+            "support": 60
+          },
+          {
+            "class_index": 1,
+            "class_label": "happy",
+            "precision": 0.7373737373737373,
+            "recall": 0.6083333333333333,
+            "f1": 0.6666666666666666,
+            "support": 120
+          },
+          {
+            "class_index": 2,
+            "class_label": "sadness",
+            "precision": 0.6666666666666666,
+            "recall": 0.7,
+            "f1": 0.6829268292682926,
+            "support": 60
+          },
+          {
+            "class_index": 3,
+            "class_label": "disgust",
+            "precision": 0.35555555555555557,
+            "recall": 0.5333333333333333,
+            "f1": 0.42666666666666675,
+            "support": 60
+          }
+        ]
+      },
+      "history": [
+        {
+          "epoch": 1,
+          "train_loss": 1.4834042698779004,
+          "validation": {
+            "uar": 0.42291666666666666,
+            "macro_f1": 0.4166031575467019,
+            "wa": 0.47,
+            "loss": 1.2252994496677643,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.3076923076923077,
+                "recall": 0.3333333333333333,
+                "f1": 0.32,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.5524475524475524,
+                "recall": 0.6583333333333333,
+                "f1": 0.6007604562737642,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.55,
+                "recall": 0.55,
+                "f1": 0.55,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.28125,
+                "recall": 0.15,
+                "f1": 0.19565217391304346,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 2,
+          "train_loss": 0.7703974195458787,
+          "validation": {
+            "uar": 0.5041666666666667,
+            "macro_f1": 0.5065971862553571,
+            "wa": 0.5433333333333333,
+            "loss": 1.152297139342811,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.4,
+                "recall": 0.43333333333333335,
+                "f1": 0.416,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.5957446808510638,
+                "recall": 0.7,
+                "f1": 0.6436781609195402,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.6727272727272727,
+                "recall": 0.6166666666666667,
+                "f1": 0.6434782608695652,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.41025641025641024,
+                "recall": 0.26666666666666666,
+                "f1": 0.3232323232323232,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 3,
+          "train_loss": 0.56574558843165,
+          "validation": {
+            "uar": 0.53125,
+            "macro_f1": 0.5278878291254023,
+            "wa": 0.5566666666666666,
+            "loss": 1.1787086685036252,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.46875,
+                "recall": 0.25,
+                "f1": 0.32608695652173914,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.6528925619834711,
+                "recall": 0.6583333333333333,
+                "f1": 0.6556016597510372,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.7272727272727273,
+                "recall": 0.6666666666666666,
+                "f1": 0.6956521739130435,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.358695652173913,
+                "recall": 0.55,
+                "f1": 0.43421052631578944,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 4,
+          "train_loss": 0.42466117467414194,
+          "validation": {
+            "uar": 0.4895833333333333,
+            "macro_f1": 0.4942591011673274,
+            "wa": 0.5333333333333333,
+            "loss": 1.1727718580430628,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.34545454545454546,
+                "recall": 0.31666666666666665,
+                "f1": 0.33043478260869563,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.5985915492957746,
+                "recall": 0.7083333333333334,
+                "f1": 0.648854961832061,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.6851851851851852,
+                "recall": 0.6166666666666667,
+                "f1": 0.6491228070175439,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.3877551020408163,
+                "recall": 0.31666666666666665,
+                "f1": 0.34862385321100914,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 5,
+          "train_loss": 0.3231278964258889,
+          "validation": {
+            "uar": 0.5479166666666666,
+            "macro_f1": 0.5412872628726286,
+            "wa": 0.56,
+            "loss": 1.2071381704998165,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.4375,
+                "recall": 0.35,
+                "f1": 0.38888888888888884,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.7373737373737373,
+                "recall": 0.6083333333333333,
+                "f1": 0.6666666666666666,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.6666666666666666,
+                "recall": 0.7,
+                "f1": 0.6829268292682926,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.35555555555555557,
+                "recall": 0.5333333333333333,
+                "f1": 0.42666666666666675,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 6,
+          "train_loss": 0.2563800171532847,
+          "validation": {
+            "uar": 0.5041666666666668,
+            "macro_f1": 0.5066851175026926,
+            "wa": 0.5333333333333333,
+            "loss": 1.193139045075004,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.3484848484848485,
+                "recall": 0.38333333333333336,
+                "f1": 0.3650793650793651,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.6842105263157895,
+                "recall": 0.65,
+                "f1": 0.6666666666666667,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.6964285714285714,
+                "recall": 0.65,
+                "f1": 0.6724137931034482,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.3125,
+                "recall": 0.3333333333333333,
+                "f1": 0.3225806451612903,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 7,
+          "train_loss": 0.19848372561341904,
+          "validation": {
+            "uar": 0.5208333333333334,
+            "macro_f1": 0.5196047831641051,
+            "wa": 0.56,
+            "loss": 1.2577673521012545,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.4358974358974359,
+                "recall": 0.2833333333333333,
+                "f1": 0.3434343434343434,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.6142857142857143,
+                "recall": 0.7166666666666667,
+                "f1": 0.6615384615384615,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.6507936507936508,
+                "recall": 0.6833333333333333,
+                "f1": 0.6666666666666666,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.41379310344827586,
+                "recall": 0.4,
+                "f1": 0.4067796610169491,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 8,
+          "train_loss": 0.16524663152410946,
+          "validation": {
+            "uar": 0.5333333333333333,
+            "macro_f1": 0.5341686125493722,
+            "wa": 0.5566666666666666,
+            "loss": 1.327854993937475,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.5294117647058824,
+                "recall": 0.3,
+                "f1": 0.3829787234042553,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.6782608695652174,
+                "recall": 0.65,
+                "f1": 0.6638297872340425,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.7291666666666666,
+                "recall": 0.5833333333333334,
+                "f1": 0.6481481481481481,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.34951456310679613,
+                "recall": 0.6,
+                "f1": 0.441717791411043,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 9,
+          "train_loss": 0.12364571896738354,
+          "validation": {
+            "uar": 0.5333333333333333,
+            "macro_f1": 0.5261906359430514,
+            "wa": 0.5633333333333334,
+            "loss": 1.3471912168106337,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.5416666666666666,
+                "recall": 0.21666666666666667,
+                "f1": 0.30952380952380953,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.6666666666666666,
+                "recall": 0.6833333333333333,
+                "f1": 0.6748971193415637,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.7115384615384616,
+                "recall": 0.6166666666666667,
+                "f1": 0.6607142857142857,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.36633663366336633,
+                "recall": 0.6166666666666667,
+                "f1": 0.45962732919254656,
+                "support": 60
+              }
+            ]
+          }
+        },
+        {
+          "epoch": 10,
+          "train_loss": 0.09955682411809709,
+          "validation": {
+            "uar": 0.5395833333333333,
+            "macro_f1": 0.5427036335775429,
+            "wa": 0.57,
+            "loss": 1.3060358223030646,
+            "class_metrics": [
+              {
+                "class_index": 0,
+                "class_label": "anger",
+                "precision": 0.4375,
+                "recall": 0.35,
+                "f1": 0.38888888888888884,
+                "support": 60
+              },
+              {
+                "class_index": 1,
+                "class_label": "happy",
+                "precision": 0.680327868852459,
+                "recall": 0.6916666666666667,
+                "f1": 0.6859504132231404,
+                "support": 120
+              },
+              {
+                "class_index": 2,
+                "class_label": "sadness",
+                "precision": 0.7222222222222222,
+                "recall": 0.65,
+                "f1": 0.6842105263157895,
+                "support": 60
+              },
+              {
+                "class_index": 3,
+                "class_label": "disgust",
+                "precision": 0.3684210526315789,
+                "recall": 0.4666666666666667,
+                "f1": 0.4117647058823529,
+                "support": 60
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "transfer_test_per_seed": {
+    "42": {
+      "before": {
+        "msp_podcast": {
+          "uar": 0.49772307339981114,
+          "macro_f1": 0.5012377448559907,
+          "wa": 0.6835910049191848,
+          "loss": 0.842539772242617,
+          "class_metrics": [
+            {
+              "class_index": 0,
+              "class_label": "anger",
+              "precision": 0.4426877470355731,
+              "recall": 0.4534412955465587,
+              "f1": 0.44800000000000006,
+              "support": 741
+            },
+            {
+              "class_index": 1,
+              "class_label": "happy",
+              "precision": 0.8131130614352091,
+              "recall": 0.8460918614020951,
+              "f1": 0.8292747137027774,
+              "support": 3723
+            },
+            {
+              "class_index": 2,
+              "class_label": "sadness",
+              "precision": 0.45180722891566266,
+              "recall": 0.44031311154598823,
+              "f1": 0.445986124876115,
+              "support": 511
+            },
+            {
+              "class_index": 3,
+              "class_label": "disgust",
+              "precision": 0.32085561497326204,
+              "recall": 0.2510460251046025,
+              "f1": 0.28169014084507044,
+              "support": 717
+            }
+          ]
+        },
+        "hcudb1": {
+          "uar": 0.26666666666666666,
+          "macro_f1": 0.2347072315164598,
+          "wa": 0.3433333333333333,
+          "loss": 2.1276988161381434,
+          "class_metrics": [
+            {
+              "class_index": 0,
+              "class_label": "anger",
+              "precision": 0.23529411764705882,
+              "recall": 0.26666666666666666,
+              "f1": 0.25,
+              "support": 60
+            },
+            {
+              "class_index": 1,
+              "class_label": "happy",
+              "precision": 0.37681159420289856,
+              "recall": 0.65,
+              "f1": 0.47706422018348627,
+              "support": 120
+            },
+            {
+              "class_index": 2,
+              "class_label": "sadness",
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 60
+            },
+            {
+              "class_index": 3,
+              "class_label": "disgust",
+              "precision": 0.36,
+              "recall": 0.15,
+              "f1": 0.21176470588235294,
+              "support": 60
+            }
+          ]
+        }
+      },
+      "after": {
+        "msp_podcast": {
+          "uar": 0.4939747362967283,
+          "macro_f1": 0.4365535680916232,
+          "wa": 0.530744905130007,
+          "loss": 1.2139894952178067,
+          "class_metrics": [
+            {
+              "class_index": 0,
+              "class_label": "anger",
+              "precision": 0.28668555240793203,
+              "recall": 0.6828609986504723,
+              "f1": 0.40383080606544297,
+              "support": 741
+            },
+            {
+              "class_index": 1,
+              "class_label": "happy",
+              "precision": 0.9161490683229814,
+              "recall": 0.5546602202524845,
+              "f1": 0.6909820980424963,
+              "support": 3723
+            },
+            {
+              "class_index": 2,
+              "class_label": "sadness",
+              "precision": 0.3745247148288973,
+              "recall": 0.38551859099804303,
+              "f1": 0.3799421407907425,
+              "support": 511
+            },
+            {
+              "class_index": 3,
+              "class_label": "disgust",
+              "precision": 0.22057541412380122,
+              "recall": 0.3528591352859135,
+              "f1": 0.27145922746781115,
+              "support": 717
+            }
+          ]
+        },
+        "hcudb1": {
+          "uar": 0.5125000000000001,
+          "macro_f1": 0.5041834266198654,
+          "wa": 0.56,
+          "loss": 1.1836896865230386,
+          "class_metrics": [
+            {
+              "class_index": 0,
+              "class_label": "anger",
+              "precision": 0.4056603773584906,
+              "recall": 0.7166666666666667,
+              "f1": 0.5180722891566266,
+              "support": 60
+            },
+            {
+              "class_index": 1,
+              "class_label": "happy",
+              "precision": 0.6716417910447762,
+              "recall": 0.75,
+              "f1": 0.7086614173228347,
+              "support": 120
+            },
+            {
+              "class_index": 2,
+              "class_label": "sadness",
+              "precision": 0.9,
+              "recall": 0.3,
+              "f1": 0.45000000000000007,
+              "support": 60
+            },
+            {
+              "class_index": 3,
+              "class_label": "disgust",
+              "precision": 0.425,
+              "recall": 0.2833333333333333,
+              "f1": 0.34,
+              "support": 60
+            }
+          ]
+        }
+      }
+    },
+    "43": {
+      "before": {
+        "msp_podcast": {
+          "uar": 0.5125666792788324,
+          "macro_f1": 0.48672168200378274,
+          "wa": 0.6363316936050597,
+          "loss": 1.0345804268526182,
+          "class_metrics": [
+            {
+              "class_index": 0,
+              "class_label": "anger",
+              "precision": 0.4471428571428571,
+              "recall": 0.4224021592442645,
+              "f1": 0.4344205412907703,
+              "support": 741
+            },
+            {
+              "class_index": 1,
+              "class_label": "happy",
+              "precision": 0.8474627772713461,
+              "recall": 0.7491270480795058,
+              "f1": 0.7952666096378672,
+              "support": 3723
+            },
+            {
+              "class_index": 2,
+              "class_label": "sadness",
+              "precision": 0.325,
+              "recall": 0.5342465753424658,
+              "f1": 0.40414507772020725,
+              "support": 511
+            },
+            {
+              "class_index": 3,
+              "class_label": "disgust",
+              "precision": 0.2868757259001161,
+              "recall": 0.34449093444909346,
+              "f1": 0.3130544993662864,
+              "support": 717
+            }
+          ]
+        },
+        "hcudb1": {
+          "uar": 0.2541666666666667,
+          "macro_f1": 0.21794123442194963,
+          "wa": 0.3233333333333333,
+          "loss": 2.6761893890732735,
+          "class_metrics": [
+            {
+              "class_index": 0,
+              "class_label": "anger",
+              "precision": 0.2222222222222222,
+              "recall": 0.3333333333333333,
+              "f1": 0.26666666666666666,
+              "support": 60
+            },
+            {
+              "class_index": 1,
+              "class_label": "happy",
+              "precision": 0.39344262295081966,
+              "recall": 0.6,
+              "f1": 0.4752475247524752,
+              "support": 120
+            },
+            {
+              "class_index": 2,
+              "class_label": "sadness",
+              "precision": 0.14285714285714285,
+              "recall": 0.016666666666666666,
+              "f1": 0.029850746268656716,
+              "support": 60
+            },
+            {
+              "class_index": 3,
+              "class_label": "disgust",
+              "precision": 0.2,
+              "recall": 0.06666666666666667,
+              "f1": 0.1,
+              "support": 60
+            }
+          ]
+        }
+      },
+      "after": {
+        "msp_podcast": {
+          "uar": 0.47314450212785747,
+          "macro_f1": 0.3948784082937777,
+          "wa": 0.4513352073085032,
+          "loss": 1.7712822888383666,
+          "class_metrics": [
+            {
+              "class_index": 0,
+              "class_label": "anger",
+              "precision": 0.3780487804878049,
+              "recall": 0.33468286099865047,
+              "f1": 0.35504652827487476,
+              "support": 741
+            },
+            {
+              "class_index": 1,
+              "class_label": "happy",
+              "precision": 0.9090395480225989,
+              "recall": 0.43217835079237177,
+              "f1": 0.5858365192062626,
+              "support": 3723
+            },
+            {
+              "class_index": 2,
+              "class_label": "sadness",
+              "precision": 0.25213675213675213,
+              "recall": 0.461839530332681,
+              "f1": 0.3261921216309606,
+              "support": 511
+            },
+            {
+              "class_index": 3,
+              "class_label": "disgust",
+              "precision": 0.20429184549356222,
+              "recall": 0.6638772663877266,
+              "f1": 0.31243846406301273,
+              "support": 717
+            }
+          ]
+        },
+        "hcudb1": {
+          "uar": 0.5208333333333334,
+          "macro_f1": 0.5277894097068514,
+          "wa": 0.57,
+          "loss": 1.3626332241037387,
+          "class_metrics": [
+            {
+              "class_index": 0,
+              "class_label": "anger",
+              "precision": 0.4714285714285714,
+              "recall": 0.55,
+              "f1": 0.5076923076923078,
+              "support": 60
+            },
+            {
+              "class_index": 1,
+              "class_label": "happy",
+              "precision": 0.6814814814814815,
+              "recall": 0.7666666666666667,
+              "f1": 0.7215686274509804,
+              "support": 120
+            },
+            {
+              "class_index": 2,
+              "class_label": "sadness",
+              "precision": 0.7575757575757576,
+              "recall": 0.4166666666666667,
+              "f1": 0.5376344086021506,
+              "support": 60
+            },
+            {
+              "class_index": 3,
+              "class_label": "disgust",
+              "precision": 0.3387096774193548,
+              "recall": 0.35,
+              "f1": 0.34426229508196715,
+              "support": 60
+            }
+          ]
+        }
+      }
+    },
+    "44": {
+      "before": {
+        "msp_podcast": {
+          "uar": 0.5202798192778373,
+          "macro_f1": 0.4762838044099629,
+          "wa": 0.6027758257203092,
+          "loss": 1.1536259997999185,
+          "class_metrics": [
+            {
+              "class_index": 0,
+              "class_label": "anger",
+              "precision": 0.36540158870255957,
+              "recall": 0.5587044534412956,
+              "f1": 0.4418356456776948,
+              "support": 741
+            },
+            {
+              "class_index": 1,
+              "class_label": "happy",
+              "precision": 0.88064403220161,
+              "recall": 0.6757990867579908,
+              "f1": 0.764741641337386,
+              "support": 3723
+            },
+            {
+              "class_index": 2,
+              "class_label": "sadness",
+              "precision": 0.3393548387096774,
+              "recall": 0.5146771037181996,
+              "f1": 0.40902021772939345,
+              "support": 511
+            },
+            {
+              "class_index": 3,
+              "class_label": "disgust",
+              "precision": 0.25674217907227614,
+              "recall": 0.3319386331938633,
+              "f1": 0.2895377128953771,
+              "support": 717
+            }
+          ]
+        },
+        "hcudb1": {
+          "uar": 0.26875,
+          "macro_f1": 0.20709490796592087,
+          "wa": 0.31666666666666665,
+          "loss": 3.2969050484282834,
+          "class_metrics": [
+            {
+              "class_index": 0,
+              "class_label": "anger",
+              "precision": 0.21768707482993196,
+              "recall": 0.5333333333333333,
+              "f1": 0.30917874396135264,
+              "support": 60
+            },
+            {
+              "class_index": 1,
+              "class_label": "happy",
+              "precision": 0.4206896551724138,
+              "recall": 0.5083333333333333,
+              "f1": 0.4603773584905661,
+              "support": 120
+            },
+            {
+              "class_index": 2,
+              "class_label": "sadness",
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 60
+            },
+            {
+              "class_index": 3,
+              "class_label": "disgust",
+              "precision": 0.25,
+              "recall": 0.03333333333333333,
+              "f1": 0.058823529411764705,
+              "support": 60
+            }
+          ]
+        }
+      },
+      "after": {
+        "msp_podcast": {
+          "uar": 0.46384577357602963,
+          "macro_f1": 0.3673785226892563,
+          "wa": 0.3928320449754041,
+          "loss": 1.9514500266275296,
+          "class_metrics": [
+            {
+              "class_index": 0,
+              "class_label": "anger",
+              "precision": 0.28552803129074317,
+              "recall": 0.5910931174089069,
+              "f1": 0.3850549450549451,
+              "support": 741
+            },
+            {
+              "class_index": 1,
+              "class_label": "happy",
+              "precision": 0.9481946624803768,
+              "recall": 0.32446951383293043,
+              "f1": 0.48349009405643384,
+              "support": 3723
+            },
+            {
+              "class_index": 2,
+              "class_label": "sadness",
+              "precision": 0.28415300546448086,
+              "recall": 0.4070450097847358,
+              "f1": 0.33467417538213995,
+              "support": 511
+            },
+            {
+              "class_index": 3,
+              "class_label": "disgust",
+              "precision": 0.1775092936802974,
+              "recall": 0.5327754532775453,
+              "f1": 0.26629487626350645,
+              "support": 717
+            }
+          ]
+        },
+        "hcudb1": {
+          "uar": 0.49374999999999997,
+          "macro_f1": 0.48483990311378494,
+          "wa": 0.53,
+          "loss": 1.3516421735988327,
+          "class_metrics": [
+            {
+              "class_index": 0,
+              "class_label": "anger",
+              "precision": 0.3728813559322034,
+              "recall": 0.7333333333333333,
+              "f1": 0.49438202247191015,
+              "support": 60
+            },
+            {
+              "class_index": 1,
+              "class_label": "happy",
+              "precision": 0.6923076923076923,
+              "recall": 0.675,
+              "f1": 0.6835443037974683,
+              "support": 120
+            },
+            {
+              "class_index": 2,
+              "class_label": "sadness",
+              "precision": 0.9166666666666666,
+              "recall": 0.36666666666666664,
+              "f1": 0.5238095238095238,
+              "support": 60
+            },
+            {
+              "class_index": 3,
+              "class_label": "disgust",
+              "precision": 0.2926829268292683,
+              "recall": 0.2,
+              "f1": 0.2376237623762376,
+              "support": 60
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+import base64
+import html
+import io
 import json
 import platform
 import sys
@@ -38,6 +41,216 @@ def environment_summary() -> dict[str, Any]:
         "label_order": list(LABEL_ORDER),
         "feature_layer": FEATURE_LAYER,
     }
+
+
+def _history_rows(training):
+    recorded = {int(row["epoch"]): row for row in (training.get("history") or [])
+                if isinstance(row, dict) and row.get("epoch") is not None}
+    if not recorded:
+        return []
+    # An absent epoch gets missing plot/table values, never an interpolated line.
+    return [recorded.get(epoch, {"epoch": epoch}) for epoch in range(min(recorded), max(recorded) + 1)]
+
+
+def _number(value):
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return np.nan
+    return result if np.isfinite(result) else np.nan
+
+
+def _history_values(history, split, key):
+    values = []
+    for row in history:
+        metrics = (row.get(split) or {}) if split else row
+        value = metrics.get(key)
+        if key == "wa" and value is None:
+            value = metrics.get("accuracy")
+        values.append(_number(value))
+    return values
+
+
+def _finish_history_plot(figure, output_path, show):
+    import matplotlib.pyplot as plt
+
+    if output_path is not None:
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        figure.savefig(path, dpi=160)
+    if show:
+        plt.show()
+    plt.close(figure)  # Prevent duplicate automatic notebook output.
+    return figure
+
+
+def plot_training_scores(training: dict[str, Any], *, output_path: str | Path | None = None, show: bool = True):
+    """Show epoch scores in the training cell; absent historical train scores stay absent."""
+    import matplotlib.pyplot as plt
+    from matplotlib.ticker import MaxNLocator
+
+    history = _history_rows(training)
+    if not history:
+        print("scoreの履歴がありません。")
+        return None
+    epochs = [int(entry["epoch"]) for entry in history]
+    figure, axes = plt.subplots(1, 3, figsize=(14, 4), sharex=True, sharey=True, layout="constrained")
+    for axis, (key, label) in zip(axes, (("uar", "UAR (primary)"), ("macro_f1", "Macro F1"), ("wa", "Accuracy (reference)"))):
+        for split, color in (("train", "#2563eb"), ("validation", "#ea580c")):
+            values = _history_values(history, split, key)
+            if any(np.isfinite(value) for value in values):
+                axis.plot(epochs, values, label=split, marker="o", markersize=4, color=color)
+        if np.isfinite(_number(training.get("best_epoch"))):
+            axis.axvline(training["best_epoch"], color="#64748b", linestyle="--", label="Best validation epoch")
+        axis.set_title(label)
+        axis.set_xlabel("Epoch")
+        axis.set_ylim(0, 1)
+        axis.xaxis.set_major_locator(MaxNLocator(integer=True))
+        axis.grid(alpha=.25)
+        if axis.lines:
+            axis.legend(fontsize=8, loc="lower left")
+    axes[0].set_ylabel("Score")
+    figure.suptitle(f"{training.get('dataset', '')} / seed {training.get('seed', '')}")
+    return _finish_history_plot(figure, output_path, show)
+
+
+def plot_training_losses(training: dict[str, Any], *, output_path: str | Path | None = None, show: bool = True):
+    """Plot saved comparison losses and the separate optimization batch-loss mean."""
+    import matplotlib.pyplot as plt
+    from matplotlib.ticker import MaxNLocator
+
+    history = _history_rows(training)
+    if not history:
+        return None
+    epochs = [int(row["epoch"]) for row in history]
+    figure, axes = plt.subplots(1, 2, figsize=(12, 4), layout="constrained")
+    for split, color in (("train", "#2563eb"), ("validation", "#ea580c")):
+        values = _history_values(history, split, "loss")
+        if any(np.isfinite(values)):
+            axes[0].plot(epochs, values, label=split, marker="o", markersize=4, color=color)
+    values = _history_values(history, None, "train_loss")
+    if any(np.isfinite(values)):
+        axes[1].plot(epochs, values, label="train_loss", marker="o", markersize=4, color="#2563eb")
+    weighting = (training.get("loss_config") or training.get("config") or {}).get("class_weighting", "unrecorded")
+    axes[0].set_title("Comparison loss (unweighted utterance mean)")
+    axes[1].set_title(f"Optimization loss (class_weighting={weighting})")
+    for axis in axes:
+        if np.isfinite(_number(training.get("best_epoch"))):
+            axis.axvline(training["best_epoch"], color="#64748b", linestyle="--", label="Best validation epoch")
+        axis.set_xlabel("Epoch")
+        axis.set_ylabel("Loss")
+        axis.xaxis.set_major_locator(MaxNLocator(integer=True))
+        axis.grid(alpha=.25)
+        if axis.lines:
+            axis.legend(fontsize=8)
+    return _finish_history_plot(figure, output_path, show)
+
+
+def _figure_html(figure, alt):
+    if figure is None:
+        return ""
+    buffer = io.BytesIO()
+    figure.savefig(buffer, format="png", dpi=120)
+    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+    return f'<img alt="{html.escape(alt)}" style="max-width:100%;height:auto" src="data:image/png;base64,{encoded}">'
+
+
+def _format_recorded(value):
+    number = _number(value)
+    return f"{number:.4f}" if np.isfinite(number) else "未記録"
+
+
+def _best_class_metrics_html(training):
+    rows = []
+    for split in ("train", "validation"):
+        key = "best_training_metrics" if split == "train" else "best_validation_metrics"
+        metrics = training.get(key) or {}
+        for row in metrics.get("class_metrics") or []:
+            label = html.escape(str(row.get("class_label", "未記録")))
+            values = ''.join(f'<td>{_format_recorded(row.get(name))}</td>' for name in ("precision", "recall", "f1"))
+            rows.append(f'<tr><td>{split}</td><td>{label}</td>{values}<td>{html.escape(str(row.get("support", "未記録")))}</td></tr>')
+    if not rows:
+        return ""
+    return ('<details><summary>best epochのクラス別指標</summary>'
+            '<table><thead><tr><th>split</th><th>感情</th><th>precision</th><th>recall</th><th>F1</th><th>件数</th></tr></thead><tbody>'
+            + ''.join(rows) + '</tbody></table></details>')
+
+
+def _timing_html(training):
+    epochs = (training.get("timings") or {}).get("epochs") or []
+    if not epochs:
+        return "<p>train評価時間：未記録</p>"
+    rows = []
+    for row in epochs:
+        seconds, total = _number(row.get("train_evaluation_seconds")), _number(row.get("total_seconds"))
+        inner = row.get("train_evaluation") or {}
+        ratio = seconds / total if total > 0 else None
+        values = [seconds, inner.get("batch_prepare_seconds"), inner.get("compute_seconds"), inner.get("metrics_seconds"), total, ratio]
+        rows.append(f'<tr><td>{html.escape(str(row.get("epoch", "未記録")))}</td>' + ''.join(f'<td>{_format_recorded(value)}</td>' for value in values) + '</tr>')
+    recorded = [_number(row.get("train_evaluation_seconds")) for row in epochs]
+    complete = all(np.isfinite(recorded))
+    aggregate = _format_recorded(sum(recorded)) if complete else "未記録（一部欠損）"
+    later = _format_recorded(np.mean(recorded[1:])) if complete and len(recorded) > 1 else "未記録"
+    return (
+        '<details><summary>train評価の処理時間</summary>'
+        '<p>単位：秒。割合はtrain評価時間 / epoch総時間です。新旧の速度差ではありません。</p>'
+        '<table><thead><tr><th>epoch</th><th>train評価</th><th>バッチ準備</th><th>計算</th><th>指標集計</th><th>epoch総時間</th><th>割合</th></tr></thead><tbody>'
+        + ''.join(rows) + f'</tbody></table><p>{len(epochs)} epoch合計：{aggregate}秒 / '
+        f'初回：{_format_recorded(recorded[0])}秒 / 後続epoch平均：{later}秒</p></details>'
+    )
+
+
+def display_training_history(training: dict[str, Any], *, save_plots: bool = False, display_output: bool = True):
+    """Render only saved history as static HTML; plotting never loads/evaluates a model.
+
+    Set save_plots only for a new run. Replaying old summaries leaves all original
+    artifacts untouched. The returned HTML is useful for export and output tests.
+    """
+    from IPython.display import HTML, display
+
+    history = _history_rows(training)
+    title = html.escape(f"{training.get('dataset', '')} / seed {training.get('seed', '')}")
+    weighting = (training.get("loss_config") or training.get("config") or {}).get("class_weighting", "未記録")
+    if not history:
+        result = HTML(f"<h4>{title}</h4><p>score・lossの履歴：未記録</p>")
+    else:
+        checkpoint = Path(training["best_checkpoint"]) if save_plots else None
+        scores = plot_training_scores(training, output_path=checkpoint.with_suffix('.scores.png') if checkpoint else None, show=False)
+        losses = plot_training_losses(training, output_path=checkpoint.with_suffix('.losses.png') if checkpoint else None, show=False)
+        table = []
+        train_loss = _history_values(history, "train", "loss")
+        val_loss = _history_values(history, "validation", "loss")
+        optim_loss = _history_values(history, None, "train_loss")
+        for row, train, validation, optimization in zip(history, train_loss, val_loss, optim_loss):
+            best = "★" if row["epoch"] == training.get("best_epoch") else ""
+            table.append(f'<tr><td>{int(row["epoch"])}</td><td>{_format_recorded(train)}</td><td>{_format_recorded(validation)}</td><td>{_format_recorded(optimization)}</td><td>{best}</td></tr>')
+        result = HTML(
+            f'<section><h4>{title} / class_weighting={html.escape(str(weighting))}</h4>'
+            '<p>UAR（主指標） → Macro F1 → Accuracy（参考）。青：train、橙：validation。</p>'
+            f'<p>共通のbest epoch：{html.escape(str(training.get("best_epoch", "未記録")))}。選択基準：validation UAR → macro F1 → loss（完全同点は先のepoch）。</p>'
+            + _figure_html(scores, "UAR（主指標）・Macro F1・Accuracy（参考）のscore曲線")
+            + '<details><summary>lossを確認：split間の比較用／最適化に使用したloss</summary>'
+            '<p>比較用loss：train・validationとも重みなし、全発話を等しく平均。−mean(log(clip(p_true, 1e−12, 1)))。</p>'
+            f'<p>最適化loss：class_weighting={html.escape(str(weighting))}。各バッチのCrossEntropyLossを末尾バッチも含めて単純平均。重みありでは各バッチの対象ラベルの重み総和で正規化します。</p>'
+            + _figure_html(losses, "比較用lossと最適化lossの2図")
+            + '<table><thead><tr><th>epoch</th><th>比較用train loss</th><th>比較用validation loss</th><th>最適化train loss</th><th>best</th></tr></thead><tbody>'
+            + ''.join(table) + '</tbody></table></details>'
+            '<p>未記録の項目は欠測です。補間・ゼロ埋め・別指標の転用は行いません。</p>'
+            '<p>trainが改善しvalidationが停滞・悪化する場合は過学習を疑う材料、両方のscoreが低いままなら学習不足などを調べる材料になります。scoreとlossだけで原因は断定できません。</p>'
+            + _best_class_metrics_html(training) + _timing_html(training) + '</section>'
+        )
+    if display_output:
+        display(result)
+    return result
+
+
+def load_saved_summary(path: str | Path) -> dict[str, Any]:
+    """Read a completed JSON summary without cache validation or model operations."""
+    source = Path(path)
+    if not source.is_file():
+        print("保存済みsummaryがありません:", source)
+        return {"status": "summary_not_found", "summary_path": str(source)}
+    return json.loads(source.read_text(encoding="utf-8"))
 
 
 def mapping_summary() -> list[dict[str, Any]]:
@@ -324,6 +537,10 @@ __all__ = [
     "make_demo_artifacts",
     "mapping_summary",
     "one_item_feature_benchmark",
+    "plot_training_scores",
+    "plot_training_losses",
+    "display_training_history",
+    "load_saved_summary",
     "run_demo_transfer_study",
     "split_summary",
 ]

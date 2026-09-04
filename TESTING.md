@@ -58,6 +58,127 @@ Notes:
 
 ## Latest verification
 
+### Score-first history, optional loss, and separate final test (2026-09-03)
+
+This section describes the current workflow; the dated sections below retain
+the earlier verification history. Research settings remain 10 epochs, seeds
+42/43/44, batch size 8, learning rate 0.001, weight decay 0.0001, hidden dimension
+256, dropout 0, no patience and CPU execution.
+
+Notebook 02 sections 3, 4, 5 and 6.3 display UAR (primary), macro F1 and accuracy
+(reference), followed immediately by a closed static HTML `details` element.
+The loss disclosure contains two plots and an epoch table: unweighted mean loss
+over all utterances for train/validation, and the separately recorded mean of
+optimization batch losses (`train_loss`). New runs save both `.scores.png` and
+`.losses.png`. All best markers use the common validation-selected epoch.
+`history_metadata` documents definitions separately from the unchanged
+`loss_config`; older checkpoints remain loadable without this metadata.
+
+With training flags False, these cells read only the configured completed JSON
+summaries. They do not validate caches, train, evaluate models, or write into old
+experiment directories. Null/missing entries remain missing; historical train
+scores cannot be reconstructed from the best checkpoint. Best class metrics and
+recorded timing details are available in the same output. Timing shows each
+epoch, the available-epoch total, first/subsequent epochs, and the fraction
+`train_evaluation_seconds / total_seconds`; this is not a measured speedup.
+
+`run_transfer_study()` now trains MSP parents and HCUDB children without test
+evaluation. New summaries contain `test_evaluated=False`, train/validation set
+signatures and checkpoint provenance. Baseline comparison supports both these
+summaries and older manifest provenance without reading test scores for selection.
+`summarize_study()` also reads old summaries but leaves their test scores out of
+the ordinary training display.
+
+Section 7 is the only final-test notebook gate. It defaults to
+`RUN_FINAL_TEST=False`, `CONFIRM_FINAL_SETTINGS=False` and no targets.
+`FinalEvaluationTarget(name, checkpoint_path, expected_sha256, dataset)` pins each
+chosen best checkpoint. `run_final_evaluations()` checks every target before any
+test predictions, saves `final_evaluation_plan.json`, and writes results separately
+to `final_evaluation_summary.json`. It never retrains or substitutes an epoch.
+For transfer comparisons explicitly list parent/child on both MSP and HCUDB;
+MSP-only evaluation needs only MSP artifacts and the selected MSP model.
+
+Verified in the designated WSL environment: **37 non-training tests passed in
+29.031 seconds**. The tests exercise imbalanced fixed logits, a smaller final
+batch, the probability floor, both loss aggregations, best-selection ordering
+including full-precision/exact ties, checkpoint/history metadata, missing/null
+history, new/old provenance, and all three execution boundaries. State checks
+cover Python/NumPy/PyTorch RNGs, CUDA when available, mixed module modes, nonzero
+dropout, buffers, existing gradients, optimizer state and next training batch
+order, including a forward exception. No real-data model evaluation was run.
+
+An additional fixed-model train/validation sequence test and four related
+provenance/final-evaluation checks passed in 4.383 seconds (38 distinct
+non-training tests verified in total). The sequence test confirms exactly one
+train pass and one validation pass per epoch, on the same model, always in
+evaluation mode with gradients disabled.
+
+```bash
+wsl -d Ubuntu-Recovered --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec -e /home/akiyama/miniforge/envs/emotion2vec-py310/bin/python -m unittest tests.test_ser_class_weights tests.test_ser_decoder tests.test_ser_notebook_boundaries tests.test_ser_cache_reuse -v
+```
+
+A separate one-cell synthetic notebook was executed with `nbclient`. It produced
+exactly one HTML output with two embedded images: scores outside the loss
+disclosure, loss plots inside it, followed by the epoch table. Plot PNGs were
+visually inspected. HTML structure tests confirm closed disclosures and no
+scripts/duplicate figure output. Direct local-HTML browser inspection was blocked
+by the browser URL policy; browser click interaction was not verified. The working
+Notebook 02 was not executed with Run All.
+
+The optimizer-updating regression is **user-run only**, per the repository rule:
+
+```bash
+wsl -d Ubuntu-Recovered --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec -e /home/akiyama/miniforge/envs/emotion2vec-py310/bin/python -m unittest tests.test_ser_e2e -v
+```
+
+The added `test_train_scoring_does_not_change_multi_epoch_optimization` compares
+three CPU epochs from the same initial state, with/without train evaluation,
+for seeds 42/43/44, none/balanced weights on unequal class counts, and dropout
+0/0.3. It compares per-epoch model and optimizer state, optimization loss,
+validation metrics, batch order and best epoch exactly within the same CPU
+environment. It has been syntax-checked, not executed by Codex. Cross-environment
+bitwise reproducibility is not asserted.
+
+User sequence: restart the kernel, review sections 1/2 (or independent 6.1), keep
+all run flags False to inspect saved summaries, then choose unused
+`TRAINING_OUTPUT_DIR` / `MSP_TRAINING_OUTPUT` for future learning. Existing path
+settings remain available as `ARTIFACT_DIR` / `MSP_COMPARISON_OUTPUT`; replay paths
+are explicit `SAVED_*_SUMMARY` / `MSP_SAVED_COMPARISON_SUMMARY` values. Confirm
+settings using validation before selecting and enabling section 7.
+
+### Train and validation scores in the learning cells (2026-09-03)
+
+Every completed decoder epoch now evaluates the fixed model on both train and
+validation and displays UAR, macro F1 and accuracy. The additional
+train evaluation uses its own unshuffled loader and the already-validated
+feature store. It runs in evaluation mode without gradients and does not
+advance the shuffled training loader's generator. Its elapsed time is reported
+as `train_eval`; this extra full train pass increases runtime. Optimization
+loss remains saved but is omitted from the screen. Checkpoint selection stays
+UAR, macro F1, then validation loss; model and training configuration are unchanged.
+
+The regular smoke, formal seed 42, formal seeds 43/44, and weighted-MSP learning
+cells show the epoch curves in the same cell when their run finishes. UAR is
+the first panel and primary metric, macro F1 is the second important metric,
+and accuracy is the third, supplementary panel, following the study plan. Each panel
+compares train and validation and marks the best validation epoch. PNGs are
+saved beside the checkpoints with the suffix `.scores.png`. No separate
+end-of-notebook section was added. Setup cells reload the updated helpers while
+preserving user-selected run flags and paths.
+
+Per-epoch train scores are saved in `history[*].train`; the return summary also
+contains `best_training_metrics`. Old history entries without train scores
+remain missing in plots and summaries; they are never replaced with zero or
+with validation values. This change does not reconstruct past train curves.
+Test is not evaluated by the epoch-scoring or plotting additions.
+
+Verified: 27 non-training tests across class weights, cache reuse, decoder and
+notebook boundaries passed in 15.698 seconds. They cover evaluation-mode
+scoring, unchanged model weights/RNG/training-loader state, validation-only
+checkpoint selection, saved score history, missing historical train points,
+plot series, checkpoint compatibility, cache reuse and notebook placement.
+Optimizer updates were mocked. No real-data training or evaluation was run.
+
 ### MSP class-weight comparison (2026-09-03)
 
 Notebook 02 now ends with `6. MSP単体：クラス重み付き損失の比較`.

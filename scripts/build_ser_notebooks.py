@@ -740,10 +740,11 @@ decoder_cells = [
         """
 # 02 — MSP-Podcast→HCUDB 4クラスdecoder学習・評価
 
-検証済みframe cacheとmanifestだけを入力にし、MSP-Podcast学習、HCUDB継続学習、両データセットの追加学習前後評価を行います。IEMOCAPは今回の一括研究経路には含めません。実データ1 epoch疎通と正式実行は別の出力先を使い、どちらも既定で無効です。
+検証済みframe cacheとmanifestだけを入力にし、MSP-Podcast学習とHCUDB継続学習を行います。通常の学習ではtrain・validationを扱い、設定確定後のtest評価は「7」で実行します。IEMOCAPは今回の一括研究経路には含めません。疎通・正式学習・最終評価は別の出力先を使い、実行フラグはすべて既定で無効です。
         """,
         "intro",
     ),
+    markdown("## 1. cache-only実行環境", "environment-heading"),
     code(
         """
 import os, sys
@@ -755,26 +756,19 @@ if not (PROJECT_ROOT / 'ser_pipeline').is_dir():
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from ser_pipeline.notebook_api import environment_summary
+import importlib
+importlib.invalidate_caches()
+for _ser_module_name in ('ser_pipeline.checkpoints', 'ser_pipeline.training', 'ser_pipeline.study', 'ser_pipeline.notebook_api'):
+    importlib.reload(importlib.import_module(_ser_module_name))
+
+from ser_pipeline.notebook_api import environment_summary, display_training_history, load_saved_summary
 from ser_pipeline.study import (
     DatasetArtifacts, prepare_study_stores, require_formal_epochs,
-    run_transfer_study, summarize_study,
+    run_transfer_study, summarize_study, FinalEvaluationTarget, run_final_evaluations,
 )
 from ser_pipeline.training import TrainingConfig
 
 STUDY_DATASETS = ('msp_podcast', 'hcudb1')
-RUN_REAL_SMOKE = False
-RUN_FORMAL_SEED_42 = False
-RUN_FORMAL_SEEDS_43_44 = False
-FORMAL_EPOCHS = None
-
-# 実測・検証結果をユーザーが確認した後だけTrueにします。
-CONFIRM_CACHE_VALIDATION = False
-CONFIRM_BENCHMARK_AND_CAPACITY = False
-CONFIRM_SMOKE_COMPLETED = False
-CONFIRM_SEED_42_ARTIFACTS = False
-
-ARTIFACT_DIR = PROJECT_ROOT / 'runs' / 'ser_decoder_study'
 
 
 def load_study_artifacts():
@@ -828,9 +822,29 @@ def validate_execution_gates():
         """,
         "setup",
     ),
-    markdown("## 1. cache-only実行環境", "environment-heading"),
     code("environment_summary()", "environment"),
     markdown("## 2. 実行設定の確認", "configuration-heading"),
+    code(
+        """
+RUN_REAL_SMOKE = False
+RUN_FORMAL_SEED_42 = False
+RUN_FORMAL_SEEDS_43_44 = False
+FORMAL_EPOCHS = 10
+CONFIRM_CACHE_VALIDATION = False
+CONFIRM_BENCHMARK_AND_CAPACITY = False
+CONFIRM_SMOKE_COMPLETED = False
+CONFIRM_SEED_42_ARTIFACTS = False
+
+# 新しい学習には既存結果と別の出力先を指定します。
+ARTIFACT_DIR = PROJECT_ROOT / 'runs' / 'ser_decoder_study'
+TRAINING_OUTPUT_DIR = PROJECT_ROOT / 'runs' / 'ser_decoder_score_loss_20260903'
+
+# Falseのときに読む完了summary。過去結果を再表示しても元ファイルは更新しません。
+SAVED_SMOKE_SUMMARY = ARTIFACT_DIR / 'smoke' / 'study_summary.json'
+SAVED_SEED_42_SUMMARY = PROJECT_ROOT / 'runs' / 'ser_decoder_timing_check_20260903' / 'formal' / 'initial-seed-42' / 'study_summary.json'
+SAVED_FOLLOWUP_SUMMARY = ARTIFACT_DIR / 'formal' / 'followup-seeds-43-44' / 'study_summary.json'
+        """, "training-settings",
+    ),
     code(
         """
 {
@@ -840,6 +854,10 @@ def validate_execution_gates():
     'run_formal_seed_42': RUN_FORMAL_SEED_42,
     'run_formal_seeds_43_44': RUN_FORMAL_SEEDS_43_44,
     'formal_epochs': FORMAL_EPOCHS,
+    'training_config': TrainingConfig(device='cpu', epochs=FORMAL_EPOCHS),
+    'new_output': TRAINING_OUTPUT_DIR,
+    'seed_42_output_exists': (TRAINING_OUTPUT_DIR / 'formal' / 'initial-seed-42').exists(),
+    'saved_summaries': [SAVED_SMOKE_SUMMARY, SAVED_SEED_42_SUMMARY, SAVED_FOLLOWUP_SUMMARY],
 }
         """,
         "configuration",
@@ -848,7 +866,7 @@ def validate_execution_gates():
         """
 ## 3. 実データ1 epoch疎通（正式集計外）
 
-seed 42でMSP親学習→HCUDB継続学習→両データセットの前後評価を行います。出力は`smoke/`に隔離され、正式結果には混ぜません。
+seed 42でMSP親学習→HCUDB継続学習を1 epochずつ行い、train・validationを確認します。出力は`smoke/`に隔離され、正式結果には混ぜません。Falseのままなら指定summaryだけを読み、scoreと折りたたみlossを再表示します。
         """,
         "smoke-heading",
     ),
@@ -858,13 +876,17 @@ if RUN_REAL_SMOKE:
     smoke_artifacts, smoke_cache_validation, smoke_stores = validate_execution_gates()
     smoke_summary = run_transfer_study(
         smoke_artifacts,
-        ARTIFACT_DIR / 'smoke',
+        TRAINING_OUTPUT_DIR / 'smoke',
         seeds=(42,),
         base_config=TrainingConfig(seed=42, device='cpu', epochs=1),
         stores=smoke_stores,
     )
 else:
-    smoke_summary = {'status': 'disabled_by_default', 'seed': 42, 'epochs': 1}
+    smoke_summary = load_saved_summary(SAVED_SMOKE_SUMMARY)
+for run in smoke_summary.get('runs', []):
+    for stage in ('parent', 'child'):
+        training = run[stage]
+        display_training_history(training, save_plots=RUN_REAL_SMOKE)
 summarize_study(smoke_summary)
         """,
         "smoke-gate",
@@ -873,7 +895,11 @@ summarize_study(smoke_summary)
         """
 ## 4. 正式seed 42実行ゲート
 
-1 epoch疎通の時間と履歴を確認して`FORMAL_EPOCHS`を正の整数に固定し、先にseed 42だけを実行します。未設定のまま実行すると拒否します。
+1 epoch疎通の時間と履歴を確認し、`FORMAL_EPOCHS = 10`、seed 42で実行します。学習フラグがFalseなら指定summaryを再表示します。新しい学習の保存先は既存結果と分けます。
+
+各epochでtrainとvalidationの **UAR・macro F1**、accuracy（参考）、共通のbest epochを表示します。両splitは最終更新後の同じモデルで評価します。既存の評価を再利用し、loss表示のための追加評価はありません。
+このセル内に **UAR（主指標）→ Macro F1 → Accuracy（参考）** の曲線と、直下に **lossを確認：split間の比較用／最適化に使用したloss** の折りたたみを表示します。青はtrain、橙はvalidation、灰色破線はvalidation UAR → macro F1 → lossで選んだ共通のbest epochです。
+比較用lossは両splitとも重みなし・全発話平均。最適化lossは更新中の各バッチlossの単純平均です。未記録は欠測のまま表示します。trainの改善に対しvalidationが停滞・悪化する場合は過学習を疑う材料、両方のscoreが低い場合は学習不足などを調べる材料とし、原因を断定しません。
         """,
         "formal-seed-42-heading",
     ),
@@ -886,15 +912,17 @@ if RUN_FORMAL_SEED_42:
     formal_artifacts, formal_cache_validation, formal_stores = validate_execution_gates()
     formal_seed_42_summary = run_transfer_study(
         formal_artifacts,
-        ARTIFACT_DIR / 'formal' / 'initial-seed-42',
+        TRAINING_OUTPUT_DIR / 'formal' / 'initial-seed-42',
         seeds=(42,),
         base_config=TrainingConfig(seed=42, device='cpu', epochs=formal_epochs),
         stores=formal_stores,
     )
 else:
-    formal_seed_42_summary = {
-        'status': 'disabled_by_default', 'seed': 42, 'formal_epochs': FORMAL_EPOCHS
-    }
+    formal_seed_42_summary = load_saved_summary(SAVED_SEED_42_SUMMARY)
+for run in formal_seed_42_summary.get('runs', []):
+    for stage in ('parent', 'child'):
+        training = run[stage]
+        display_training_history(training, save_plots=RUN_FORMAL_SEED_42)
 summarize_study(formal_seed_42_summary)
         """,
         "formal-seed-42-gate",
@@ -903,7 +931,10 @@ summarize_study(formal_seed_42_summary)
         """
 ## 5. 正式seed 43・44実行ゲート
 
-seed 42のcheckpoint、評価signature、cache ID、設定値を確認した後だけ実行します。出力はseed 42の正式出力と分けて保存します。
+seed 42のcheckpoint、train・validationの集合情報、cache ID、設定値を確認した後だけ実行します。過去summaryではmanifest情報を確認します。出力はseed 42の正式出力と分けて保存します。
+
+seed 42と同様に、各epochのtrain・validationのUAR・macro F1・accuracyを表示します。
+同じセル内にseed・データセットごとのscore曲線と折りたたみlossを表示します。Falseのままなら指定summaryだけを読みます。
         """,
         "formal-followup-heading",
     ),
@@ -916,15 +947,17 @@ if RUN_FORMAL_SEEDS_43_44:
     followup_artifacts, followup_cache_validation, followup_stores = validate_execution_gates()
     formal_followup_summary = run_transfer_study(
         followup_artifacts,
-        ARTIFACT_DIR / 'formal' / 'followup-seeds-43-44',
+        TRAINING_OUTPUT_DIR / 'formal' / 'followup-seeds-43-44',
         seeds=(43, 44),
         base_config=TrainingConfig(seed=43, device='cpu', epochs=formal_epochs),
         stores=followup_stores,
     )
 else:
-    formal_followup_summary = {
-        'status': 'disabled_by_default', 'seeds': [43, 44], 'formal_epochs': FORMAL_EPOCHS
-    }
+    formal_followup_summary = load_saved_summary(SAVED_FOLLOWUP_SUMMARY)
+for run in formal_followup_summary.get('runs', []):
+    for stage in ('parent', 'child'):
+        training = run[stage]
+        display_training_history(training, save_plots=RUN_FORMAL_SEEDS_43_44)
 summarize_study(formal_followup_summary)
         """,
         "formal-followup-gate",
@@ -962,10 +995,11 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import importlib
 importlib.invalidate_caches()
-for _msp_module_name in ('ser_pipeline.checkpoints', 'ser_pipeline.training', 'ser_pipeline.study'):
+for _msp_module_name in ('ser_pipeline.checkpoints', 'ser_pipeline.training', 'ser_pipeline.study', 'ser_pipeline.notebook_api'):
     importlib.reload(importlib.import_module(_msp_module_name))
 
 from ser_pipeline.cache import ShardedFeatureStore
+from ser_pipeline.notebook_api import display_training_history, load_saved_summary
 from ser_pipeline.study import DatasetArtifacts, load_msp_comparison_baselines, run_msp_loss_comparison
 from ser_pipeline.training import TrainingConfig, training_loss_config
 
@@ -975,6 +1009,10 @@ MSP_COMPARISON_CONFIG = TrainingConfig(device='cpu', epochs=10, batch_size=8)
 MSP_COMPARISON_OUTPUT = PROJECT_ROOT / 'runs' / 'msp_class_weight_comparison' / (
     'seeds-' + '-'.join(str(seed) for seed in MSP_COMPARISON_SEEDS)
 )
+MSP_TRAINING_OUTPUT = PROJECT_ROOT / 'runs' / 'msp_class_weight_score_loss_20260903' / (
+    'seeds-' + '-'.join(str(seed) for seed in MSP_COMPARISON_SEEDS)
+)
+MSP_SAVED_COMPARISON_SUMMARY = MSP_COMPARISON_OUTPUT / 'comparison_summary.json'
 
 manifest_dir = PROJECT_ROOT / 'runs' / 'ser_manifests'
 def msp_input(env_key, default):
@@ -992,51 +1030,65 @@ MSP_BASELINE_SUMMARIES = [
     PROJECT_ROOT / 'runs' / 'ser_decoder_study' / 'formal' / 'followup-seeds-43-44' / 'study_summary.json',
 ]
 print('比較seed:', MSP_COMPARISON_SEEDS, '学習を実行:', RUN_MSP_WEIGHTED_TRAINING)
-print('保存先:', MSP_COMPARISON_OUTPUT)
+print('新しい学習の保存先:', MSP_TRAINING_OUTPUT)
+print('再表示するsummary:', MSP_SAVED_COMPARISON_SUMMARY)
         """, "msp-loss-settings",
     ),
     markdown(
         """
 ### 6.2 キャッシュ・比較元・クラス重みの確認
 
-初回のキャッシュ完全検証には数分かかります。学習済み比較元と設定・manifest・cache・checkpointを照合します。
+学習フラグがTrueのとき、学習済み比較元と設定・train/validation集合・manifest・cache・checkpointを照合します。初回のキャッシュ完全検証には数分かかります。Falseなら検証を起動せず6.3へ進みます。
 同じカーネルでこのセルを再実行した場合は、入力に変更がなければ検証済みstoreを再利用します。
         """, "msp-loss-prepare-heading",
     ),
     code(
         """
-if MSP_COMPARISON_OUTPUT.exists() and any(MSP_COMPARISON_OUTPUT.iterdir()):
-    raise ValueError('保存先に結果があります。6.4で確認するか、6.1で別の保存先を設定してください。')
-if 'msp_comparison_store' not in globals():
-    print('MSPキャッシュの完全検証を開始します。', flush=True)
-    msp_comparison_store = ShardedFeatureStore(
-        MSP_COMPARISON_ARTIFACT.cache_root, MSP_COMPARISON_ARTIFACT.manifest_path,
+if RUN_MSP_WEIGHTED_TRAINING:
+    if MSP_TRAINING_OUTPUT.exists() and any(MSP_TRAINING_OUTPUT.iterdir()):
+        raise ValueError('保存先に結果があります。6.1で新しい学習の保存先を設定してください。')
+    if 'msp_comparison_store' not in globals():
+        print('MSPキャッシュの完全検証を開始します。', flush=True)
+        msp_comparison_store = ShardedFeatureStore(
+            MSP_COMPARISON_ARTIFACT.cache_root, MSP_COMPARISON_ARTIFACT.manifest_path,
+        )
+    else:
+        msp_comparison_store.require_paths(MSP_COMPARISON_ARTIFACT.cache_root, MSP_COMPARISON_ARTIFACT.manifest_path)
+        msp_comparison_store.ensure_validated()
+    msp_comparison_baselines = load_msp_comparison_baselines(
+        MSP_BASELINE_SUMMARIES, msp_comparison_store, MSP_COMPARISON_CONFIG, MSP_COMPARISON_SEEDS,
     )
+    msp_comparison_loss = training_loss_config(msp_comparison_store, 'msp_podcast', 'balanced')
+    display(pd.DataFrame({
+        '感情': msp_comparison_loss['label_order'],
+        'train件数': msp_comparison_loss['train_class_counts'],
+        '重み': msp_comparison_loss['class_weights'],
+    }).round(4))
+    print('比較元の照合完了。seed:', list(msp_comparison_baselines))
 else:
-    msp_comparison_store.require_paths(MSP_COMPARISON_ARTIFACT.cache_root, MSP_COMPARISON_ARTIFACT.manifest_path)
-    msp_comparison_store.ensure_validated()
-msp_comparison_baselines = load_msp_comparison_baselines(
-    MSP_BASELINE_SUMMARIES, msp_comparison_store, MSP_COMPARISON_CONFIG, MSP_COMPARISON_SEEDS,
-)
-msp_comparison_loss = training_loss_config(msp_comparison_store, 'msp_podcast', 'balanced')
-display(pd.DataFrame({
-    '感情': msp_comparison_loss['label_order'],
-    'train件数': msp_comparison_loss['train_class_counts'],
-    '重み': msp_comparison_loss['class_weights'],
-}).round(4))
-print('比較元の照合完了。seed:', list(msp_comparison_baselines))
+    print('学習フラグはFalseです。6.3で保存済みsummaryを再表示します。')
         """, "msp-loss-prepare",
     ),
-    markdown("### 6.3 MSPの重みあり学習を実行", "msp-loss-run-heading"),
+    markdown(
+        """
+### 6.3 MSPの重みあり学習を実行
+
+各epochでtrain・validationのUAR・macro F1、accuracy（参考）、共通のbest epochを表示します。同じセル内にscore曲線と折りたたみlossを表示します。train評価時間・epoch全体に占める割合も保存済みtimingから確認できます。
+Falseなら`MSP_SAVED_COMPARISON_SUMMARY`を読み、同じ表示を行います。cache検証・学習・モデル評価は起動しません。過去の未記録train score/lossは欠測として扱います。新しく学習した場合に限り`.scores.png`と`.losses.png`を保存します。
+        """, "msp-loss-run-heading",
+    ),
     code(
         """
 if RUN_MSP_WEIGHTED_TRAINING:
     msp_loss_comparison = run_msp_loss_comparison(
-        MSP_COMPARISON_ARTIFACT, MSP_COMPARISON_OUTPUT, MSP_BASELINE_SUMMARIES,
+        MSP_COMPARISON_ARTIFACT, MSP_TRAINING_OUTPUT, MSP_BASELINE_SUMMARIES,
         seeds=MSP_COMPARISON_SEEDS, base_config=MSP_COMPARISON_CONFIG, store=msp_comparison_store,
     )
 else:
-    print('学習は無効です。6.1でRUN_MSP_WEIGHTED_TRAININGをTrueにして実行してください。')
+    msp_loss_comparison = load_saved_summary(MSP_SAVED_COMPARISON_SUMMARY)
+for run in msp_loss_comparison.get('runs', []):
+    display_training_history(run['baseline']['training'])
+    display_training_history(run['weighted'], save_plots=RUN_MSP_WEIGHTED_TRAINING)
         """, "msp-loss-run",
     ),
     markdown(
@@ -1044,27 +1096,90 @@ else:
 ### 6.4 validation結果を比較
 
 `none`は保存済みの重みなし結果、`balanced`は今回の重みあり結果です。
-差分は **重みあり − 重みなし**。UAR・macro F1・WA・再現率は大きいほど良く、lossは小さいほど良い指標です。
+差分は **重みあり − 重みなし**。UAR・macro F1・WA（正解率）・再現率は大きいほど良い指標です。曲線とlossは6.3で確認し、この節ではvalidation比較表を表示します。
 seed 42で動作を確認したら、6.1のseedを`(43, 44)`に変えて比較し、3 seedでの傾向を確認します。
         """, "msp-loss-results-heading",
     ),
     code(
         """
-msp_comparison_summary_path = MSP_COMPARISON_OUTPUT / 'comparison_summary.json'
+msp_comparison_summary_path = (MSP_TRAINING_OUTPUT / 'comparison_summary.json') if RUN_MSP_WEIGHTED_TRAINING else MSP_SAVED_COMPARISON_SUMMARY
 if msp_comparison_summary_path.is_file():
     msp_loss_comparison = json.loads(msp_comparison_summary_path.read_text(encoding='utf-8'))
     print('validation結果:')
-    display(pd.DataFrame(msp_loss_comparison['rows']).round(4))
+    display(pd.DataFrame(msp_loss_comparison['rows']).drop(columns=['loss'], errors='ignore').round(4))
     print('validation差分（重みあり − 重みなし）:')
     display(pd.DataFrame([
         {'seed': run['seed'], **run['validation_deltas']} for run in msp_loss_comparison['runs']
-    ]).round(4))
+    ]).drop(columns=['loss'], errors='ignore').round(4))
     print('完了seed:', msp_loss_comparison['completed_seeds'], '/', msp_loss_comparison['requested_seeds'])
     print('比較実行時間（分）:', round(msp_loss_comparison['seconds'] / 60, 2))
     print('保存先:', msp_comparison_summary_path)
 else:
     print('比較結果はまだありません。6.3の学習を完了してください。')
         """, "msp-loss-results",
+    ),
+]
+
+
+decoder_cells += [
+    markdown(
+        """
+## 7. 設定確定後の最終test評価
+
+合成データ検証を確認し、train・validationによる設定選択が完了してから実行します。
+`RUN_FINAL_TEST = False`のまま対象を編集し、`CONFIRM_FINAL_SETTINGS = True`で設定確定を明示します。
+`FINAL_TARGETS`には表示名、保存済みbest checkpointのパス、保存済み来歴から確認したSHA-256、評価datasetを指定します。未指定なら実行できません。
+転移実験では、各seedのMSP親・HCUDB子をそれぞれMSP・HCUDB testで評価する4対象を明示します。MSP単体なら確定したモデルとMSP testだけを指定します。
+`FINAL_ARTIFACTS`には対象datasetの`DatasetArtifacts`を指定します。MSP単体の場合、6.1の`MSP_COMPARISON_ARTIFACT`を使えます。転移実験の場合は1・2の設定確認後に`load_study_artifacts()`を使えます。
+最終評価の計画を`final_evaluation_plan.json`に先に保存し、結果は別の`final_evaluation_summary.json`へ保存します。checkpointの欠損やSHA不一致はエラーにします。結果からbestを選び直す処理はありません。
+        """, "final-test-heading",
+    ),
+    code(
+        """
+from pathlib import Path
+from ser_pipeline.study import FinalEvaluationTarget, run_final_evaluations
+
+RUN_FINAL_TEST = False
+CONFIRM_FINAL_SETTINGS = False
+FINAL_DEVICE = 'cpu'
+FINAL_BATCH_SIZE = 8
+FINAL_ARTIFACTS = {}  # 例: {'msp_podcast': MSP_COMPARISON_ARTIFACT}
+FINAL_TARGETS = [
+    # FinalEvaluationTarget(
+    #     name='MSP seed 42 確定モデル',
+    #     checkpoint_path=Path('保存済みbest checkpointのパス'),
+    #     expected_sha256='保存済み来歴で確認した64桁のSHA-256',
+    #     dataset='msp_podcast',
+    # ),
+]
+FINAL_OUTPUT_DIR = PROJECT_ROOT / 'runs' / 'ser_final_test_20260903'
+{
+    'run_final_test': RUN_FINAL_TEST, 'settings_confirmed': CONFIRM_FINAL_SETTINGS,
+    'device': FINAL_DEVICE, 'batch_size': FINAL_BATCH_SIZE,
+    'targets': FINAL_TARGETS, 'output': FINAL_OUTPUT_DIR,
+}
+        """, "final-test-settings",
+    ),
+    code(
+        """
+if RUN_FINAL_TEST:
+    if not CONFIRM_FINAL_SETTINGS:
+        raise RuntimeError('train・validationで設定を確定してから最終test評価を実行してください。')
+    if not FINAL_TARGETS:
+        raise ValueError('保存済みbest checkpointと期待SHA-256を明示的に指定してください。')
+    final_test_summary = run_final_evaluations(
+        FINAL_ARTIFACTS, FINAL_TARGETS, FINAL_OUTPUT_DIR,
+        device=FINAL_DEVICE, batch_size=FINAL_BATCH_SIZE,
+    )
+    for evaluation in final_test_summary['evaluations']:
+        print(evaluation['target']['name'], evaluation['target']['dataset'], {
+            key: round(evaluation['result']['metrics_4class'][key], 4)
+            for key in ('uar', 'macro_f1', 'wa')
+        })
+    print('最終test評価の保存先:', final_test_summary['summary_path'])
+else:
+    print('最終test評価は無効です。設定確定後に対象を明示して実行してください。')
+        """, "final-test-gate",
     ),
 ]
 

@@ -92,6 +92,14 @@ class SerDecoderTest(unittest.TestCase):
         self.assertGreater(selection_key({"uar": 0.7, "macro_f1": 0.1, "loss": 9}), selection_key(base))
         self.assertGreater(selection_key({"uar": 0.6, "macro_f1": 0.8, "loss": 9}), selection_key(base))
         self.assertGreater(selection_key({"uar": 0.6, "macro_f1": 0.7, "loss": 0.4}), selection_key(base))
+        self.assertEqual(selection_key(base), selection_key(dict(base)))
+
+    def test_probability_loss_clips_at_existing_floor_and_absent_classes_use_zero(self):
+        probabilities = np.array([[0., 1., 0., 0.], [1., 0., 0., 0.]])
+        metrics = classification_metrics([0, 0], [1, 0], probabilities)
+        self.assertEqual(metrics["loss"], -np.log(1e-12) / 2)
+        self.assertEqual(metrics["uar"], .5 / 4)
+        self.assertEqual(metrics["macro_f1"], (2 / 3) / 4)
 
     def test_parent_and_resume_are_distinct_and_strict(self):
         parent_model = BaseModel(input_dim=4, output_dim=4, hidden_dim=3)

@@ -48,6 +48,35 @@ class TrainingConfig:
     class_weighting: str = "none"
 
 
+def training_history_metadata() -> dict[str, Any]:
+    """Definitions for recorded epoch metrics, separate from resume loss configuration."""
+    return {
+        "evaluation": {
+            "point": "after_final_optimizer_update_of_epoch",
+            "split_order": ["train", "validation"],
+            "same_model": True, "mode": "eval", "grad_enabled": False,
+        },
+        "scores": {
+            "uar": "mean recall over the four classes (zero for absent classes)",
+            "macro_f1": "mean per-class F1 over the four classes (zero for undefined F1)",
+            "accuracy": "fraction of correctly classified utterances; wa is identical",
+        },
+        "comparison_loss": {
+            "fields": ["train.loss", "validation.loss"],
+            "class_weighting": "none", "aggregation": "mean_over_all_utterances",
+            "formula": "-mean(log(clip(p_true, 1e-12, 1)))", "probability_floor": 1e-12,
+        },
+        "optimization_loss": {
+            "field": "train_loss", "point": "during_optimizer_updates",
+            "criterion": "CrossEntropyLoss", "weights": "loss_config.class_weights",
+            "batch_reduction": "sum_weighted_nll / sum_observed_label_weights",
+            "epoch_aggregation": "unweighted_mean_of_batch_losses_including_final_batch",
+        },
+        "best_selection": ["validation.uar", "validation.macro_f1", "-validation.loss"],
+        "exact_tie": "keep_earlier_epoch",
+    }
+
+
 def training_loss_config(store: ShardedFeatureStore, dataset: str, weighting: str) -> dict[str, Any]:
     """Describe cross entropy using included training utterances only, without reading features."""
     if weighting not in {"none", "balanced"}:
@@ -156,6 +185,8 @@ def make_loader(
         shuffle=shuffle,
         generator=generator,
         collate_fn=collate_features,
+        drop_last=False,
+        num_workers=0,
     )
 
 
@@ -183,23 +214,48 @@ def train_one_epoch(model, optimizer, loader, device: torch.device, *, timings=N
 
 
 def evaluate_loader_metrics(model, loader, device: torch.device, *, timings=None) -> dict[str, Any]:
-    model.eval()
-    truth: list[int] = []
-    probabilities: list[np.ndarray] = []
-    with torch.no_grad():
-        for batch in timed_batches(loader, timings):
-            with measure(timings, "compute_seconds", device):
-                logits = model(
-                    batch["net_input"]["feats"].to(device),
-                    batch["net_input"]["padding_mask"].to(device),
-                )
-                probabilities.append(torch.softmax(logits, dim=-1).cpu().numpy())
-                truth.extend(int(value) for value in batch["labels"].tolist())
-    if not probabilities:
-        raise ValueError("evaluation loader is empty")
-    with measure(timings, "metrics_seconds"):
-        probs = np.concatenate(probabilities, axis=0)
-        return classification_metrics(truth, probs.argmax(axis=1), probs)
+    """Score a fixed model; restore individual module modes and RNGs even on failure.
+
+    The caller supplies a dedicated unshuffled loader. No optimizer operation or
+    gradient clearing occurs here. Loss is the existing unweighted utterance mean.
+    """
+    modes = [(module, module.training) for module in model.modules()]
+    python_rng, numpy_rng, cpu_rng = random.getstate(), np.random.get_state(), torch.get_rng_state()
+    cuda_devices = {tensor.device.index for tensor in (*model.parameters(), *model.buffers()) if tensor.is_cuda}
+    if torch.device(device).type == "cuda":
+        cuda_devices.add(torch.device(device).index if torch.device(device).index is not None else torch.cuda.current_device())
+    cuda_rng = {index: torch.cuda.get_rng_state(index) for index in cuda_devices}
+    generator = getattr(loader, "generator", None)
+    loader_rng = generator.get_state() if generator is not None else None
+    try:
+        model.eval()
+        truth: list[int] = []
+        probabilities: list[np.ndarray] = []
+        with torch.no_grad():
+            for batch in timed_batches(loader, timings):
+                with measure(timings, "compute_seconds", device):
+                    logits = model(
+                        batch["net_input"]["feats"].to(device),
+                        batch["net_input"]["padding_mask"].to(device),
+                    )
+                    probabilities.append(torch.softmax(logits, dim=-1).cpu().numpy())
+                    truth.extend(int(value) for value in batch["labels"].tolist())
+        if not probabilities:
+            raise ValueError("evaluation loader is empty")
+        with measure(timings, "metrics_seconds"):
+            probs = np.concatenate(probabilities, axis=0)
+            return classification_metrics(truth, probs.argmax(axis=1), probs)
+    finally:
+        # Assign directly: calling train() on parents would overwrite child modes.
+        for module, training in modes:
+            module.training = training
+        random.setstate(python_rng)
+        np.random.set_state(numpy_rng)
+        torch.set_rng_state(cpu_rng)
+        for index, state in cuda_rng.items():
+            torch.cuda.set_rng_state(state, index)
+        if generator is not None:
+            generator.set_state(loader_rng)
 
 
 def _prepare_store(cache_root, manifest_path, store, timings):
@@ -253,6 +309,7 @@ def train_decoder(
     device = resolve_device(config.device)
     store = _prepare_store(cache_root, manifest_path, store, timings)
     loss_config = training_loss_config(store, dataset, config.class_weighting)
+    history_metadata = training_history_metadata()
     input_dim = int(store.meta["feature_dim"])
     model = BaseModel(
         input_dim=input_dim,
@@ -302,6 +359,11 @@ def train_decoder(
     train_loader = make_loader(
         store, dataset, "train", batch_size=config.batch_size, shuffle=True, seed=config.seed
     )
+    # Evaluate the completed epoch's model with a separate loader so scoring
+    # cannot advance the shuffled training loader's random generator.
+    train_evaluation_loader = make_loader(
+        store, dataset, "train", batch_size=config.batch_size, shuffle=False, seed=config.seed
+    )
     validation_loader = make_loader(
         store, dataset, "validation", batch_size=config.batch_size, shuffle=False, seed=config.seed
     )
@@ -312,18 +374,23 @@ def train_decoder(
     timing_path = output / f"{training_stage}_seed{config.seed}_timings.json"
     timings["setup_seconds"] = perf_counter() - started - timings["cache_access_seconds"]
     epochs_without_improvement = 0
-    print(f"[{dataset} seed={config.seed}] training loss: {loss_config}", flush=True)
+    print(f"[{dataset} seed={config.seed}] class_weighting={config.class_weighting}", flush=True)
     for epoch in range(start_epoch, config.epochs + 1):
         epoch_started = perf_counter()
-        epoch_timing: dict[str, Any] = {"epoch": epoch, "train": {}, "validation": {}}
+        epoch_timing: dict[str, Any] = {"epoch": epoch, "train": {}, "train_evaluation": {}, "validation": {}}
         train_loss = train_one_epoch(
             model, optimizer, train_loader, device, timings=epoch_timing["train"],
             class_weights=loss_config["class_weights"],
         )
+        train_evaluation_started = perf_counter()
+        train_metrics = evaluate_loader_metrics(
+            model, train_evaluation_loader, device, timings=epoch_timing["train_evaluation"]
+        )
+        epoch_timing["train_evaluation_seconds"] = perf_counter() - train_evaluation_started
         validation_started = perf_counter()
         validation = evaluate_loader_metrics(model, validation_loader, device, timings=epoch_timing["validation"])
         epoch_timing["validation_seconds"] = perf_counter() - validation_started
-        history.append({"epoch": epoch, "train_loss": train_loss, "validation": validation})
+        history.append({"epoch": epoch, "train_loss": train_loss, "train": train_metrics, "validation": validation})
         save_started = perf_counter()
         improved = best_metrics is None or selection_key(validation) > selection_key(best_metrics)
         if improved:
@@ -352,6 +419,7 @@ def train_decoder(
                 parent_checkpoint_id=preserved_parent_id,
                 parent_checkpoint_sha256=preserved_parent_hash,
                 loss_config=loss_config,
+                history_metadata=history_metadata,
             )
         else:
             epochs_without_improvement += 1
@@ -376,16 +444,22 @@ def train_decoder(
             parent_checkpoint_id=preserved_parent_id,
             parent_checkpoint_sha256=preserved_parent_hash,
             loss_config=loss_config,
+            history_metadata=history_metadata,
         )
         epoch_timing["save_seconds"] = perf_counter() - save_started
         epoch_timing["total_seconds"] = perf_counter() - epoch_started
         timings["epochs"].append(epoch_timing)
         _atomic_json(timings, timing_path)
         print(
-            f"[{dataset} seed={config.seed} epoch={epoch}/{config.epochs}] "
-            f"loss={train_loss:.5f} val_uar={validation['uar']:.4f} "
-            f"batch={epoch_timing['train']['batch_prepare_seconds']:.2f}s "
+            f"[{dataset} seed={config.seed} epoch={epoch}/{config.epochs} class_weighting={config.class_weighting}]\n"
+            f"                 UAR      macro F1\n"
+            f"  train          {train_metrics['uar']:.4f}   {train_metrics['macro_f1']:.4f}\n"
+            f"  validation     {validation['uar']:.4f}   {validation['macro_f1']:.4f}\n"
+            f"  accuracy（参考） train={train_metrics['wa']:.4f}  validation={validation['wa']:.4f}\n"
+            f"  best epoch={best_epoch}  選択基準: validation UAR → macro F1 → loss\n"
+            f"  time batch={epoch_timing['train']['batch_prepare_seconds']:.2f}s "
             f"train={epoch_timing['train']['compute_seconds']:.2f}s "
+            f"train_eval={epoch_timing['train_evaluation_seconds']:.2f}s "
             f"validation={epoch_timing['validation_seconds']:.2f}s "
             f"save={epoch_timing['save_seconds']:.2f}s",
             flush=True,
@@ -418,6 +492,7 @@ def train_decoder(
             parent_checkpoint_id=preserved_parent_id,
             parent_checkpoint_sha256=preserved_parent_hash,
             loss_config=loss_config,
+            history_metadata=history_metadata,
         )
     model.load_state_dict(best_state, strict=True)
     timings["finalize_seconds"] = perf_counter() - final_save_started
@@ -431,11 +506,13 @@ def train_decoder(
         "best_checkpoint": str(best_path),
         "resume_checkpoint": str(last_path),
         "best_epoch": best_epoch,
+        "best_training_metrics": next((entry.get("train") for entry in history if entry["epoch"] == best_epoch), None),
         "best_validation_metrics": best_metrics,
         "history": history,
         "parent_checkpoint_id": parent_payload["checkpoint_id"] if parent_payload else None,
         "config": asdict(config),
         "loss_config": loss_config,
+        "history_metadata": history_metadata,
         "timings": timings,
         "timings_path": str(timing_path),
     }
@@ -512,4 +589,5 @@ __all__ = [
     "train_decoder",
     "train_one_epoch",
     "training_loss_config",
+    "training_history_metadata",
 ]

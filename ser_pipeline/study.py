@@ -1,4 +1,4 @@
-"""MSP parent -> before evaluation -> HCUDB child -> after evaluation study."""
+"""MSP/HCUDB training studies and explicitly selected, separate final test evaluations."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from typing import Any, Mapping, Sequence
 
 from .audio import sha256_file
 from .cache import ShardedFeatureStore, _atomic_json
-from .checkpoints import decoder_signature, load_decoder_checkpoint
+from .checkpoints import decoder_signature, load_decoder_checkpoint, validate_signature
 from .evaluation import assert_same_evaluation_sets, evaluation_set_signature
 from .duplicates import (
     load_msp_audio_duplicate_audit,
@@ -26,7 +26,7 @@ from .exclusions import (
 )
 from .manifest import load_manifest, manifest_sha256
 from .model import BaseModel
-from .training import TrainingConfig, evaluate_checkpoint, train_decoder, training_loss_config
+from .training import TrainingConfig, evaluate_checkpoint, resolve_device, selection_key, train_decoder, training_loss_config
 
 
 STUDY_SEEDS = (42, 43, 44)
@@ -40,6 +40,16 @@ class DatasetArtifacts:
     exclusion_contract_path: Path | None = None
     duplicate_audit_path: Path | None = None
     duplicate_exclusion_contract_path: Path | None = None
+
+
+@dataclass(frozen=True)
+class FinalEvaluationTarget:
+    """A user-selected best checkpoint, pinned by SHA-256, and its test dataset."""
+
+    name: str
+    checkpoint_path: Path
+    expected_sha256: str
+    dataset: str
 
 
 def require_formal_epochs(epochs: int | None) -> int:
@@ -91,25 +101,21 @@ def summarize_study(summary: Mapping[str, Any]) -> dict[str, Any]:
             training = run[stage]
             row[stage] = {
                 "best_epoch": training["best_epoch"],
+                "train": {
+                    key: training["best_training_metrics"].get(key)
+                    for key in ("uar", "macro_f1", "wa")
+                } if training.get("best_training_metrics") is not None else None,
                 "validation": {
                     key: training["best_validation_metrics"][key]
-                    for key in ("uar", "macro_f1", "wa", "loss")
+                    for key in ("uar", "macro_f1", "wa")
                 },
                 "seconds": training.get("timings", {}).get("total_seconds"),
                 "checkpoint": training["best_checkpoint"],
             }
-        for stage in ("before", "after"):
-            row[stage] = {
-                dataset: {
-                    **{key: evaluation["result"]["metrics_4class"][key] for key in ("uar", "macro_f1", "wa", "loss")},
-                    "seconds": evaluation.get("timings", {}).get("total_seconds"),
-                    "paths": evaluation["paths"],
-                }
-                for dataset, evaluation in run[stage].items()
-            }
         rows.append(row)
     return {
         "seeds": summary["seeds"],
+        "test_evaluated": summary.get("test_evaluated", any("before" in run or "after" in run for run in summary["runs"])),
         "runs": rows,
         "timings": summary.get("timings"),
         "timings_path": summary.get("timings_path"),
@@ -211,15 +217,18 @@ def run_transfer_study(
     base_config: TrainingConfig | None = None,
     stores: Mapping[str, ShardedFeatureStore] | None = None,
 ) -> dict[str, Any]:
+    """Train MSP parents and HCUDB children using train/validation only; never run test."""
     started = perf_counter()
     if not seeds or len(set(int(seed) for seed in seeds)) != len(seeds):
         raise ValueError("study seeds must be a non-empty unique sequence")
     for dataset in EVALUATION_DATASETS:
         _artifact(artifacts, dataset)
     template = base_config or TrainingConfig()
+    output = Path(output_dir)
+    if output.exists() and any(output.iterdir()):
+        raise ValueError(f"study output is not empty; choose a new output directory: {output}")
     # Scoped to this invocation. No global registry or on-disk validation token.
     stores = prepare_study_stores(artifacts, stores)
-    output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
     exclusion_contract_artifact = bundle_msp_exclusion_contract(
         _artifact(artifacts, "msp_podcast"),
@@ -230,6 +239,11 @@ def run_transfer_study(
         output,
     )
     runs: list[dict[str, Any]] = []
+    training_sets = {
+        dataset: {split: evaluation_set_signature(_artifact(artifacts, dataset).manifest_path, dataset, split)
+                  for split in ("train", "validation")}
+        for dataset in EVALUATION_DATASETS
+    }
     for seed_value in seeds:
         seed = int(seed_value)
         config = replace(template, seed=seed)
@@ -245,20 +259,6 @@ def run_transfer_study(
             store=stores["msp_podcast"],
         )
         parent_path = Path(parent["best_checkpoint"])
-
-        before: dict[str, Any] = {}
-        for dataset in EVALUATION_DATASETS:
-            current = _artifact(artifacts, dataset)
-            before[dataset] = evaluate_checkpoint(
-                parent_path,
-                current.manifest_path,
-                current.cache_root,
-                dataset,
-                seed_dir / "before" / dataset,
-                batch_size=config.batch_size,
-                device=config.device,
-                store=stores[dataset],
-            )
 
         hcudb = _artifact(artifacts, "hcudb1")
         child = train_decoder(
@@ -281,30 +281,11 @@ def run_transfer_study(
         if child_payload["parent_checkpoint_sha256"] != parent_sha256:
             raise ValueError("child checkpoint parent SHA-256 mismatch")
 
-        after: dict[str, Any] = {}
-        for dataset in EVALUATION_DATASETS:
-            current = _artifact(artifacts, dataset)
-            after[dataset] = evaluate_checkpoint(
-                child_path,
-                current.manifest_path,
-                current.cache_root,
-                dataset,
-                seed_dir / "after" / dataset,
-                batch_size=config.batch_size,
-                device=config.device,
-                store=stores[dataset],
-            )
-            assert_same_evaluation_sets(
-                before[dataset]["result"]["set_signature"],
-                after[dataset]["result"]["set_signature"],
-            )
         runs.append(
             {
                 "seed": seed,
                 "parent": parent,
                 "child": child,
-                "before": before,
-                "after": after,
                 "provenance": {
                     "parent_checkpoint": {
                         "id": parent_payload["checkpoint_id"],
@@ -320,10 +301,7 @@ def run_transfer_study(
                         "parent_id": child_payload["parent_checkpoint_id"],
                         "parent_sha256": child_payload["parent_checkpoint_sha256"],
                     },
-                    "evaluation_sets": {
-                        dataset: before[dataset]["result"]["set_signature"]
-                        for dataset in EVALUATION_DATASETS
-                    },
+                    "training_sets": training_sets,
                     "exclusion_contract_artifact": exclusion_contract_artifact,
                     "duplicate_provenance_artifact": duplicate_provenance_artifact,
                     "training_configs": {
@@ -336,6 +314,9 @@ def run_transfer_study(
     summary = {
         "seeds": [int(seed) for seed in seeds],
         "evaluation_datasets": list(EVALUATION_DATASETS),
+        "test_evaluated": False,
+        "selection_split": "validation",
+        "training_sets": training_sets,
         "exclusion_contract_artifact": exclusion_contract_artifact,
         "duplicate_provenance_artifact": duplicate_provenance_artifact,
         "runs": runs,
@@ -345,14 +326,6 @@ def run_transfer_study(
                 name: {"seconds": store.validation_seconds, "full_passes": store.validation_count}
                 for name, store in stores.items()
             },
-            "before_evaluation_seconds": sum(
-                evaluation["timings"]["evaluation_seconds"]
-                for run in runs for evaluation in run["before"].values()
-            ),
-            "after_evaluation_seconds": sum(
-                evaluation["timings"]["evaluation_seconds"]
-                for run in runs for evaluation in run["after"].values()
-            ),
         },
     }
     summary_path = output / "study_summary.json"
@@ -369,6 +342,119 @@ def run_transfer_study(
 
 
 run_msp_hcudb_study = run_transfer_study
+
+
+def run_final_evaluations(
+    artifacts: Mapping[str, DatasetArtifacts],
+    targets: Sequence[FinalEvaluationTarget],
+    output_dir: str | Path,
+    *,
+    device: str,
+    batch_size: int = 8,
+    stores: Mapping[str, ShardedFeatureStore] | None = None,
+) -> dict[str, Any]:
+    """Validate all pinned best checkpoints, persist the plan, then evaluate test.
+
+    This entry point never trains, substitutes checkpoints, or selects using test.
+    An MSP-only target needs only MSP artifacts. A transfer study explicitly lists
+    both parent and child on both datasets. Existing output directories are not reused.
+    """
+    if not targets:
+        raise ValueError("final evaluation targets must be explicitly selected")
+    if isinstance(batch_size, bool) or not isinstance(batch_size, int) or batch_size <= 0:
+        raise ValueError("batch_size must be a positive integer")
+    output = Path(output_dir)
+    if output.exists() and any(output.iterdir()):
+        raise ValueError(f"final evaluation output is not empty: {output}")
+    selected_device = resolve_device(device)
+    selected = []
+    identities = set()
+    for target in targets:
+        if not target.name.strip() or target.dataset not in EVALUATION_DATASETS:
+            raise ValueError("final target requires a display name and supported dataset")
+        current = _artifact(artifacts, target.dataset)
+        checkpoint = Path(target.checkpoint_path).resolve(strict=True)
+        expected_sha = target.expected_sha256.lower()
+        if len(expected_sha) != 64 or any(char not in "0123456789abcdef" for char in expected_sha):
+            raise ValueError("final target requires an explicit SHA-256")
+        if sha256_file(checkpoint) != expected_sha:
+            raise ValueError("final checkpoint SHA-256 mismatch")
+        identity = (checkpoint, target.dataset)
+        if identity in identities:
+            raise ValueError("duplicate final checkpoint/dataset target")
+        identities.add(identity)
+        payload = load_decoder_checkpoint(checkpoint)
+        if payload.get("selection") != "best_validation":
+            raise ValueError("final evaluation requires a best validation checkpoint")
+        if payload.get("best_epoch") not in (None, payload["epoch"]):
+            raise ValueError("final checkpoint epoch differs from best epoch")
+        if payload.get("best_validation_metrics") is not None and payload["best_validation_metrics"] != payload["validation_metrics"]:
+            raise ValueError("final checkpoint validation metrics differ from best metrics")
+        scored = [entry for entry in payload["history"] if isinstance(entry, dict) and entry.get("validation")]
+        if scored:
+            best = max(sorted(scored, key=lambda entry: entry["epoch"]), key=lambda entry: selection_key(entry["validation"]))
+            if best["epoch"] != payload["epoch"] or best["validation"] != payload["validation_metrics"]:
+                raise ValueError("final checkpoint does not match recorded validation selection")
+        selected.append((target, current, checkpoint, payload, expected_sha))
+    prepared = {}
+    plan_targets = []
+    for index, (target, current, checkpoint, payload, expected_sha) in enumerate(selected, 1):
+        if target.dataset not in prepared:
+            if stores is None:
+                prepared[target.dataset] = ShardedFeatureStore(current.cache_root, current.manifest_path)
+            else:
+                if target.dataset not in stores:
+                    raise ValueError(f"final feature stores are missing dataset: {target.dataset}")
+                store = stores[target.dataset]
+                store.require_paths(current.cache_root, current.manifest_path)
+                store.ensure_validated()
+                prepared[target.dataset] = store
+        store = prepared[target.dataset]
+        model = BaseModel(**payload["signature"]["model_config"])
+        expected = decoder_signature(model, int(payload["signature"]["seed"]), store.meta)
+        validate_signature(payload["signature"], expected, context="final evaluation")
+        model.load_state_dict(payload["model_state_dict"], strict=True)
+        plan_targets.append({
+            "name": target.name, "checkpoint_path": str(checkpoint), "expected_sha256": expected_sha,
+            "dataset": target.dataset, "split": "test", "best_epoch": payload["epoch"],
+            "checkpoint_id": payload["checkpoint_id"], "training_stage": payload["training_stage"],
+            "signature": payload["signature"], "loss_config": payload.get("loss_config"),
+            "parent_checkpoint_id": payload.get("parent_checkpoint_id"),
+            "parent_checkpoint_sha256": payload.get("parent_checkpoint_sha256"),
+            "cache_id": store.meta["cache_id"], "manifest_path": str(current.manifest_path),
+            "set_signature": evaluation_set_signature(current.manifest_path, target.dataset, "test"),
+            "output_dir": str(output / f"target-{index:03d}" / target.dataset),
+        })
+    plan = {"device": str(selected_device), "batch_size": batch_size, "targets": plan_targets, "selection_split": "validation"}
+    plan_path = output / "final_evaluation_plan.json"
+    _atomic_json(plan, plan_path)  # Written before the first test prediction.
+    summary_path = output / "final_evaluation_summary.json"
+    summary = {"plan_path": str(plan_path), "summary_path": str(summary_path), "status": "running", "test_evaluated": False, "evaluations": []}
+    _atomic_json(summary, summary_path)
+    try:
+        for record in plan_targets:
+            if sha256_file(record["checkpoint_path"]) != record["expected_sha256"]:
+                raise ValueError("final checkpoint changed after plan validation")
+            current = _artifact(artifacts, record["dataset"])
+            evaluation = evaluate_checkpoint(
+                record["checkpoint_path"], current.manifest_path, current.cache_root, record["dataset"],
+                record["output_dir"], split="test", batch_size=batch_size, device=str(selected_device),
+                store=prepared[record["dataset"]],
+            )
+            assert_same_evaluation_sets(record["set_signature"], evaluation["result"]["set_signature"])
+            if evaluation["result"]["checkpoint_id"] != record["checkpoint_id"] or sha256_file(record["checkpoint_path"]) != record["expected_sha256"]:
+                raise ValueError("final checkpoint changed during evaluation")
+            summary["evaluations"].append({"target": record, **evaluation})
+            summary["test_evaluated"] = True
+            _atomic_json(summary, summary_path)
+        summary["status"] = "complete"
+    except Exception as exc:
+        summary["status"] = "failed"
+        summary["error"] = str(exc)
+        raise
+    finally:
+        _atomic_json(summary, summary_path)
+    return summary
 
 
 def load_msp_comparison_baselines(
@@ -405,7 +491,14 @@ def load_msp_comparison_baselines(
             if [row["epoch"] for row in parent["history"]] != list(range(1, config.epochs + 1)):
                 raise ValueError(f"baseline does not contain all configured epochs for seed {seed}")
             provenance = run["provenance"]
-            if provenance["evaluation_sets"]["msp_podcast"]["manifest_sha256"] != manifest_hash:
+            if "training_sets" in provenance:
+                for split in ("train", "validation"):
+                    assert_same_evaluation_sets(
+                        provenance["training_sets"]["msp_podcast"][split],
+                        evaluation_set_signature(store.manifest_path, "msp_podcast", split),
+                    )
+            elif provenance["evaluation_sets"]["msp_podcast"]["manifest_sha256"] != manifest_hash:
+                # Old summaries identify the unchanged manifest here; no test scores are read.
                 raise ValueError("baseline manifest mismatch (training/validation sets must be unchanged)")
             checkpoint_info = provenance["parent_checkpoint"]
             if checkpoint_info["cache_id"] != store.meta["cache_id"]:
@@ -459,6 +552,10 @@ def run_msp_loss_comparison(
     baselines = load_msp_comparison_baselines(baseline_summary_paths, store, template, seeds)
     loss_config = training_loss_config(store, "msp_podcast", "balanced")
     validation_signature = evaluation_set_signature(artifact.manifest_path, "msp_podcast", "validation")
+    training_sets = {"msp_podcast": {
+        "train": evaluation_set_signature(artifact.manifest_path, "msp_podcast", "train"),
+        "validation": validation_signature,
+    }}
     exclusion = bundle_msp_exclusion_contract(artifact, output)
     duplicates = bundle_msp_duplicate_provenance(artifact, output)
     rows = []
@@ -479,23 +576,34 @@ def run_msp_loss_comparison(
             row.update({f"recall_{item['class_label']}": item["recall"] for item in metrics["class_metrics"]})
             rows.append(row)
         deltas = {key: metrics_after[key] - metrics_before[key] for key in ("uar", "macro_f1", "wa", "loss")}
-        runs.append({"seed": seed, "baseline": baselines[seed], "weighted": weighted, "validation_deltas": deltas})
+        weighted_path = Path(weighted["best_checkpoint"])
+        weighted_payload = load_decoder_checkpoint(weighted_path)
+        runs.append({
+            "seed": seed, "baseline": baselines[seed], "weighted": weighted, "validation_deltas": deltas,
+            "provenance": {"training_sets": training_sets, "weighted_checkpoint": {
+                "path": str(weighted_path), "sha256": sha256_file(weighted_path),
+                "id": weighted_payload["checkpoint_id"], "cache_id": weighted_payload["cache_id"],
+            }},
+        })
         summary = {
             "dataset": "msp_podcast", "selection_split": "validation", "test_evaluated": False,
             "requested_seeds": list(seeds), "completed_seeds": [run["seed"] for run in runs],
             "base_config": asdict(template), "loss_config": loss_config,
             "cache_id": store.meta["cache_id"], "validation_signature": validation_signature,
+            "training_sets": training_sets,
             "exclusion_contract_artifact": exclusion, "duplicate_provenance_artifact": duplicates,
             "rows": rows, "runs": runs, "summary_path": str(summary_path),
             "seconds": perf_counter() - started,
         }
         _atomic_json(summary, summary_path)
-        print(f"[MSP comparison seed={seed}] validation changes: {deltas}", flush=True)
+        score_deltas = {key: value for key, value in deltas.items() if key != "loss"}
+        print(f"[MSP comparison seed={seed}] validation score changes: {score_deltas}", flush=True)
     return summary
 
 
 __all__ = [
     "DatasetArtifacts",
+    "FinalEvaluationTarget",
     "EVALUATION_DATASETS",
     "STUDY_SEEDS",
     "bundle_msp_exclusion_contract",
@@ -505,6 +613,7 @@ __all__ = [
     "summarize_study",
     "run_msp_hcudb_study",
     "run_transfer_study",
+    "run_final_evaluations",
     "load_msp_comparison_baselines",
     "run_msp_loss_comparison",
 ]

@@ -152,3 +152,63 @@ PyTorch公式CrossEntropyLoss資料とChen et al. (2024), *1st Place Solution to
 | compute_class_weight | scikit-learn developers | n.d. | [公式API資料・Web本文確認] | https://scikit-learn.org/stable/modules/generated/sklearn.utils.class_weight.compute_class_weight.html | balanced方式はサンプル総数をクラス数と各クラス件数の積で割る。今回scikit-learn依存は追加せず同じ式を直接計算 |
 
 PyTorch CrossEntropyLoss公式資料（https://docs.pytorch.org/docs/2.12/generated/torch.nn.CrossEntropyLoss.html）は再引用。クラス重み指定と、mean reductionがバッチ内の正解クラス重みの和で正規化される仕様を確認した。
+
+## 2026-09-03 — train・validation・testの成績を比較する役割と現状の不足
+
+**質問/文脈**: train・validation・testのscoreを積極的に比較していない理由を説明した。現行コードではtrainは最適化中のバッチloss平均のみ、validationは各epochのloss・WA・UAR・macro F1・クラス別指標を保存する。従来の転移実験ではtestも評価済みだが、新しい重み比較ではtest評価を保留している。trainの分類指標が未記録なのは実装上の不足であり、testを設定選択に使わない方針とは別の理由として説明した。重みありtrain lossと重みなしvalidation lossの絶対値差から過学習の程度を判断できないこともコードに基づいて確認した。
+
+| 資料 | 著者 | 年 | 根拠 | DOI/URL | 使用した主張 |
+|------|------|----|------|---------|-------------|
+| Cross-validation: evaluating estimator performance | scikit-learn developers | n.d. | [公式資料・Web本文確認] | https://scikit-learn.org/stable/modules/cross_validation.html | test成績を参照しながら設定を調整すると評価が選択の影響を受けるため、設定選択にvalidationを使い、その後にtestで評価する |
+| Validation curves: plotting scores to evaluate models | scikit-learn developers | n.d. | [公式資料・Web本文確認] | https://scikit-learn.org/stable/modules/learning_curve.html | trainとvalidationの同じ指標の比較は過学習・学習不足の診断に役立つ。validationを使って選択したモデルのvalidation成績だけでは最終的な性能評価にならない |
+
+補足: trainの確定したモデルでのscoreを得るには、保存済みcheckpointに対して評価モードで推論できる。これは追加学習を必要としないが、既に上書きされた各epochのモデルのtrain scoreを復元することはできない。学習中の予測から集計する指標と、同一checkpointを固定して集計する指標は区別する。今回この説明のために学習や実データ評価は実行していない。
+
+## 2026-09-03 — クラス重み付け後にUARと正解率が逆方向へ変化した理由
+
+**質問/文脈**: 「happyを出すと当たりやすかったため正解率が下がり、見せかけの成績が現実的になった」という解釈を、保存済みの重み比較結果と指標の定義から検討した。`runs/msp_class_weight_comparison/seeds-42/comparison_summary.json` と `seeds-43-44/comparison_summary.json` にある各seedのbest validation指標・混同行列を読み、クラス別指標を3seedで平均した。新たな学習・推論は実行していない。
+
+validationの件数はanger 1,044、happy 1,808、sadness 296、disgust 452、計3,600。happyの構成比は50.22%であり、以前確認したtestの65.41%とは異なる。重みあり−なしの再現率差は順に+7.4393、−15.0627、+10.0225、+10.1032ポイント。4クラスを等しく平均するとUAR差+3.1256ポイント、構成比で重み付けすると正解率差−3.3148ポイントとなる。happyの正解率差への寄与は−7.5648ポイント、他3クラスの合計は+4.2500ポイント。F1差は順に+3.8575、−4.9993、+0.3114、+0.8327ポイントで、macro F1差は+0.000587ポイントとほぼ相殺される。
+
+happyへの予測割合は平均47.65%から32.94%へ減少。sadnessとdisgustでは再現率が向上する一方でprecisionが低下している。評価集合と指標の計算方法は共通であり、正解率が水増しから修正されたのではなく、学習する損失を変えた結果、クラスごとの成績にトレードオフが生じたと解釈する。このvalidation結果だけから総合的な性能向上やtest性能を断定しない。
+
+| 資料 | 著者 | 年 | 根拠 | DOI/URL | 使用した主張 |
+|------|------|----|------|---------|-------------|
+| balanced_accuracy_score | scikit-learn developers | n.d. | [公式API資料・Web本文確認] | https://scikit-learn.org/stable/modules/generated/sklearn.metrics.balanced_accuracy_score.html | 各クラスのrecallの単純平均。今回の4クラスUARと同じ集計 |
+| f1_score | scikit-learn developers | n.d. | [公式API資料・Web本文確認] | https://scikit-learn.org/stable/modules/generated/sklearn.metrics.f1_score.html | F1はprecisionとrecallの調和平均、macroはクラス別F1の単純平均 |
+| accuracy_score | scikit-learn developers | n.d. | [公式API資料・Web本文確認] | https://scikit-learn.org/stable/modules/generated/sklearn.metrics.accuracy_score.html | 正しく分類されたサンプルの割合。単一ラベル多クラスでは各クラスrecallを正解ラベルの構成比で重み付けした値に等しい |
+
+## 2026-09-03 — 基本の学習部分での指標表示とChatGPTでの研究相談
+
+**質問/文脈**: ユーザーは末尾に評価節を追加する案を取りやめ、基本の学習部分で何を表示すべきかの相談を優先した。毎epochのtrain・validationを同じモデル状態・評価方法で比較し、設定とbest checkpointを確定した段階でtestを評価する構成を提案する。trainとvalidationがともに低い場合も、epoch不足と直ちに同一視せず、表現・モデル・最適化などの不足を区別する。現行実装でtrain全体を固定モデルで毎epoch評価するには追加推論が必要で、所要時間が増える。比較用lossは全splitで重みなしにそろえ、重み付き最適化lossとは分ける。今回コード・Notebookは変更せず、実データ学習・評価も実行していない。
+
+**再引用**: scikit-learnの `learning_curve.html` と `cross_validation.html` を公式本文で再確認。trainとvalidationの比較による過学習・学習不足の診断、testを設定選択に使わない根拠に用いた。既存の書誌行との重複は省略。
+
+**OpenAI公式資料・本文確認**: OpenAI. (n.d.). *Projects and chats*. https://learn.chatgpt.com/docs/projects 。ChatGPTのプロジェクトが会話・添付ファイル・指示・接続された情報をまとめること、通常のChatGPTプロジェクトとローカルフォルダに接続するプロジェクトの違いを確認した。相談用ChatGPTプロジェクトへ研究概要・条件・結果を渡し、決定した仕様をCodexへ戻す運用を提案する。ローカルフォルダやこの会話全体が自動共有されるとは断定せず、利用者の環境での接続有無も未確認。プロジェクト作成・ファイル送信は行っていない。
+
+## 2026-09-03 — UAR・macro F1で学習状態を診断できる範囲
+
+**質問/文脈**: 学習できているかの判断材料としてUARを主指標、macro F1も重視する考え方が適切かという質問。両者のtrain・validationの比較は分類性能の改善や過学習の兆候を確認する材料として妥当だが、研究上の指標の優先順位だけで診断の妥当性を説明しない。UARは各クラスの再現率を等しく平均し、macro F1はクラスごとのprecisionとrecallの両方を反映するため、今回のクラス件数が偏った分類の学習状態を調べる意味がある。
+
+`train_one_epoch` はcross entropyを最小化し、`evaluate_loader_metrics` は確率のargmaxから予測ラベルを作ることを確認した。予測ラベルが変わらず正解クラスの確率だけが改善した場合、accuracy・UAR・macro F1が変化せずlossだけが低下することがある。この例は定義からの説明であり、今回の実測結果を示すものではない。trainとvalidationのscoreがともに低いことだけでepoch不足と断定しない。trainだけ改善してvalidationが悪化する推移は過学習を疑う材料だが、単独の最終値や一時的な変動のみで断定しない。lossをsplit間で比較する場合は計算方法をそろえ、重み付き学習lossと重みなしvalidation lossの絶対値を直接比較しない。
+
+**再引用・公式本文確認**: scikit-learnの `balanced_accuracy_score.html`、`f1_score.html`、`learning_curve.html` およびPyTorch 2.12の `CrossEntropyLoss.html`（https://docs.pytorch.org/docs/2.12/generated/torch.nn.CrossEntropyLoss.html）。既存の書誌行との重複は省略。今回の相談では学習・評価コードやNotebookを変更せず、実学習も実行していない。
+
+## 2026-09-03 — 保存済み実験結果の集計とグラフ化
+
+**質問/文脈**: ユーザーの依頼に基づき、既存の重み比較・転移実験・時間計測の6個のJSONから、3 seedの比較表と6種類の図を作成した。入力ファイルのSHA-256、評価集合signature、混同行列と指標の整合性、best epochの選択、10 epoch・バッチサイズ8などの比較条件を確認。時間計測用seed 42の再実行は元の結果と一致するため、独立seedとして重複集計していない。音声・特徴キャッシュ・checkpoint本体は読み込まず、追加学習・推論・test評価は実行していない。
+
+過去のtrain分類scoreは未記録、重みありMSPのtestは未評価であることを明記した。train loss低下とvalidationの後半の推移は過学習を疑う材料として扱い、未記録のtrain scoreとの差を推定していない。元の重みなし転移実験のtestと、新しい重み付け実験のvalidationを区別した。
+
+**再引用・公式本文確認**: scikit-learnの *Cross-validation: evaluating estimator performance*（https://scikit-learn.org/stable/modules/cross_validation.html）。保存済みのtest指標から設定を選び直す場合も、test由来の情報が選択に入る点の根拠として本文を確認した。今回の集計は記述的な整理であり、新しいモデル設定を選択していない。既存書誌行との重複は省略。
+
+## 2026-09-03 — score主表示・loss定義・評価時の状態復元
+
+`claim-verify`による公式資料の本文確認。比較用lossの確率からの計算式は既存コードを維持し、定義情報だけを`history_metadata`へ追加した。
+
+| 用語・主張 | 判定 | 根拠 | 正しい表現 |
+|---|---|---|---|
+| `eval()`と勾配計算の無効化は別の設定 | 確認済み | [PyTorch Autograd mechanics](https://docs.pytorch.org/docs/2.14/notes/autograd.html#evaluation-mode-nn-module-eval) | 評価時は`eval()`と`no_grad()`の両方を使う |
+| クラス番号ラベルの重み付きCrossEntropyLossのmeanは対象ラベルの重み総和で正規化 | 確認済み | [PyTorch CrossEntropyLoss](https://docs.pytorch.org/docs/2.14/generated/torch.nn.CrossEntropyLoss.html) | バッチ内の重み付き損失和 / 正解クラス重みの総和 |
+
+確認済み2件。epoch内のバッチlossの単純平均はこのリポジトリの既存集約方法であり、split全発話の重みなし平均とは別の記録として表示する。今回のテスト環境はPyTorch 2.12.1+cu130。ユーザーが提示した2.14の公式資料を定義確認に用い、実装の数値はローカルの合成データテストで確認した。実データの学習・モデル評価は行っていない。

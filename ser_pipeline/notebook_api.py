@@ -63,12 +63,26 @@ def _number(value):
 def _history_values(history, split, key):
     values = []
     for row in history:
-        metrics = (row.get(split) or {}) if split else row
+        if split == "train":
+            metrics = row.get("train_monitor") if "train_monitor" in row else row.get("train")
+            metrics = metrics or {}
+        else:
+            metrics = (row.get(split) or {}) if split else row
         value = metrics.get(key)
         if key == "wa" and value is None:
             value = metrics.get("accuracy")
         values.append(_number(value))
     return values
+
+
+def _train_curve_label(training):
+    monitoring = training.get("train_monitoring")
+    if not isinstance(monitoring, dict):
+        return "train"
+    sample_size = monitoring.get("sample_size")
+    if monitoring.get("is_subset"):
+        return f"train（固定{sample_size:,}件・参考）" if isinstance(sample_size, int) else "train（固定部分集合・参考）"
+    return "train（全件・参考）"
 
 
 def _finish_history_plot(figure, output_path, show):
@@ -99,7 +113,8 @@ def plot_training_scores(training: dict[str, Any], *, output_path: str | Path | 
         for split, color in (("train", "#2563eb"), ("validation", "#ea580c")):
             values = _history_values(history, split, key)
             if any(np.isfinite(value) for value in values):
-                axis.plot(epochs, values, label=split, marker="o", markersize=4, color=color)
+                label_name = _train_curve_label(training) if split == "train" else split
+                axis.plot(epochs, values, label=label_name, marker="o", markersize=4, color=color)
         if np.isfinite(_number(training.get("best_epoch"))):
             axis.axvline(training["best_epoch"], color="#64748b", linestyle="--", label="Best validation epoch")
         axis.set_title(label)
@@ -127,7 +142,8 @@ def plot_training_losses(training: dict[str, Any], *, output_path: str | Path | 
     for split, color in (("train", "#2563eb"), ("validation", "#ea580c")):
         values = _history_values(history, split, "loss")
         if any(np.isfinite(values)):
-            axes[0].plot(epochs, values, label=split, marker="o", markersize=4, color=color)
+            label_name = _train_curve_label(training) if split == "train" else split
+            axes[0].plot(epochs, values, label=label_name, marker="o", markersize=4, color=color)
     values = _history_values(history, None, "train_loss")
     if any(np.isfinite(values)):
         axes[1].plot(epochs, values, label="train_loss", marker="o", markersize=4, color="#2563eb")
@@ -160,43 +176,76 @@ def _format_recorded(value):
     return f"{number:.4f}" if np.isfinite(number) else "未記録"
 
 
-def _best_class_metrics_html(training):
+def _best_training_metrics_html(training):
+    metrics = training.get("best_training_metrics") or {}
+    if not metrics:
+        return "<p>bestモデルのtrain全件結果：未記録</p>"
+    support = sum(int(row.get("support", 0)) for row in metrics.get("class_metrics") or [])
+    overall = ''.join(
+        f'<td>{_format_recorded(metrics.get(name))}</td>'
+        for name in ("uar", "macro_f1", "accuracy", "loss")
+    )
+    class_rows = []
+    for row in metrics.get("class_metrics") or []:
+        label = html.escape(str(row.get("class_label", "未記録")))
+        values = ''.join(f'<td>{_format_recorded(row.get(name))}</td>' for name in ("precision", "recall", "f1"))
+        class_rows.append(f'<tr><td>{label}</td>{values}<td>{html.escape(str(row.get("support", "未記録")))}</td></tr>')
+    class_table = (
+        '<table><thead><tr><th>感情</th><th>precision</th><th>recall</th><th>F1</th><th>件数</th></tr></thead><tbody>'
+        + ''.join(class_rows) + '</tbody></table>'
+    ) if class_rows else ''
+    return (
+        '<details><summary>bestモデルのtrain全件結果（正式）</summary>'
+        '<p>固定監視部分集合ではなく、best状態をtrain全件で評価した結果です。</p>'
+        '<table><thead><tr><th>件数</th><th>UAR</th><th>macro F1</th><th>accuracy</th><th>比較用loss</th></tr></thead><tbody>'
+        f'<tr><td>{support}</td>{overall}</tr></tbody></table>{class_table}</details>'
+    )
+
+
+def _best_validation_class_metrics_html(training):
     rows = []
-    for split in ("train", "validation"):
-        key = "best_training_metrics" if split == "train" else "best_validation_metrics"
-        metrics = training.get(key) or {}
-        for row in metrics.get("class_metrics") or []:
-            label = html.escape(str(row.get("class_label", "未記録")))
-            values = ''.join(f'<td>{_format_recorded(row.get(name))}</td>' for name in ("precision", "recall", "f1"))
-            rows.append(f'<tr><td>{split}</td><td>{label}</td>{values}<td>{html.escape(str(row.get("support", "未記録")))}</td></tr>')
+    metrics = training.get("best_validation_metrics") or {}
+    for row in metrics.get("class_metrics") or []:
+        label = html.escape(str(row.get("class_label", "未記録")))
+        values = ''.join(f'<td>{_format_recorded(row.get(name))}</td>' for name in ("precision", "recall", "f1"))
+        rows.append(f'<tr><td>{label}</td>{values}<td>{html.escape(str(row.get("support", "未記録")))}</td></tr>')
     if not rows:
         return ""
-    return ('<details><summary>best epochのクラス別指標</summary>'
-            '<table><thead><tr><th>split</th><th>感情</th><th>precision</th><th>recall</th><th>F1</th><th>件数</th></tr></thead><tbody>'
+    return ('<details><summary>best epochのvalidationクラス別指標</summary>'
+            '<table><thead><tr><th>感情</th><th>precision</th><th>recall</th><th>F1</th><th>件数</th></tr></thead><tbody>'
             + ''.join(rows) + '</tbody></table></details>')
 
 
 def _timing_html(training):
-    epochs = (training.get("timings") or {}).get("epochs") or []
+    timing = training.get("timings") or {}
+    epochs = timing.get("epochs") or []
     if not epochs:
         return "<p>train評価時間：未記録</p>"
     rows = []
     for row in epochs:
-        seconds, total = _number(row.get("train_evaluation_seconds")), _number(row.get("total_seconds"))
-        inner = row.get("train_evaluation") or {}
+        recorded_seconds = row.get("train_monitor_evaluation_seconds")
+        if recorded_seconds is None:
+            recorded_seconds = row.get("train_evaluation_seconds")
+        seconds, total = _number(recorded_seconds), _number(row.get("total_seconds"))
+        inner = row.get("train_monitor") or row.get("train_evaluation") or {}
         ratio = seconds / total if total > 0 else None
         values = [seconds, inner.get("batch_prepare_seconds"), inner.get("compute_seconds"), inner.get("metrics_seconds"), total, ratio]
         rows.append(f'<tr><td>{html.escape(str(row.get("epoch", "未記録")))}</td>' + ''.join(f'<td>{_format_recorded(value)}</td>' for value in values) + '</tr>')
-    recorded = [_number(row.get("train_evaluation_seconds")) for row in epochs]
+    recorded = [
+        _number(row.get("train_monitor_evaluation_seconds", row.get("train_evaluation_seconds")))
+        for row in epochs
+    ]
     complete = all(np.isfinite(recorded))
     aggregate = _format_recorded(sum(recorded)) if complete else "未記録（一部欠損）"
     later = _format_recorded(np.mean(recorded[1:])) if complete and len(recorded) > 1 else "未記録"
     return (
-        '<details><summary>train評価の処理時間</summary>'
-        '<p>単位：秒。割合はtrain評価時間 / epoch総時間です。新旧の速度差ではありません。</p>'
-        '<table><thead><tr><th>epoch</th><th>train評価</th><th>バッチ準備</th><th>計算</th><th>指標集計</th><th>epoch総時間</th><th>割合</th></tr></thead><tbody>'
+        '<details><summary>train監視評価の処理時間</summary>'
+        '<p>単位：秒。割合はtrain監視評価時間 / epoch総時間です。新旧の速度差ではありません。</p>'
+        '<table><thead><tr><th>epoch</th><th>train監視評価</th><th>バッチ準備</th><th>計算</th><th>指標集計</th><th>epoch総時間</th><th>割合</th></tr></thead><tbody>'
         + ''.join(rows) + f'</tbody></table><p>{len(epochs)} epoch合計：{aggregate}秒 / '
-        f'初回：{_format_recorded(recorded[0])}秒 / 後続epoch平均：{later}秒</p></details>'
+        f'初回：{_format_recorded(recorded[0])}秒 / 後続epoch平均：{later}秒</p>'
+        f'<p>bestモデルのtrain全件評価：{_format_recorded(timing.get("best_train_evaluation_seconds"))}秒'
+        f'（監視が全件の場合の再利用：{html.escape(str(timing.get("best_train_evaluation_reused_from_monitor", "未記録"))) }）</p></details>'
     )
 
 
@@ -211,6 +260,7 @@ def display_training_history(training: dict[str, Any], *, save_plots: bool = Fal
     history = _history_rows(training)
     title = html.escape(f"{training.get('dataset', '')} / seed {training.get('seed', '')}")
     weighting = (training.get("loss_config") or training.get("config") or {}).get("class_weighting", "未記録")
+    train_curve_label = html.escape(_train_curve_label(training))
     if not history:
         result = HTML(f"<h4>{title}</h4><p>score・lossの履歴：未記録</p>")
     else:
@@ -226,18 +276,20 @@ def display_training_history(training: dict[str, Any], *, save_plots: bool = Fal
             table.append(f'<tr><td>{int(row["epoch"])}</td><td>{_format_recorded(train)}</td><td>{_format_recorded(validation)}</td><td>{_format_recorded(optimization)}</td><td>{best}</td></tr>')
         result = HTML(
             f'<section><h4>{title} / class_weighting={html.escape(str(weighting))}</h4>'
-            '<p>UAR（主指標） → Macro F1 → Accuracy（参考）。青：train、橙：validation。</p>'
+            f'<p>UAR（主指標） → Macro F1 → Accuracy（参考）。青：{train_curve_label}、橙：validation全件。</p>'
             f'<p>共通のbest epoch：{html.escape(str(training.get("best_epoch", "未記録")))}。選択基準：validation UAR → macro F1 → loss（完全同点は先のepoch）。</p>'
             + _figure_html(scores, "UAR（主指標）・Macro F1・Accuracy（参考）のscore曲線")
             + '<details><summary>lossを確認：split間の比較用／最適化に使用したloss</summary>'
-            '<p>比較用loss：train・validationとも重みなし、全発話を等しく平均。−mean(log(clip(p_true, 1e−12, 1)))。</p>'
+            f'<p>比較用loss：{train_curve_label}とvalidation全件をそれぞれ重みなしで発話平均。−mean(log(clip(p_true, 1e−12, 1)))。</p>'
             f'<p>最適化loss：class_weighting={html.escape(str(weighting))}。各バッチのCrossEntropyLossを末尾バッチも含めて単純平均。重みありでは各バッチの対象ラベルの重み総和で正規化します。</p>'
             + _figure_html(losses, "比較用lossと最適化lossの2図")
-            + '<table><thead><tr><th>epoch</th><th>比較用train loss</th><th>比較用validation loss</th><th>最適化train loss</th><th>best</th></tr></thead><tbody>'
+            + f'<table><thead><tr><th>epoch</th><th>比較用{train_curve_label} loss</th><th>比較用validation loss</th><th>最適化train loss</th><th>best</th></tr></thead><tbody>'
             + ''.join(table) + '</tbody></table></details>'
             '<p>未記録の項目は欠測です。補間・ゼロ埋め・別指標の転用は行いません。</p>'
-            '<p>trainが改善しvalidationが停滞・悪化する場合は過学習を疑う材料、両方のscoreが低いままなら学習不足などを調べる材料になります。scoreとlossだけで原因は断定できません。</p>'
-            + _best_class_metrics_html(training) + _timing_html(training) + '</section>'
+            '<p>train監視値が改善しvalidationが停滞・悪化する場合は過学習を疑う材料、両方のscoreが低いままなら学習不足などを調べる材料になります。監視値はcheckpoint選択や正式結果には使いません。</p>'
+            + _best_training_metrics_html(training)
+            + _best_validation_class_metrics_html(training)
+            + _timing_html(training) + '</section>'
         )
     if display_output:
         display(result)

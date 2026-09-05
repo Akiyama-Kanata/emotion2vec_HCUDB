@@ -26,7 +26,15 @@ from .exclusions import (
 )
 from .manifest import load_manifest, manifest_sha256
 from .model import BaseModel
-from .training import TrainingConfig, evaluate_checkpoint, resolve_device, selection_key, train_decoder, training_loss_config
+from .training import (
+    TrainingConfig,
+    TrainingMonitoringConfig,
+    evaluate_checkpoint,
+    resolve_device,
+    selection_key,
+    train_decoder,
+    training_loss_config,
+)
 
 
 STUDY_SEEDS = (42, 43, 44)
@@ -215,6 +223,7 @@ def run_transfer_study(
     *,
     seeds: Sequence[int] = STUDY_SEEDS,
     base_config: TrainingConfig | None = None,
+    monitoring_config: TrainingMonitoringConfig | None = None,
     stores: Mapping[str, ShardedFeatureStore] | None = None,
 ) -> dict[str, Any]:
     """Train MSP parents and HCUDB children using train/validation only; never run test."""
@@ -244,6 +253,7 @@ def run_transfer_study(
                   for split in ("train", "validation")}
         for dataset in EVALUATION_DATASETS
     }
+    monitoring_kwargs = {"monitoring_config": monitoring_config} if monitoring_config is not None else {}
     for seed_value in seeds:
         seed = int(seed_value)
         config = replace(template, seed=seed)
@@ -257,6 +267,7 @@ def run_transfer_study(
             config,
             training_stage="msp_train",
             store=stores["msp_podcast"],
+            **monitoring_kwargs,
         )
         parent_path = Path(parent["best_checkpoint"])
 
@@ -270,6 +281,7 @@ def run_transfer_study(
             training_stage="hcudb_continue",
             parent_checkpoint=parent_path,
             store=stores["hcudb1"],
+            **monitoring_kwargs,
         )
         child_path = Path(child["best_checkpoint"])
         child_payload = load_decoder_checkpoint(child_path)
@@ -308,6 +320,7 @@ def run_transfer_study(
                         "parent": parent["config"],
                         "child": child["config"],
                     },
+                    "monitoring_config": asdict(monitoring_config) if monitoring_config is not None else None,
                 },
             }
         )
@@ -316,6 +329,7 @@ def run_transfer_study(
         "evaluation_datasets": list(EVALUATION_DATASETS),
         "test_evaluated": False,
         "selection_split": "validation",
+        "monitoring_config": asdict(monitoring_config) if monitoring_config is not None else None,
         "training_sets": training_sets,
         "exclusion_contract_artifact": exclusion_contract_artifact,
         "duplicate_provenance_artifact": duplicate_provenance_artifact,
@@ -333,9 +347,11 @@ def run_transfer_study(
     summary["summary_path"] = str(summary_path)
     summary["timings_path"] = str(timing_path)
     save_started = perf_counter()
-    summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    summary["timings"]["study_seconds"] = perf_counter() - started
+    _atomic_json(summary, summary_path)
     summary["timings"]["summary_save_seconds"] = perf_counter() - save_started
     summary["timings"]["study_seconds"] = perf_counter() - started
+    _atomic_json(summary, summary_path)
     _atomic_json(summary["timings"], timing_path)
     print(f"[study] total={summary['timings']['study_seconds']:.2f}s output={summary_path}", flush=True)
     return summary
@@ -536,6 +552,7 @@ def run_msp_loss_comparison(
     *,
     seeds: Sequence[int] = (42,),
     base_config: TrainingConfig | None = None,
+    monitoring_config: TrainingMonitoringConfig | None = None,
     store: ShardedFeatureStore | None = None,
 ) -> dict[str, Any]:
     """Train weighted MSP models from scratch and compare saved validation results only."""
@@ -561,11 +578,13 @@ def run_msp_loss_comparison(
     rows = []
     runs = []
     summary_path = output / "comparison_summary.json"
+    monitoring_kwargs = {"monitoring_config": monitoring_config} if monitoring_config is not None else {}
     for seed in seeds:
         baseline = baselines[seed]["training"]
         weighted = train_decoder(
             artifact.manifest_path, artifact.cache_root, "msp_podcast", output / f"seed-{seed}" / "balanced",
-            replace(template, seed=seed, class_weighting="balanced"), training_stage="msp_train", store=store,
+            replace(template, seed=seed, class_weighting="balanced"), training_stage="msp_train",
+            store=store, **monitoring_kwargs,
         )
         metrics_before = baseline["best_validation_metrics"]
         metrics_after = weighted["best_validation_metrics"]
@@ -589,6 +608,7 @@ def run_msp_loss_comparison(
             "dataset": "msp_podcast", "selection_split": "validation", "test_evaluated": False,
             "requested_seeds": list(seeds), "completed_seeds": [run["seed"] for run in runs],
             "base_config": asdict(template), "loss_config": loss_config,
+            "monitoring_config": asdict(monitoring_config) if monitoring_config is not None else None,
             "cache_id": store.meta["cache_id"], "validation_signature": validation_signature,
             "training_sets": training_sets,
             "exclusion_contract_artifact": exclusion, "duplicate_provenance_artifact": duplicates,

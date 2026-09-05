@@ -214,11 +214,23 @@ class SerEndToEndTest(unittest.TestCase):
                                                        training_stage="msp_train", store=store)
                             traces.append((epochs, orders, result))
                         without, with_scoring = traces
-                        torch.testing.assert_close(without[0], with_scoring[0], rtol=0, atol=0)
+                        self.assertEqual(len(without[0]), len(with_scoring[0]))
+                        for without_epoch, with_epoch in zip(without[0], with_scoring[0]):
+                            torch.testing.assert_close(
+                                without_epoch["model_state_dict"], with_epoch["model_state_dict"], rtol=0, atol=0
+                            )
+                            torch.testing.assert_close(
+                                without_epoch["optimizer_state_dict"], with_epoch["optimizer_state_dict"], rtol=0, atol=0
+                            )
+                            self.assertEqual(
+                                without_epoch["validation_metrics"], with_epoch["validation_metrics"]
+                            )
+                            self.assertEqual(without_epoch["best_epoch"], with_epoch["best_epoch"])
                         self.assertEqual(without[1], with_scoring[1])
                         self.assertEqual(without[2]["best_epoch"], with_scoring[2]["best_epoch"])
                         for field in ("train_loss", "validation"):
                             self.assertEqual([row[field] for row in without[2]["history"]], [row[field] for row in with_scoring[2]["history"]])
+        store._arrays.clear()
 
 
 if __name__ == "__main__":

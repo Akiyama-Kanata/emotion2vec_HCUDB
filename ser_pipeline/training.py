@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import random
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -22,6 +23,7 @@ from .checkpoints import (
     restore_parent,
     restore_resume,
     save_decoder_checkpoint,
+    update_decoder_checkpoint_results,
 )
 from .contracts import LABEL_ORDER
 from .evaluation import (
@@ -48,12 +50,24 @@ class TrainingConfig:
     class_weighting: str = "none"
 
 
-def training_history_metadata() -> dict[str, Any]:
+@dataclass(frozen=True)
+class TrainingMonitoringConfig:
+    """Configuration for deterministic, display-only epoch train monitoring."""
+
+    max_epoch_samples: int = 2000
+    sampling_seed: int = 0
+
+
+def training_history_metadata(
+    *,
+    train_history_key: str = "train_monitor",
+    train_monitoring: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Definitions for recorded epoch metrics, separate from resume loss configuration."""
-    return {
+    metadata = {
         "evaluation": {
             "point": "after_final_optimizer_update_of_epoch",
-            "split_order": ["train", "validation"],
+            "split_order": [train_history_key, "validation"],
             "same_model": True, "mode": "eval", "grad_enabled": False,
         },
         "scores": {
@@ -62,8 +76,8 @@ def training_history_metadata() -> dict[str, Any]:
             "accuracy": "fraction of correctly classified utterances; wa is identical",
         },
         "comparison_loss": {
-            "fields": ["train.loss", "validation.loss"],
-            "class_weighting": "none", "aggregation": "mean_over_all_utterances",
+            "fields": [f"{train_history_key}.loss", "validation.loss"],
+            "class_weighting": "none", "aggregation": "mean_over_evaluated_utterances",
             "formula": "-mean(log(clip(p_true, 1e-12, 1)))", "probability_floor": 1e-12,
         },
         "optimization_loss": {
@@ -74,7 +88,16 @@ def training_history_metadata() -> dict[str, Any]:
         },
         "best_selection": ["validation.uar", "validation.macro_f1", "-validation.loss"],
         "exact_tie": "keep_earlier_epoch",
+        "best_training_metrics": "best model evaluated once on the full train split; full monitor may be reused",
     }
+    if train_monitoring is not None:
+        metadata["train_monitor"] = {
+            **train_monitoring,
+            "display_only": True,
+            "used_for_checkpoint_selection": False,
+            "formal_train_result": False,
+        }
+    return metadata
 
 
 def training_loss_config(store: ShardedFeatureStore, dataset: str, weighting: str) -> dict[str, Any]:
@@ -103,14 +126,117 @@ def training_loss_config(store: ShardedFeatureStore, dataset: str, weighting: st
     }
 
 
+def _validate_monitoring_config(config: TrainingMonitoringConfig | None) -> None:
+    if config is None:
+        return
+    if not isinstance(config, TrainingMonitoringConfig):
+        raise ValueError("monitoring_config must be TrainingMonitoringConfig or None")
+    if isinstance(config.max_epoch_samples, bool) or not isinstance(config.max_epoch_samples, int):
+        raise ValueError("max_epoch_samples must be a positive integer")
+    if config.max_epoch_samples <= 0:
+        raise ValueError("max_epoch_samples must be a positive integer")
+    if isinstance(config.sampling_seed, bool) or not isinstance(config.sampling_seed, int):
+        raise ValueError("sampling_seed must be an integer")
+
+
+def build_train_monitoring(
+    store: ShardedFeatureStore,
+    dataset: str,
+    config: TrainingMonitoringConfig | None,
+) -> tuple[list[str], dict[str, Any]]:
+    """Select a fixed stratified train monitor without consuming any RNG state."""
+    _validate_monitoring_config(config)
+    train_ids = store.utterance_ids(dataset=dataset, split="train")
+    if not train_ids:
+        raise ValueError(f"training split is empty: {dataset}")
+    by_class: list[list[str]] = [[] for _ in LABEL_ORDER]
+    for utterance_id in train_ids:
+        class_index = int(store.records[utterance_id]["class_index"])
+        if not 0 <= class_index < len(LABEL_ORDER):
+            raise ValueError("training class index is outside the decoder label order")
+        by_class[class_index].append(utterance_id)
+
+    population_size = len(train_ids)
+    sample_size = population_size if config is None else min(config.max_epoch_samples, population_size)
+    is_subset = sample_size < population_size
+    if is_subset:
+        sampling_seed = config.sampling_seed
+        quota_parts = [divmod(sample_size * len(ids), population_size) for ids in by_class]
+        quotas = [part[0] for part in quota_parts]
+        remaining = sample_size - sum(quotas)
+        remainder_order = sorted(
+            range(len(LABEL_ORDER)),
+            key=lambda index: (-quota_parts[index][1], index),
+        )
+        for class_index in remainder_order[:remaining]:
+            quotas[class_index] += 1
+        selected = set()
+        for class_index, ids in enumerate(by_class):
+            ranked = sorted(
+                ids,
+                key=lambda utterance_id: (
+                    hashlib.sha256(f"{sampling_seed}\0{utterance_id}".encode("utf-8")).digest(),
+                    utterance_id,
+                ),
+            )
+            selected.update(ranked[:quotas[class_index]])
+        selected_ids = [utterance_id for utterance_id in train_ids if utterance_id in selected]
+        sampling_method = "stratified_class_quota_stable_sha256_rank_v1"
+    else:
+        selected_ids = list(train_ids)
+        quotas = [len(ids) for ids in by_class]
+        sampling_method = "all_train_utterances_manifest_order"
+
+    if len(selected_ids) != sample_size or len(set(selected_ids)) != sample_size:
+        raise RuntimeError("train monitor selection did not produce the requested unique sample")
+    selected_hash = hashlib.sha256(
+        ("\n".join(sorted(selected_ids)) + "\n").encode("utf-8")
+    ).hexdigest()
+    population_counts = [len(ids) for ids in by_class]
+    store_meta = getattr(store, "meta", {})
+    metadata = {
+        "dataset": dataset,
+        "split": "train",
+        "manifest_sha256": store_meta.get("manifest_sha256"),
+        "cache_id": store_meta.get("cache_id"),
+        "population_size": population_size,
+        "sample_size": sample_size,
+        "is_subset": is_subset,
+        "sampling_method": sampling_method,
+        "sampling_seed": config.sampling_seed if config is not None else None,
+        "selection_rank_key": "sha256(f'{sampling_seed}\\0{utterance_id}')" if is_subset else None,
+        "evaluation_order": "manifest",
+        "utterance_id_sha256": selected_hash,
+        "utterance_id_sha256_canonicalization": "sorted UTF-8 IDs joined by LF with final LF",
+        "class_counts": quotas,
+        "class_counts_by_label": dict(zip(LABEL_ORDER, quotas)),
+        "population_class_counts": population_counts,
+        "population_class_counts_by_label": dict(zip(LABEL_ORDER, population_counts)),
+        "label_order": list(LABEL_ORDER),
+    }
+    return selected_ids, metadata
+
+
 class CachedFeatureDataset(Dataset):
-    def __init__(self, store: ShardedFeatureStore, dataset: str, split: str):
+    def __init__(
+        self,
+        store: ShardedFeatureStore,
+        dataset: str,
+        split: str,
+        utterance_ids: list[str] | None = None,
+    ):
         self.store = store
         self.dataset = dataset
         self.split = split
-        self.ids = store.utterance_ids(dataset=dataset, split=split)
+        self.ids = list(utterance_ids) if utterance_ids is not None else store.utterance_ids(dataset=dataset, split=split)
         if not self.ids:
             raise ValueError(f"cache dataset split is empty: {dataset}/{split}")
+        if len(set(self.ids)) != len(self.ids):
+            raise ValueError("cache dataset utterance IDs must be unique")
+        for utterance_id in self.ids:
+            row = store.records.get(utterance_id)
+            if row is None or row["dataset"] != dataset or row["split"] != split:
+                raise ValueError(f"utterance is outside cache dataset split: {utterance_id}")
 
     def __len__(self) -> int:
         return len(self.ids)
@@ -177,10 +303,11 @@ def make_loader(
     batch_size: int,
     shuffle: bool,
     seed: int,
+    utterance_ids: list[str] | None = None,
 ) -> DataLoader:
     generator = torch.Generator().manual_seed(seed)
     return DataLoader(
-        CachedFeatureDataset(store, dataset, split),
+        CachedFeatureDataset(store, dataset, split, utterance_ids=utterance_ids),
         batch_size=batch_size,
         shuffle=shuffle,
         generator=generator,
@@ -287,6 +414,7 @@ def train_decoder(
     config: TrainingConfig,
     *,
     training_stage: str,
+    monitoring_config: TrainingMonitoringConfig | None = None,
     parent_checkpoint: str | Path | None = None,
     resume_checkpoint: str | Path | None = None,
     store: ShardedFeatureStore | None = None,
@@ -305,11 +433,13 @@ def train_decoder(
         raise ValueError("epochs and batch_size must be positive")
     if config.class_weighting not in {"none", "balanced"}:
         raise ValueError("class_weighting must be none or balanced")
+    _validate_monitoring_config(monitoring_config)
     seed_everything(config.seed)
     device = resolve_device(config.device)
     store = _prepare_store(cache_root, manifest_path, store, timings)
     loss_config = training_loss_config(store, dataset, config.class_weighting)
-    history_metadata = training_history_metadata()
+    monitoring_config_payload = asdict(monitoring_config) if monitoring_config is not None else None
+    train_monitor_ids, train_monitoring = build_train_monitoring(store, dataset, monitoring_config)
     input_dim = int(store.meta["feature_dim"])
     model = BaseModel(
         input_dim=input_dim,
@@ -335,13 +465,22 @@ def train_decoder(
     best_epoch = 0
     preserved_parent_id = None
     preserved_parent_hash = None
+    legacy_history = False
     if resume_checkpoint is not None:
         resume_payload = restore_resume(
             model, optimizer, resume_checkpoint, signature, training_stage,
             expected_loss_config=loss_config,
+            expected_monitoring_config=monitoring_config_payload,
         )
+        legacy_history = "monitoring_config" not in resume_payload
+        if not legacy_history and resume_payload.get("train_monitoring") != train_monitoring:
+            raise ValueError("resume checkpoint train monitor selection mismatch")
         start_epoch = int(resume_payload["epoch"]) + 1
         history = list(resume_payload["history"])
+        if legacy_history and any("train_monitor" in entry for entry in history):
+            raise ValueError("legacy resume checkpoint contains new train_monitor history")
+        if not legacy_history and any("train" in entry for entry in history):
+            raise ValueError("resume checkpoint mixes legacy train and train_monitor history")
         run_id = str(resume_payload["run_id"])
         preserved_parent_id = resume_payload.get("parent_checkpoint_id")
         preserved_parent_hash = resume_payload.get("parent_checkpoint_sha256")
@@ -356,13 +495,30 @@ def train_decoder(
     if start_epoch > config.epochs:
         raise ValueError("resume checkpoint epoch is not earlier than configured total epochs")
 
+    train_history_key = "train" if legacy_history else "train_monitor"
+    if legacy_history:
+        history_metadata = resume_payload.get("history_metadata") or training_history_metadata(
+            train_history_key="train"
+        )
+        checkpoint_monitoring_fields: dict[str, Any] = {}
+    else:
+        history_metadata = training_history_metadata(
+            train_history_key=train_history_key,
+            train_monitoring=train_monitoring,
+        )
+        checkpoint_monitoring_fields = {
+            "monitoring_config": monitoring_config_payload,
+            "train_monitoring": train_monitoring,
+        }
+
     train_loader = make_loader(
         store, dataset, "train", batch_size=config.batch_size, shuffle=True, seed=config.seed
     )
     # Evaluate the completed epoch's model with a separate loader so scoring
     # cannot advance the shuffled training loader's random generator.
-    train_evaluation_loader = make_loader(
-        store, dataset, "train", batch_size=config.batch_size, shuffle=False, seed=config.seed
+    train_monitor_loader = make_loader(
+        store, dataset, "train", batch_size=config.batch_size, shuffle=False, seed=config.seed,
+        utterance_ids=train_monitor_ids,
     )
     validation_loader = make_loader(
         store, dataset, "validation", batch_size=config.batch_size, shuffle=False, seed=config.seed
@@ -377,20 +533,22 @@ def train_decoder(
     print(f"[{dataset} seed={config.seed}] class_weighting={config.class_weighting}", flush=True)
     for epoch in range(start_epoch, config.epochs + 1):
         epoch_started = perf_counter()
-        epoch_timing: dict[str, Any] = {"epoch": epoch, "train": {}, "train_evaluation": {}, "validation": {}}
+        epoch_timing: dict[str, Any] = {"epoch": epoch, "train": {}, "train_monitor": {}, "validation": {}}
         train_loss = train_one_epoch(
             model, optimizer, train_loader, device, timings=epoch_timing["train"],
             class_weights=loss_config["class_weights"],
         )
-        train_evaluation_started = perf_counter()
-        train_metrics = evaluate_loader_metrics(
-            model, train_evaluation_loader, device, timings=epoch_timing["train_evaluation"]
+        train_monitor_started = perf_counter()
+        train_monitor_metrics = evaluate_loader_metrics(
+            model, train_monitor_loader, device, timings=epoch_timing["train_monitor"]
         )
-        epoch_timing["train_evaluation_seconds"] = perf_counter() - train_evaluation_started
+        epoch_timing["train_monitor_evaluation_seconds"] = perf_counter() - train_monitor_started
         validation_started = perf_counter()
         validation = evaluate_loader_metrics(model, validation_loader, device, timings=epoch_timing["validation"])
         epoch_timing["validation_seconds"] = perf_counter() - validation_started
-        history.append({"epoch": epoch, "train_loss": train_loss, "train": train_metrics, "validation": validation})
+        history_entry = {"epoch": epoch, "train_loss": train_loss, "validation": validation}
+        history_entry[train_history_key] = train_monitor_metrics
+        history.append(history_entry)
         save_started = perf_counter()
         improved = best_metrics is None or selection_key(validation) > selection_key(best_metrics)
         if improved:
@@ -420,6 +578,7 @@ def train_decoder(
                 parent_checkpoint_sha256=preserved_parent_hash,
                 loss_config=loss_config,
                 history_metadata=history_metadata,
+                **checkpoint_monitoring_fields,
             )
         else:
             epochs_without_improvement += 1
@@ -445,6 +604,7 @@ def train_decoder(
             parent_checkpoint_sha256=preserved_parent_hash,
             loss_config=loss_config,
             history_metadata=history_metadata,
+            **checkpoint_monitoring_fields,
         )
         epoch_timing["save_seconds"] = perf_counter() - save_started
         epoch_timing["total_seconds"] = perf_counter() - epoch_started
@@ -453,13 +613,13 @@ def train_decoder(
         print(
             f"[{dataset} seed={config.seed} epoch={epoch}/{config.epochs} class_weighting={config.class_weighting}]\n"
             f"                 UAR      macro F1\n"
-            f"  train          {train_metrics['uar']:.4f}   {train_metrics['macro_f1']:.4f}\n"
+            f"  train monitor  {train_monitor_metrics['uar']:.4f}   {train_monitor_metrics['macro_f1']:.4f}\n"
             f"  validation     {validation['uar']:.4f}   {validation['macro_f1']:.4f}\n"
-            f"  accuracy（参考） train={train_metrics['wa']:.4f}  validation={validation['wa']:.4f}\n"
+            f"  accuracy（参考） train monitor={train_monitor_metrics['wa']:.4f}  validation={validation['wa']:.4f}\n"
             f"  best epoch={best_epoch}  選択基準: validation UAR → macro F1 → loss\n"
             f"  time batch={epoch_timing['train']['batch_prepare_seconds']:.2f}s "
             f"train={epoch_timing['train']['compute_seconds']:.2f}s "
-            f"train_eval={epoch_timing['train_evaluation_seconds']:.2f}s "
+            f"train_monitor_eval={epoch_timing['train_monitor_evaluation_seconds']:.2f}s "
             f"validation={epoch_timing['validation_seconds']:.2f}s "
             f"save={epoch_timing['save_seconds']:.2f}s",
             flush=True,
@@ -493,8 +653,47 @@ def train_decoder(
             parent_checkpoint_sha256=preserved_parent_hash,
             loss_config=loss_config,
             history_metadata=history_metadata,
+            **checkpoint_monitoring_fields,
         )
     model.load_state_dict(best_state, strict=True)
+
+    best_monitor_metrics = next(
+        (entry.get(train_history_key) for entry in history if entry["epoch"] == best_epoch),
+        None,
+    )
+    best_train_timing: dict[str, Any] = {}
+    if train_monitoring["is_subset"] or best_monitor_metrics is None:
+        full_train_loader = make_loader(
+            store, dataset, "train", batch_size=config.batch_size, shuffle=False, seed=config.seed
+        )
+        best_train_evaluation_started = perf_counter()
+        best_training_metrics = evaluate_loader_metrics(
+            model, full_train_loader, device, timings=best_train_timing
+        )
+        best_train_evaluation_seconds = perf_counter() - best_train_evaluation_started
+        reused_train_monitor = False
+    else:
+        best_training_metrics = copy.deepcopy(best_monitor_metrics)
+        best_train_evaluation_seconds = 0.0
+        reused_train_monitor = True
+    timings["best_train_evaluation"] = best_train_timing
+    timings["best_train_evaluation_seconds"] = best_train_evaluation_seconds
+    timings["best_train_evaluation_reused_from_monitor"] = reused_train_monitor
+
+    # Preserve every checkpoint state/identity field and atomically add only the
+    # final full-train result and its separately measured evaluation duration.
+    update_decoder_checkpoint_results(
+        best_path,
+        best_training_metrics=best_training_metrics,
+        best_train_evaluation_seconds=best_train_evaluation_seconds,
+        best_train_evaluation_reused_from_monitor=reused_train_monitor,
+    )
+    update_decoder_checkpoint_results(
+        last_path,
+        best_training_metrics=best_training_metrics,
+        best_train_evaluation_seconds=best_train_evaluation_seconds,
+        best_train_evaluation_reused_from_monitor=reused_train_monitor,
+    )
     timings["finalize_seconds"] = perf_counter() - final_save_started
     timings["total_seconds"] = perf_counter() - started
     _atomic_json(timings, timing_path)
@@ -506,11 +705,13 @@ def train_decoder(
         "best_checkpoint": str(best_path),
         "resume_checkpoint": str(last_path),
         "best_epoch": best_epoch,
-        "best_training_metrics": next((entry.get("train") for entry in history if entry["epoch"] == best_epoch), None),
+        "best_training_metrics": best_training_metrics,
         "best_validation_metrics": best_metrics,
         "history": history,
         "parent_checkpoint_id": parent_payload["checkpoint_id"] if parent_payload else None,
         "config": asdict(config),
+        "monitoring_config": monitoring_config_payload,
+        "train_monitoring": train_monitoring,
         "loss_config": loss_config,
         "history_metadata": history_metadata,
         "timings": timings,
@@ -579,6 +780,8 @@ def evaluate_checkpoint(
 __all__ = [
     "CachedFeatureDataset",
     "TrainingConfig",
+    "TrainingMonitoringConfig",
+    "build_train_monitoring",
     "collate_features",
     "evaluate_checkpoint",
     "evaluate_loader_metrics",

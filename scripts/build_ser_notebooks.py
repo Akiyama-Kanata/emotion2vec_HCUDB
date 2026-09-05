@@ -766,7 +766,7 @@ from ser_pipeline.study import (
     DatasetArtifacts, prepare_study_stores, require_formal_epochs,
     run_transfer_study, summarize_study, FinalEvaluationTarget, run_final_evaluations,
 )
-from ser_pipeline.training import TrainingConfig
+from ser_pipeline.training import TrainingConfig, TrainingMonitoringConfig
 
 STUDY_DATASETS = ('msp_podcast', 'hcudb1')
 
@@ -834,6 +834,7 @@ CONFIRM_CACHE_VALIDATION = False
 CONFIRM_BENCHMARK_AND_CAPACITY = False
 CONFIRM_SMOKE_COMPLETED = False
 CONFIRM_SEED_42_ARTIFACTS = False
+TRAINING_MONITORING_CONFIG = TrainingMonitoringConfig(max_epoch_samples=2000, sampling_seed=0)
 
 # 新しい学習には既存結果と別の出力先を指定します。
 ARTIFACT_DIR = PROJECT_ROOT / 'runs' / 'ser_decoder_study'
@@ -847,6 +848,35 @@ SAVED_FOLLOWUP_SUMMARY = ARTIFACT_DIR / 'formal' / 'followup-seeds-43-44' / 'stu
     ),
     code(
         """
+import os
+from pathlib import Path
+
+PROJECT_ROOT = Path.cwd()
+if not (PROJECT_ROOT / "ser_pipeline").is_dir():
+    PROJECT_ROOT = PROJECT_ROOT.parent
+
+MANIFEST_DIR = PROJECT_ROOT / "runs" / "ser_manifests"
+CACHE_DIR = PROJECT_ROOT / "runs" / "ser_feature_cache"
+
+artifact_paths = {
+    "SER_MSP_PODCAST_MANIFEST": MANIFEST_DIR / "msp_podcast_4class_v1.jsonl",
+    "SER_MSP_PODCAST_CACHE": CACHE_DIR / "msp_podcast_base_final_v1",
+    "SER_MSP_PODCAST_EXCLUSION_CONTRACT": MANIFEST_DIR / "msp_missing_audio_exclusions_v1.json",
+    "SER_MSP_PODCAST_DUPLICATE_AUDIT": MANIFEST_DIR / "msp_audio_duplicate_audit_v1.json",
+    "SER_MSP_PODCAST_DUPLICATE_EXCLUSION_CONTRACT": MANIFEST_DIR / "msp_audio_duplicate_exclusions_v1.json",
+    "SER_HCUDB1_MANIFEST": MANIFEST_DIR / "hcudb1_4class_v1.jsonl",
+    "SER_HCUDB1_CACHE": CACHE_DIR / "hcudb1_base_final_v1",
+}
+
+for name, path in artifact_paths.items():
+    os.environ[name] = str(path)
+
+{name: {"path": str(path), "exists": path.exists()} for name, path in artifact_paths.items()}
+        """,
+        "study-artifact-paths",
+    ),
+    code(
+        """
 {
     'datasets': STUDY_DATASETS,
     'device': 'cpu',
@@ -855,6 +885,7 @@ SAVED_FOLLOWUP_SUMMARY = ARTIFACT_DIR / 'formal' / 'followup-seeds-43-44' / 'stu
     'run_formal_seeds_43_44': RUN_FORMAL_SEEDS_43_44,
     'formal_epochs': FORMAL_EPOCHS,
     'training_config': TrainingConfig(device='cpu', epochs=FORMAL_EPOCHS),
+    'monitoring_config': TRAINING_MONITORING_CONFIG,
     'new_output': TRAINING_OUTPUT_DIR,
     'seed_42_output_exists': (TRAINING_OUTPUT_DIR / 'formal' / 'initial-seed-42').exists(),
     'saved_summaries': [SAVED_SMOKE_SUMMARY, SAVED_SEED_42_SUMMARY, SAVED_FOLLOWUP_SUMMARY],
@@ -866,7 +897,7 @@ SAVED_FOLLOWUP_SUMMARY = ARTIFACT_DIR / 'formal' / 'followup-seeds-43-44' / 'stu
         """
 ## 3. 実データ1 epoch疎通（正式集計外）
 
-seed 42でMSP親学習→HCUDB継続学習を1 epochずつ行い、train・validationを確認します。出力は`smoke/`に隔離され、正式結果には混ぜません。Falseのままなら指定summaryだけを読み、scoreと折りたたみlossを再表示します。
+seed 42でMSP親学習→HCUDB継続学習を1 epochずつ行い、train監視値・validationを確認します。MSPの監視はクラス比を保つ固定2,000件、2,000件以下のHCUDBは全trainです。出力は`smoke/`に隔離され、正式結果には混ぜません。Falseのままなら指定summaryだけを読み、scoreと折りたたみlossを再表示します。
         """,
         "smoke-heading",
     ),
@@ -879,6 +910,7 @@ if RUN_REAL_SMOKE:
         TRAINING_OUTPUT_DIR / 'smoke',
         seeds=(42,),
         base_config=TrainingConfig(seed=42, device='cpu', epochs=1),
+        monitoring_config=TRAINING_MONITORING_CONFIG,
         stores=smoke_stores,
     )
 else:
@@ -897,9 +929,9 @@ summarize_study(smoke_summary)
 
 1 epoch疎通の時間と履歴を確認し、`FORMAL_EPOCHS = 10`、seed 42で実行します。学習フラグがFalseなら指定summaryを再表示します。新しい学習の保存先は既存結果と分けます。
 
-各epochでtrainとvalidationの **UAR・macro F1**、accuracy（参考）、共通のbest epochを表示します。両splitは最終更新後の同じモデルで評価します。既存の評価を再利用し、loss表示のための追加評価はありません。
-このセル内に **UAR（主指標）→ Macro F1 → Accuracy（参考）** の曲線と、直下に **lossを確認：split間の比較用／最適化に使用したloss** の折りたたみを表示します。青はtrain、橙はvalidation、灰色破線はvalidation UAR → macro F1 → lossで選んだ共通のbest epochです。
-比較用lossは両splitとも重みなし・全発話平均。最適化lossは更新中の各バッチlossの単純平均です。未記録は欠測のまま表示します。trainの改善に対しvalidationが停滞・悪化する場合は過学習を疑う材料、両方のscoreが低い場合は学習不足などを調べる材料とし、原因を断定しません。
+各epochで **train（固定2,000件・参考）** とvalidation全3,600件のUAR・macro F1、accuracy（参考）、共通のbest epochを表示します。固定集合は発話IDの安定SHA-256順位で一度だけ選び、全seed・全設定で共通です。監視はcheckpoint選択や正式結果に使いません。
+このセル内に **UAR（主指標）→ Macro F1 → Accuracy（参考）** の曲線と、直下に **lossを確認：split間の比較用／最適化に使用したloss** の折りたたみを表示します。青はtrain監視、橙はvalidation、灰色破線はvalidation UAR → macro F1 → lossで選んだ共通のbest epochです。
+学習終了後、best状態をtrain全15,524件で1回だけ評価し、正式なtrain結果を曲線とは別表に表示します。HCUDBは毎epochの監視自体が全1,500件なので重複評価を省略します。未記録は欠測のまま表示します。
         """,
         "formal-seed-42-heading",
     ),
@@ -915,6 +947,7 @@ if RUN_FORMAL_SEED_42:
         TRAINING_OUTPUT_DIR / 'formal' / 'initial-seed-42',
         seeds=(42,),
         base_config=TrainingConfig(seed=42, device='cpu', epochs=formal_epochs),
+        monitoring_config=TRAINING_MONITORING_CONFIG,
         stores=formal_stores,
     )
 else:
@@ -933,7 +966,7 @@ summarize_study(formal_seed_42_summary)
 
 seed 42のcheckpoint、train・validationの集合情報、cache ID、設定値を確認した後だけ実行します。過去summaryではmanifest情報を確認します。出力はseed 42の正式出力と分けて保存します。
 
-seed 42と同様に、各epochのtrain・validationのUAR・macro F1・accuracyを表示します。
+seed 42と同様に、各epochの固定train監視集合・validation全件のUAR・macro F1・accuracyを表示し、bestモデルのtrain全件結果は別表にします。
 同じセル内にseed・データセットごとのscore曲線と折りたたみlossを表示します。Falseのままなら指定summaryだけを読みます。
         """,
         "formal-followup-heading",
@@ -950,6 +983,7 @@ if RUN_FORMAL_SEEDS_43_44:
         TRAINING_OUTPUT_DIR / 'formal' / 'followup-seeds-43-44',
         seeds=(43, 44),
         base_config=TrainingConfig(seed=43, device='cpu', epochs=formal_epochs),
+        monitoring_config=TRAINING_MONITORING_CONFIG,
         stores=followup_stores,
     )
 else:
@@ -1001,11 +1035,12 @@ for _msp_module_name in ('ser_pipeline.checkpoints', 'ser_pipeline.training', 's
 from ser_pipeline.cache import ShardedFeatureStore
 from ser_pipeline.notebook_api import display_training_history, load_saved_summary
 from ser_pipeline.study import DatasetArtifacts, load_msp_comparison_baselines, run_msp_loss_comparison
-from ser_pipeline.training import TrainingConfig, training_loss_config
+from ser_pipeline.training import TrainingConfig, TrainingMonitoringConfig, training_loss_config
 
 RUN_MSP_WEIGHTED_TRAINING = False  # 学習を開始するとき True にする
 MSP_COMPARISON_SEEDS = (42,)  # 次に (43, 44) で同じ比較を行う
 MSP_COMPARISON_CONFIG = TrainingConfig(device='cpu', epochs=10, batch_size=8)
+MSP_MONITORING_CONFIG = TrainingMonitoringConfig(max_epoch_samples=2000, sampling_seed=0)
 MSP_COMPARISON_OUTPUT = PROJECT_ROOT / 'runs' / 'msp_class_weight_comparison' / (
     'seeds-' + '-'.join(str(seed) for seed in MSP_COMPARISON_SEEDS)
 )
@@ -1073,7 +1108,7 @@ else:
         """
 ### 6.3 MSPの重みあり学習を実行
 
-各epochでtrain・validationのUAR・macro F1、accuracy（参考）、共通のbest epochを表示します。同じセル内にscore曲線と折りたたみlossを表示します。train評価時間・epoch全体に占める割合も保存済みtimingから確認できます。
+各epochでtrain（固定2,000件・参考）・validation全件のUAR・macro F1、accuracy（参考）、共通のbest epochを表示します。同じセル内にscore曲線と折りたたみloss、別表にbestモデルのtrain全件結果を表示します。train監視評価時間・最後のtrain全件評価時間は分けて確認できます。
 Falseなら`MSP_SAVED_COMPARISON_SUMMARY`を読み、同じ表示を行います。cache検証・学習・モデル評価は起動しません。過去の未記録train score/lossは欠測として扱います。新しく学習した場合に限り`.scores.png`と`.losses.png`を保存します。
         """, "msp-loss-run-heading",
     ),
@@ -1082,7 +1117,8 @@ Falseなら`MSP_SAVED_COMPARISON_SUMMARY`を読み、同じ表示を行います
 if RUN_MSP_WEIGHTED_TRAINING:
     msp_loss_comparison = run_msp_loss_comparison(
         MSP_COMPARISON_ARTIFACT, MSP_TRAINING_OUTPUT, MSP_BASELINE_SUMMARIES,
-        seeds=MSP_COMPARISON_SEEDS, base_config=MSP_COMPARISON_CONFIG, store=msp_comparison_store,
+        seeds=MSP_COMPARISON_SEEDS, base_config=MSP_COMPARISON_CONFIG,
+        monitoring_config=MSP_MONITORING_CONFIG, store=msp_comparison_store,
     )
 else:
     msp_loss_comparison = load_saved_summary(MSP_SAVED_COMPARISON_SUMMARY)

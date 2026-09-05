@@ -16,6 +16,7 @@ from .model import BaseModel
 
 
 TRAINING_STAGES = ("msp_train", "hcudb_continue")
+_UNSET = object()
 
 
 def decoder_signature(model: BaseModel, seed: int, cache_meta: Mapping[str, Any]) -> dict[str, Any]:
@@ -49,7 +50,7 @@ def validate_signature(actual: Mapping[str, Any], expected: Mapping[str, Any], *
             raise ValueError(f"{context} checkpoint signature mismatch for {key}")
 
 
-def _safe_torch_load(path: Path, map_location: str | torch.device = "cpu") -> dict[str, Any]:
+def _safe_torch_load(path: Path, map_location: str | torch.device | None = "cpu") -> dict[str, Any]:
     try:
         payload = torch.load(path, map_location=map_location, weights_only=True)
     except TypeError:  # PyTorch 1.x compatibility
@@ -64,7 +65,7 @@ def load_decoder_checkpoint(
     *,
     expected_signature: Mapping[str, Any] | None = None,
     expected_stage: str | None = None,
-    map_location: str | torch.device = "cpu",
+    map_location: str | torch.device | None = "cpu",
 ) -> dict[str, Any]:
     checkpoint_path = Path(path)
     payload = _safe_torch_load(checkpoint_path, map_location=map_location)
@@ -116,6 +117,8 @@ def save_decoder_checkpoint(
     parent_checkpoint_sha256: str | None = None,
     loss_config: Mapping[str, Any] | None = None,
     history_metadata: Mapping[str, Any] | None = None,
+    monitoring_config: Mapping[str, Any] | None | object = _UNSET,
+    train_monitoring: Mapping[str, Any] | object = _UNSET,
 ) -> dict[str, Any]:
     if training_stage not in TRAINING_STAGES:
         raise ValueError(f"invalid training_stage: {training_stage}")
@@ -166,8 +169,33 @@ def save_decoder_checkpoint(
     }
     if history_metadata is not None:
         payload["history_metadata"] = dict(history_metadata)
+    if monitoring_config is not _UNSET:
+        payload["monitoring_config"] = dict(monitoring_config) if monitoring_config is not None else None
+    if train_monitoring is not _UNSET:
+        payload["train_monitoring"] = dict(train_monitoring)
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
+    partial = output.with_name(output.name + ".partial")
+    torch.save(payload, partial)
+    partial.replace(output)
+    return payload
+
+
+def update_decoder_checkpoint_results(
+    path: str | Path,
+    *,
+    best_training_metrics: Mapping[str, Any],
+    best_train_evaluation_seconds: float,
+    best_train_evaluation_reused_from_monitor: bool,
+) -> dict[str, Any]:
+    """Atomically add final train results without rebuilding checkpoint state."""
+    output = Path(path)
+    payload = load_decoder_checkpoint(output, map_location=None)
+    payload["best_training_metrics"] = dict(best_training_metrics)
+    payload["best_train_evaluation_seconds"] = float(best_train_evaluation_seconds)
+    payload["best_train_evaluation_reused_from_monitor"] = bool(
+        best_train_evaluation_reused_from_monitor
+    )
     partial = output.with_name(output.name + ".partial")
     torch.save(payload, partial)
     partial.replace(output)
@@ -198,6 +226,7 @@ def restore_resume(
     training_stage: str,
     *,
     expected_loss_config: Mapping[str, Any] | None = None,
+    expected_monitoring_config: Mapping[str, Any] | None | object = _UNSET,
 ) -> dict[str, Any]:
     payload = load_decoder_checkpoint(
         resume_path,
@@ -212,6 +241,14 @@ def restore_resume(
                 raise ValueError("resume checkpoint loss configuration mismatch: legacy unweighted loss")
         elif saved_loss != dict(expected_loss_config):
             raise ValueError("resume checkpoint loss configuration mismatch")
+    if expected_monitoring_config is not _UNSET:
+        if "monitoring_config" not in payload:
+            if expected_monitoring_config is not None:
+                raise ValueError("resume checkpoint monitoring configuration mismatch: legacy full-train monitoring")
+        else:
+            expected = dict(expected_monitoring_config) if expected_monitoring_config is not None else None
+            if payload["monitoring_config"] != expected:
+                raise ValueError("resume checkpoint monitoring configuration mismatch")
     model.load_state_dict(payload["model_state_dict"], strict=True)
     optimizer.load_state_dict(payload["optimizer_state_dict"])
     return payload
@@ -225,5 +262,6 @@ __all__ = [
     "restore_parent",
     "restore_resume",
     "save_decoder_checkpoint",
+    "update_decoder_checkpoint_results",
     "validate_signature",
 ]

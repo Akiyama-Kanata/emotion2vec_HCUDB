@@ -138,6 +138,7 @@ class SerLossComparisonTest(unittest.TestCase):
         self.write_summary()
 
     def tearDown(self):
+        self.store._arrays.clear()
         del self.store
         self.temporary.cleanup()
 
@@ -188,15 +189,15 @@ class SerLossComparisonTest(unittest.TestCase):
         self.assertIsNot(train.call_args.args[2], evaluate.call_args_list[0].args[1])
         self.assertEqual(result["best_epoch"], 1)  # Selection uses validation, not improving train scores.
         self.assertEqual(result["best_training_metrics"], train_metrics[0])
-        self.assertEqual([entry["train"] for entry in result["history"]], train_metrics)
+        self.assertEqual([entry["train_monitor"] for entry in result["history"]], train_metrics)
         self.assertEqual([entry["validation"] for entry in result["history"]], validation_metrics)
         self.assertEqual(self.store.validation_count, 1)
-        self.assertIn("train          0.7000   0.4000", output.getvalue())
+        self.assertIn("train monitor  0.7000   0.4000", output.getvalue())
         self.assertIn("validation     0.5000   0.4000", output.getvalue())
-        self.assertIn("accuracy（参考） train=0.6000  validation=0.6000", output.getvalue())
+        self.assertIn("accuracy（参考） train monitor=0.6000  validation=0.6000", output.getvalue())
         self.assertIn("best epoch=1", output.getvalue())
         self.assertNotIn("train_loss=", output.getvalue())
-        self.assertIn("train_eval=", output.getvalue())
+        self.assertIn("train_monitor_eval=", output.getvalue())
         from ser_pipeline.checkpoints import load_decoder_checkpoint
         self.assertEqual(load_decoder_checkpoint(result["best_checkpoint"])["loss_config"], result["loss_config"])
         self.assertEqual(load_decoder_checkpoint(result["resume_checkpoint"])["history"], result["history"])

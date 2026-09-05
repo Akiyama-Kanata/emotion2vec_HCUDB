@@ -86,6 +86,8 @@ class SerCacheReuseTest(unittest.TestCase):
             with self.subTest(path=path.name):
                 store = self.store()
                 store.get(store.utterance_ids(split="train")[0])
+                # Windows does not allow replacing an open NumPy mmap file.
+                store._arrays.clear()
                 path.write_bytes(original + b"broken")
                 try:
                     with self.assertRaises(ValueError):
@@ -311,6 +313,8 @@ class SerCacheReuseTest(unittest.TestCase):
         # MSP-only evaluation does not require HCUDB inputs.
         with redirect_stdout(io.StringIO()), patch("ser_pipeline.study.train_decoder", side_effect=AssertionError("must not train")):
             single = run_final_evaluations({"msp_podcast": self.artifact}, targets[:1], self.root / "single", device="cpu", stores={"msp_podcast": stores["msp_podcast"]})
+        for store in stores.values():
+            store._arrays.clear()
         self.assertEqual(len(single["evaluations"]), 1)
 
     def test_final_preflight_rejects_all_invalid_targets_before_any_evaluation(self):

@@ -1,18 +1,25 @@
 # Testing
 
-This repository uses a dedicated WSL/Ubuntu Python environment for tests.
-Run tests with the following command from Windows:
+## Current non-training verification (2026-09-08)
 
-```bash
-wsl -d Ubuntu-Recovered --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec -e /home/akiyama/miniforge/envs/emotion2vec-py310/bin/python -m unittest discover -s tests
+Independent VAD code and tests are retired. See [RETIRED_VAD.md](RETIRED_VAD.md)
+for their location, ledger, and restoration instructions. Dated verification
+records below describe the repository at those dates and remain unchanged.
+
+Run the selected non-training SER, compatibility, and notebook checks from Windows:
+
+```powershell
+wsl -d Ubuntu-Recovered --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec -e /home/akiyama/miniforge/envs/emotion2vec-py310/bin/python -B -m unittest tests.test_ser_mappings tests.test_ser_splits tests.test_ser_manifest tests.test_ser_exclusions tests.test_ser_decoder tests.test_ser_cache_reuse tests.test_ser_notebook_boundaries tests.test_ser_duplicates tests.test_iemocap_notebook_pipeline.IemocapNotebookPipelineTest.test_device_resolution tests.test_iemocap_notebook_pipeline.IemocapNotebookPipelineTest.test_aggregate_validation_and_session_split tests.test_iemocap_notebook_pipeline.IemocapNotebookPipelineTest.test_select_best_experiment_tie_break_order_and_base_preference tests.test_iemocap_notebook_pipeline.IemocapNotebookPipelineTest.test_five_fold_selects_between_candidates_before_each_test tests.test_iemocap_notebook_pipeline.IemocapNotebookPipelineTest.test_lecture_notebook_has_one_line_experiments_and_final_table -v
 ```
 
-Expected result:
-
-```text
-Ran 122 tests in ...s
-OK
-```
+These checks use synthetic data, initialized models and mocked training. They
+perform no optimizer updates, feature extraction, or real-model inference.
+Verified on 2026-09-08: **54 tests passed in 37.865 seconds**; the complete
+[test output](docs/maintenance/vad-retirement-2026-09-08/non-training-tests.txt)
+is retained with the retirement ledger.
+Do not use unrestricted test discovery for this verification: retained IEMOCAP,
+SER end-to-end and monitoring integration tests include training. Full notebook
+execution and learning regressions remain user-run operations.
 
 Standard environment:
 

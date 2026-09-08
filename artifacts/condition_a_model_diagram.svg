@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2500" height="440" viewBox="0 0 2500 440"><title>条件Aのモデル構成</title><desc>音声から固定したemotion2vec Baseでフレームごとの768次元特徴を抽出する。学習対象の分類器は768から256次元の全結合層、ReLU、時間方向の平均、256から4次元の全結合層で構成する。分類器をMSP-Podcastで学習した後、HCUDBで追加学習する。</desc><defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L10,5 L0,10 Z" fill="#64748B"/></marker></defs><rect width="2500" height="440" fill="white"/><g font-family="Meiryo, Yu Gothic, sans-serif" fill="#203044"><rect x="852" y="56" width="1138" height="350" rx="20" fill="#FFFCF6" stroke="#C7954A" stroke-width="2.5" stroke-dasharray="10 7"/><text x="1421" y="111" text-anchor="middle" font-size="34" font-weight="bold" fill="#8B5C20">4クラス分類器（学習対象）</text>
+<path d="M171,242 H200" stroke="#64748B" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+<path d="M533,242 H562" stroke="#64748B" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+<path d="M835,242 H864" stroke="#64748B" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+<path d="M1147,242 H1176" stroke="#64748B" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+<path d="M1349,242 H1378" stroke="#64748B" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+<path d="M1661,242 H1690" stroke="#64748B" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+<path d="M1973,242 H2050" stroke="#64748B" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+<rect x="32" y="164" width="130" height="156" rx="13" fill="#F6F8FB" stroke="#8796A7" stroke-width="2.5"/>
+<text x="97" y="254" text-anchor="middle" font-size="30" font-weight="bold">音声</text>
+<rect x="214" y="164" width="310" height="156" rx="13" fill="#EAF2FB" stroke="#527BA8" stroke-width="2.5"/>
+<text x="369" y="229" text-anchor="middle" font-size="29" font-weight="bold">emotion2vec Base</text>
+<text x="369" y="278" text-anchor="middle" font-size="30">重みを固定</text>
+<rect x="576" y="164" width="250" height="156" rx="13" fill="#F6F8FB" stroke="#8796A7" stroke-width="2.5"/>
+<text x="701" y="229" text-anchor="middle" font-size="30" font-weight="bold">各フレームの特徴</text>
+<text x="701" y="278" text-anchor="middle" font-size="30">768次元</text>
+<rect x="878" y="164" width="260" height="156" rx="13" fill="#FFF9EE" stroke="#B88236" stroke-width="2.5"/>
+<text x="1008" y="229" text-anchor="middle" font-size="30" font-weight="bold">全結合層</text>
+<text x="1008" y="278" text-anchor="middle" font-size="30">768 → 256</text>
+<rect x="1190" y="164" width="150" height="156" rx="13" fill="#FFF9EE" stroke="#B88236" stroke-width="2.5"/>
+<text x="1265" y="254" text-anchor="middle" font-size="30" font-weight="bold">ReLU</text>
+<rect x="1392" y="164" width="260" height="156" rx="13" fill="#FFF9EE" stroke="#B88236" stroke-width="2.5"/>
+<text x="1522" y="254" text-anchor="middle" font-size="30" font-weight="bold">時間方向に平均</text>
+<rect x="1704" y="164" width="260" height="156" rx="13" fill="#FFF9EE" stroke="#B88236" stroke-width="2.5"/>
+<text x="1834" y="229" text-anchor="middle" font-size="30" font-weight="bold">全結合層</text>
+<text x="1834" y="278" text-anchor="middle" font-size="30">256 → 4</text>
+<rect x="2064" y="164" width="390" height="156" rx="13" fill="#F6F8FB" stroke="#8796A7" stroke-width="2.5"/>
+<text x="2259" y="229" text-anchor="middle" font-size="30" font-weight="bold">感情分類</text>
+<text x="2259" y="278" text-anchor="middle" font-size="30">ang / hap / sad / dis</text>
+<text x="1421" y="373" text-anchor="middle" font-size="28" fill="#805D2D">MSP-Podcastで学習 → HCUDBで追加学習</text></g></svg>

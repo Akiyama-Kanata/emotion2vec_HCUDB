@@ -1,5 +1,7 @@
 # emotion2vec ファイル構造マップ
 
+> 2026-09-08: 独立VAD実装・専用Notebook・専用テストはリポジトリ外へ移動しました。[保管先・台帳・復元手順](RETIRED_VAD.md)を参照してください。本文に残すVADの説明は保管した実装の参考情報です。
+
 emotion2vecリポジトリの各ファイル・ディレクトリの役割をまとめたリファレンス。
 
 ## 論文
@@ -41,13 +43,9 @@ emotion2vec/
 │       ├── emotion2vec_speech_features.py   # バッチ特徴抽出スクリプト（TSV形式入力）
 │       ├── iemocap_manifest_and_labels.sh   # IEMOCAPのmanifest生成シェルラッパー
 │       └── iemocap_manifest.py              # IEMOCAPのmanifest・ラベル生成
-├── vad_downstream/     # VA/VAD連続値回帰の下流タスク
-│   ├── README.md            # .npy/.lengths/.vad のデータ契約
-│   ├── data.py              # VAD/VA用データローダー
-│   ├── model.py             # 回帰headとemotion2vec込み全体モデル
-│   ├── training.py          # CCC loss、学習、評価、head checkpoint保存
-│   ├── train_head.py        # .npy/.lengths/.vadから回帰headを学習・保存するCLI
-│   └── inference.py         # WAV→VA/VAD JSON出力のStage 1/2/3 CLI
+├── ser_pipeline/       # 現行SERのデータ・特徴・分類・評価処理
+├── notebooks/          # SER実験・IEMOCAP互換・HCUDB分析等
+├── RETIRED_VAD.md      # VAD保管先・台帳・復元手順
 ├── scripts/            # 汎用特徴抽出スクリプト
 │   ├── extract_features.py  # 単一WAVファイルから特徴抽出
 │   ├── extract_features.sh  # 上記のシェルラッパー
@@ -60,7 +58,7 @@ emotion2vec/
 │   ├── Languages.png
 │   ├── UMAP.png
 │   └── Wechat.jpg
-├── plans/              # （空）
+├── docs/               # 計画・研究資料・整理台帳
 ├── README.md           # プロジェクト全体の説明・使い方
 └── .gitignore
 ```
@@ -181,53 +179,10 @@ emotion2vec/
 
 ---
 
-### vad_downstream/README.md
-**役割**: VA/VAD回帰用の中間データ契約を定義。
+### 独立VAD実装の保管
 
-- `<prefix>.npy`: frame-level emotion2vec特徴量 `(total_frames, 768)`
-- `<prefix>.lengths`: 1発話1行のフレーム数
-- `<prefix>.vad`: `utterance_id<TAB>valence<TAB>arousal` または dominance 付き
-- ラベル値域は正規化済み `[-1.0, 1.0]`
-
-### vad_downstream/data.py
-**役割**: `.npy`、`.lengths`、`.vad` を読み込み、padding済みbatchへ変換。
-
-- `load_vad_dataset()`: 特徴量、発話長、VA/VAD target、utterance_idを読み込む
-- `VADSpeechDataset`: `net_input.feats`、`net_input.padding_mask`、`target` を返す
-
-### vad_downstream/model.py
-**役割**: VA/VAD連続値回帰モデルを定義。
-
-- `VADRegressionHead`: frame-level特徴量をmasked mean poolingし、VA/VADを出力
-- `Emotion2vecVADModel`: 音声波形テンソルからemotion2vec特徴抽出を経て同じheadで回帰
-
-### vad_downstream/training.py
-**役割**: VA/VAD回帰の学習・評価・head保存を定義。
-
-- `concordance_correlation_coefficient()`: target次元ごとのCCCを計算
-- `ccc_loss()`: `1 - mean(CCC)` を学習lossとして返す
-- `train_one_epoch()`: README準拠batchを1epoch学習する
-- `evaluate()`: 全batchのprediction/targetを結合してglobal CCCとlossを返す
-- `save_head_checkpoint()`: `head_state_dict`、`target_dim`、`input_dim`、`hidden_dim`、`metadata`を保存する
-
-### vad_downstream/train_head.py
-**役割**: 事前抽出済みemotion2vec特徴から`VADRegressionHead`を学習・保存するCLI。
-
-- 実行形式: `python -m vad_downstream.train_head`
-- 入力: `--train-prefix` と任意の `--valid-prefix`
-- Optimizer: `torch.optim.AdamW`
-- 検証prefixがある場合は`mean_ccc`最大epochのheadを保存
-- 検証prefixがない場合は最終epochのheadを保存
-- stdoutに最終summary JSONを出力
-
-### vad_downstream/inference.py
-**役割**: WAVからVA/VAD JSONを出す段階実装CLI。
-
-- Stage 1: `--allow-random-head` 指定時だけ未学習headでJSON出力まで通す疎通確認
-- Stage 2: `--model-dir` と `--checkpoint` 指定時に実emotion2vec checkpointをfairseq経由で読み込む
-- Stage 3: `--head-checkpoint` で学習済みheadを読み込み、checkpoint内の`target_dim`をCLI指定値と検証
-- 出力JSON: `labels`、`prediction`、`head_checkpoint`、`random_head`
-- `--head-checkpoint` がない場合は原則エラー
+VADパッケージと専用資料は[保管案内](RETIRED_VAD.md)に移しました。
+元の相対パスとSHA-256は台帳から確認できます。特徴キャッシュ・checkpoint・画像は現位置に保持しています。
 
 ---
 

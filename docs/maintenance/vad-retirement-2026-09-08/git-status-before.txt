@@ -1,0 +1,8 @@
+ M docs/plans/2026-08-22-msp-hcudb-feature-decoder-plan.md
+ M docs/plans/2026-08-22-plan-mode-implementation-prompt.md
+ D src/vad_mediated_emotion_structure.svg
+?? "artifacts/Codex 画像 2026年9月5日 12_03_00.png"
+?? artifacts/condition_a_model_diagram.png
+?? artifacts/condition_a_model_diagram.svg
+?? docs/maintenance/vad-retirement-2026-09-08/ledger.csv
+?? docs/maintenance/vad-retirement-2026-09-08/retirement.ps1

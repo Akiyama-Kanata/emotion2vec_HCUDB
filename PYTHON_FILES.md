@@ -1,5 +1,7 @@
 # Python ファイル索引
 
+> 2026-09-08: 独立VAD実装・専用Notebook・専用テストはリポジトリ外へ移動しました。[保管先・台帳・復元手順](RETIRED_VAD.md)を参照してください。本文に残すVADの説明は保管した実装の参考情報です。
+
 このリポジトリでは、既存ファイルの編集時に別名のバックアップを作らず、
 Git の履歴を復元手段として使います。`*_old.py`、`*_backup.py`、`*_v2.py`
 などは作成しません。
@@ -15,7 +17,7 @@ Git の履歴を復元手段として使います。`*_old.py`、`*_backup.py`�
 | `upstream/` | 現行・外部由来 | emotion2vec 本体と fairseq 事前学習タスク |
 | `ser_pipeline/` | 現行 | データセット横断のカテゴリ感情分類パイプライン |
 | `iemocap_downstream/` | 現行・互換 | IEMOCAP ベースラインとノートブック用処理 |
-| `vad_downstream/` | 現行 | 連続感情値とカテゴリ感情を扱う下流処理 |
+| [VAD保管案内](RETIRED_VAD.md) | リポジトリ外 | 独立VAD実装と専用テストの台帳 |
 | `scripts/` | 補助 | 特徴抽出とノートブック生成 |
 | `tests/` | 検証 | 現行コードと生成ノートブックの回帰テスト |
 | `archive/` | 過去コード | 現行実行系では参照しない保存物 |
@@ -63,28 +65,6 @@ Git の履歴を復元手段として使います。`*_old.py`、`*_backup.py`�
 - `iemocap_downstream/scripts/emotion2vec_speech_features.py`: マニフェストから特徴量を抽出。
 - `iemocap_downstream/scripts/csv_to_labels.py`: CSV メタデータをラベルファイルへ変換。
 
-## `vad_downstream/`: 連続感情値・カテゴリ感情
-
-- `vad_downstream/__init__.py`: パッケージ説明。
-- `vad_downstream/data.py`: 2種類の入力契約（CSV＋個別キャッシュ、連結済み特徴＋長さ）の読込。
-- `vad_downstream/model.py`: 回帰、VAD経由分類、並列分類・回帰のモデル定義。
-- `vad_downstream/loss.py`: 欠損ラベルをマスクできる CCC 損失。CSV 入力の学習で使用。
-- `vad_downstream/train_vad.py`: CSV の音声パスから特徴をキャッシュして回帰器を学習。
-- `vad_downstream/train_head.py`: 連結済み特徴から回帰ヘッドだけを学習。
-- `vad_downstream/training.py`: `train_head.py` 用の学習・評価・保存処理。
-- `vad_downstream/inference.py`: WAV から連続感情値を推論して JSON 出力。
-- `vad_downstream/train_vad_emotion.py`: 推定した連続感情値を経由するカテゴリ分類器を学習。
-- `vad_downstream/emotion_training.py`: VAD経由分類の損失、評価、保存処理。
-- `vad_downstream/infer_vad_emotion.py`: VAD経由分類と寄与度を JSON 出力。
-- `vad_downstream/train_parallel_emotion_vad.py`: 独立した感情分類ヘッドと V/A/D 回帰ヘッドを学習。
-- `vad_downstream/parallel_training.py`: 並列モデルの損失、評価、保存処理。
-- `vad_downstream/infer_parallel_emotion_vad.py`: 並列モデルのカテゴリ感情と V/A/D を推論。
-- `vad_downstream/notebook_pipeline.py`: 音声から感情・VADを扱うノートブック用処理。
-
-`train_vad.py` と `train_head.py` はバックアップ関係ではありません。前者は
-CSV と音声パスを入力にして特徴抽出・キャッシュも扱い、後者は既に連結済みの
-`<prefix>.npy/.lengths/.vad` を入力にしてヘッドだけを学習します。
-
 ## `scripts/`: 生成・抽出補助
 
 - `scripts/extract_features.py`: fairseq チェックポイントから特徴量を抽出。
@@ -95,8 +75,6 @@ CSV と音声パスを入力にして特徴抽出・キャッシュも扱い、�
 
 - `tests/test_emotion2vec_feature_device.py`: 特徴抽出時の CPU/GPU 配置を検証。
 - `tests/test_iemocap_notebook_pipeline.py`: IEMOCAP ノートブック処理を検証。
-- `tests/test_notebook_pipeline.py`: VAD ノートブック処理を検証。
-- `tests/test_parallel_emotion_vad.py`: 並列カテゴリ感情・VAD経路を検証。
 - `tests/test_ser_cache.py`: SER 特徴キャッシュと事前検査を検証。
 - `tests/test_ser_decoder.py`: SER デコーダ、評価、チェックポイント互換性を検証。
 - `tests/test_ser_duplicates.py`: 合成WAVでMSP完全一致重複監査・承認契約・SHA伝播を検証。
@@ -105,25 +83,10 @@ CSV と音声パスを入力にして特徴抽出・キャッシュも扱い、�
 - `tests/test_ser_mappings.py`: データセット別ラベル対応を検証。
 - `tests/test_ser_notebook_boundaries.py`: 生成ノートブックの責務分離を検証。
 - `tests/test_ser_splits.py`: 固定分割とリーク検査を検証。
-- `tests/test_vad_downstream.py`: CSV 入力の VAD 回帰経路を検証。
-- `tests/test_vad_downstream_data.py`: 連結済み VAD データ読込を検証。
-- `tests/test_vad_downstream_model.py`: VAD モデル構造と出力形状を検証。
-- `tests/test_vad_downstream_training.py`: VAD 回帰の学習・評価・保存を検証。
-- `tests/test_vad_downstream_train_head.py`: 回帰ヘッド学習 CLI を検証。
-- `tests/test_vad_downstream_inference.py`: WAV から VAD への推論を検証。
-- `tests/test_vad_downstream_emotion_training.py`: VAD経由分類の学習・指標を検証。
-- `tests/test_vad_downstream_train_vad_emotion.py`: VAD経由分類の学習 CLI を検証。
-- `tests/test_vad_downstream_infer_vad_emotion.py`: VAD経由分類の推論 JSON を検証。
-- `tests/execute_demo_notebook.py`: VAD デモノートブックを隔離環境で実行。
 - `tests/execute_iemocap_base_demo_notebook.py`: IEMOCAP デモを実行し個人情報混入を検査。
 - `tests/execute_ser_demo_notebooks.py`: SER デモノートブックを短時間設定で実行。
 
-## `archive/`: 現行処理では不要
+## 過去資料と保管先
 
-- `archive/vad_iemocap_two_stage/model.py`: 旧2段階 VAD経由分類モデル。
-- `archive/vad_iemocap_two_stage/loss.py`: 旧2段階モデルの損失。
-- `archive/vad_iemocap_two_stage/train.py`: 旧2段階モデルの学習処理。
-- `archive/notebook_tools/_patch_notebook.py`: 特定の旧ノートブックを直接書き換えた一回限りの補助。
-
-これらは実行時の import 先ではありません。Git 履歴があるため、今後は同種の
-退避ファイルを新設せず、削除するかどうかは履歴保存方針を決めたうえで扱います。
+archive/内の旧VAD実装とNotebook編集補助は[リポジトリ外へ移動](RETIRED_VAD.md)しました。
+その他の過去研究資料・作業記録はarchive/に残しています。

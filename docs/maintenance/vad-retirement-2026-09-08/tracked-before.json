@@ -1,0 +1,1022 @@
+[
+  {
+    "RelativePath": ".env.example",
+    "Exists": true,
+    "SHA256": "4BD0BC124E5A851AD40727BCF38AE2821CEFB08182847440F7FB346BDAB400A1"
+  },
+  {
+    "RelativePath": ".gitignore",
+    "Exists": true,
+    "SHA256": "33E664A3452F0C7AE61935B4A51EACCD674488A8AA66FE49B37F388F472C4159"
+  },
+  {
+    "RelativePath": ".vscode/settings.json",
+    "Exists": true,
+    "SHA256": "ABE561D033EF825A1AF99CE4D07CB328D6C6AA00E8722CC0038EAA629C181F3B"
+  },
+  {
+    "RelativePath": "AGENTS.md",
+    "Exists": true,
+    "SHA256": "F10CF555DCE004BAA92A8DF5CA18BE13FCC5036ADAD72C20B4FF864063785C65"
+  },
+  {
+    "RelativePath": "CODE_STRUCTURE_GUIDE.md",
+    "Exists": true,
+    "SHA256": "8A03AA45DBA6578158FCD415C01BF044E045181EE29A4C60DC245BA56E62BD07"
+  },
+  {
+    "RelativePath": "DEEP_LEARNING_EXPLANATION.md",
+    "Exists": true,
+    "SHA256": "F51575E3C4BA2288E89BF7FF4CAAFC2F37B6DA76751C8A9158ADE90EB8FF98FE"
+  },
+  {
+    "RelativePath": "FILE_MAP.md",
+    "Exists": true,
+    "SHA256": "96EB11A39A1633A1FFE1F13B5BC4B91BBF686106B8CAF8209C1454CBCAA7A261"
+  },
+  {
+    "RelativePath": "PYTHON_FILES.md",
+    "Exists": true,
+    "SHA256": "123A25FA5E10834D97845E170594E08244EF546B290BADCC37C2B9F980DC03A3"
+  },
+  {
+    "RelativePath": "README.md",
+    "Exists": true,
+    "SHA256": "F0BDAECBBAC7270072E31401B9EF4449709798265692CB236ABE995C1EE83D00"
+  },
+  {
+    "RelativePath": "README_ja.md",
+    "Exists": true,
+    "SHA256": "1398CFD9D3AC906F1B87A2278AFB373AFE06592356BD4556D62FE493F46ACEF6"
+  },
+  {
+    "RelativePath": "REAL_EMOTION2VEC_SMOKE_TEST_JA.md",
+    "Exists": true,
+    "SHA256": "53B6951305AAC6569E78DAF9C878B8BBD7C636B5E1775754CA420ED1DEBCF842"
+  },
+  {
+    "RelativePath": "REPOSITORY_AUDIT_JA.md",
+    "Exists": true,
+    "SHA256": "8D6B21BCD4D20983A8C7DD62F53B2B04109129303EC83E86D522B1175383EBD8"
+  },
+  {
+    "RelativePath": "REPOSITORY_GUIDE_JA.md",
+    "Exists": true,
+    "SHA256": "91E07D1C274F91D5ED36ED450A18B24C8CABBB779CD81DD800DD267DBCEE4A01"
+  },
+  {
+    "RelativePath": "TESTING.md",
+    "Exists": true,
+    "SHA256": "13DB92F7B3AB5F5961BEC2EE5A53CE5FFB133D1B9ED489ECD97A44B3159A2741"
+  },
+  {
+    "RelativePath": "archive/logs/2026-06-15-work-log.md",
+    "Exists": true,
+    "SHA256": "AED4C989513CFB2C23D4DA9FF8FE705AF9E347ABE6665CFA996D9086E7E32E01"
+  },
+  {
+    "RelativePath": "archive/logs/2026-06-17-work-log.md",
+    "Exists": true,
+    "SHA256": "372D67D0DAC65F7481B0BEAE40DD1297851737AA8551B5ABA97C4902D735D25F"
+  },
+  {
+    "RelativePath": "archive/logs/2026-06-18-work-log.md",
+    "Exists": true,
+    "SHA256": "16343FEB785B7413B9CF0B53752EB23874E1F1B927321C5F84EF178052BC67BD"
+  },
+  {
+    "RelativePath": "archive/logs/2026-07-03-work-log.md",
+    "Exists": true,
+    "SHA256": "77D8035DF178572BBF60B0BA2445A22D65160046CC9AB4D6A602114965A6EE1B"
+  },
+  {
+    "RelativePath": "archive/logs/2026-07-16-work-log.md",
+    "Exists": true,
+    "SHA256": "E21BFA84C3269C36AB41A9189AD85ACD48B695653DED327F4A59F30F6A5F752D"
+  },
+  {
+    "RelativePath": "archive/logs/2026-07-19-work-log.md",
+    "Exists": true,
+    "SHA256": "1167C8AE2D76ED6D01B33C673033EA13C500768CAE103DC426EFE4869CBCF60C"
+  },
+  {
+    "RelativePath": "archive/logs/2026-08-02-work-log.md",
+    "Exists": true,
+    "SHA256": "060EF6ECFDA5EDB9A7E8996F3E5A0FF6B6EA5775B33E15753AD03EE3E4AB550A"
+  },
+  {
+    "RelativePath": "archive/logs/2026-08-03-work-log.md",
+    "Exists": true,
+    "SHA256": "7811259C87E18857135C5076E4AD8BA5B97704ABD208B0F2048A8C1281F7993A"
+  },
+  {
+    "RelativePath": "archive/logs/2026-08-11-work-log.md",
+    "Exists": true,
+    "SHA256": "FF522801D63988B4B98142D854F189169F9308237C91AA90DB8B20DDD903853B"
+  },
+  {
+    "RelativePath": "archive/logs/2026-08-20-work-log.md",
+    "Exists": true,
+    "SHA256": "FE2E56A5689FBD5BE0F2D6C0EE547F76465639C446D37DECF7F96D6B512B90CC"
+  },
+  {
+    "RelativePath": "archive/logs/2026-08-22-work-log.md",
+    "Exists": true,
+    "SHA256": "1FA442D4B07F0AEBB9E4FBEB5E3AE168546931C0AA314D0708DA9C122746A66B"
+  },
+  {
+    "RelativePath": "archive/logs/2026-08-23-work-log.md",
+    "Exists": true,
+    "SHA256": "291FFD101F3195C64F40F26B69104F191E9550452F6EDC5B4D14D459BFC14361"
+  },
+  {
+    "RelativePath": "archive/logs/next-chat-handoff.md",
+    "Exists": true,
+    "SHA256": "3076C4981E5ED376306712E66287C188F19B879746A5202B7D1F6B249AD27EA7"
+  },
+  {
+    "RelativePath": "archive/notebook_tools/_patch_notebook.py",
+    "Exists": true,
+    "SHA256": "B5F8D7E5AFECD264119CBBCEDA2B555F1C6209964FC8AEAFD95C14E3BA4D2973"
+  },
+  {
+    "RelativePath": "archive/plans/2026-06-10-environment-setup-report.md",
+    "Exists": true,
+    "SHA256": "65CD61795C7387227334228978753163E1716E993DA2E586646693517BAA4F1D"
+  },
+  {
+    "RelativePath": "archive/plans/2026-06-14-import-check-report.md",
+    "Exists": true,
+    "SHA256": "4AB700A4A9C8DD1CA42B265B101103FE719E52CE1F4C037C17D060B430423E19"
+  },
+  {
+    "RelativePath": "archive/reports/2026-07-23-emotion2vec-training-desktop-pc-requirements.md",
+    "Exists": true,
+    "SHA256": "F0B695F8EE6F5E78FF026D8050818DA8AB363E8FE035064FB3B34FA08DB8A072"
+  },
+  {
+    "RelativePath": "archive/reports/2026-07-downstream-only-experiment-concerns.md",
+    "Exists": true,
+    "SHA256": "73B576CC65C6DDA89B4658843911CFFFAEB13B306927CCFD81FD30EE1C2AEE13"
+  },
+  {
+    "RelativePath": "archive/reports/2026-07-ser-comparative-eval-concept.md",
+    "Exists": true,
+    "SHA256": "8BAA187155C0A32F3E6D032B0397724D3D78885300A69EE3A8A9B270485696C9"
+  },
+  {
+    "RelativePath": "archive/vad_iemocap_two_stage/loss.py",
+    "Exists": true,
+    "SHA256": "9C2710031544B898397DD32C04A3CDDD6406918CD11D6E77E4FBCDBCD13B11E3"
+  },
+  {
+    "RelativePath": "archive/vad_iemocap_two_stage/model.py",
+    "Exists": true,
+    "SHA256": "B7AB7D848DEEEF6F348BBDA5F45A03B084760A2E5B5161A99F77EC9BD3C1C933"
+  },
+  {
+    "RelativePath": "archive/vad_iemocap_two_stage/train.py",
+    "Exists": true,
+    "SHA256": "CE019368EEDC0AF5A10231863BB047CEBCA67A892A97B544677EC8E635CB3C62"
+  },
+  {
+    "RelativePath": "debug.log",
+    "Exists": true,
+    "SHA256": "B8262DF57B5632009F8C43B1E75447A96BC29F71A5C2363479FAD24DB59DE0BB"
+  },
+  {
+    "RelativePath": "docs/plans/2026-08-11-ja-en-ser-revised-effort-plan.md",
+    "Exists": true,
+    "SHA256": "762FE3CC5494FF3BA901BE9654CEBD6DDF6164F8D63136B268C9823421BB3739"
+  },
+  {
+    "RelativePath": "docs/plans/2026-08-22-msp-hcudb-feature-decoder-plan.md",
+    "Exists": true,
+    "SHA256": "133EAC01F017F8E2A4F4119F32525212701493FAB72AA93D51F5ABFBF78D9FF6"
+  },
+  {
+    "RelativePath": "docs/plans/2026-08-22-plan-mode-implementation-prompt.md",
+    "Exists": true,
+    "SHA256": "5995322DC4F98A69E3209301817E3C7253DD3AC70A4909B9F7122752CB301AA6"
+  },
+  {
+    "RelativePath": "docs/references/Wagner2022_dawn_transformer_SER.pdf",
+    "Exists": true,
+    "SHA256": "24C183A619321CF2AB4E519651CB54008134C2B358D2353421219BFA63A55B15"
+  },
+  {
+    "RelativePath": "docs/references/emotion2vec_paper_ACL2024.pdf",
+    "Exists": true,
+    "SHA256": "5E6F3AD6A10B71B08150EE1BA2A6F6473E23B223263F59AFA84794C43AADECAC"
+  },
+  {
+    "RelativePath": "docs/references/emotion2vec_summary_ja.md",
+    "Exists": true,
+    "SHA256": "70DF2E482DFBA7F8298D81D183C40D8305C2C5B8F0FA1A1BEC8B3CF907894425"
+  },
+  {
+    "RelativePath": "docs/references/paper_text.txt",
+    "Exists": true,
+    "SHA256": "15C41BF77549E2E5491FC74C5AA29B3CB90579E1A3EA299F55F01270702D89B5"
+  },
+  {
+    "RelativePath": "docs/references/references_log.md",
+    "Exists": true,
+    "SHA256": "08DA9781548A56FD0013D7A262E5B2639A639BD0DD599F8BCECCFE3DBC937DB6"
+  },
+  {
+    "RelativePath": "docs/reports/2026-06-07_vad_cleanup_report.md",
+    "Exists": true,
+    "SHA256": "4D8C214E689EC7A8EF31182D3DDA103A6E317AF44464E1BAF180CFB4CA38590C"
+  },
+  {
+    "RelativePath": "docs/reports/2026-08-01-current-completion-status.md",
+    "Exists": true,
+    "SHA256": "2FC2CA8C9E4B24603643C5C2A0C3A69A5E576AF44DD30BBD56B371F252B0989B"
+  },
+  {
+    "RelativePath": "docs/reports/2026-08-02-current-progress-completion-report.md",
+    "Exists": true,
+    "SHA256": "75C4899DD2918C9AA4F7FE98161753D613CA94B08122E64D01BB5D60B36E1942"
+  },
+  {
+    "RelativePath": "docs/reports/2026-08-20-emotion-label-correspondence.md",
+    "Exists": true,
+    "SHA256": "AECEA8979C70BD788FFAA7EE3498E2CB02A6B4686B03CAABB8BAB50A3FCAE7DE"
+  },
+  {
+    "RelativePath": "docs/reports/2026-08-21-progress-report.md",
+    "Exists": true,
+    "SHA256": "F14CD6D65FEB16E04102C05C9F7731078CC9ECF67D32C7F340086E5572A2FA11"
+  },
+  {
+    "RelativePath": "docs/reports/2026-08-23-hcudb1-feature-benchmark.json",
+    "Exists": true,
+    "SHA256": "E51C611FBE3F2B221F25509DC68642FC7E372EBF4513796C3748FE54A345F233"
+  },
+  {
+    "RelativePath": "docs/reports/2026-08-23-msp-hcudb-data-audit.md",
+    "Exists": true,
+    "SHA256": "094FF68685892013AB6D0319F0816C9DB26B41F117B1527993D474188A46800D"
+  },
+  {
+    "RelativePath": "docs/reports/2026-09-03-saved-results-review/01_msp_validation_comparison.png",
+    "Exists": true,
+    "SHA256": "05F8CF61416BAC3166B2D82CE1502D31F17CAE7C42112E8EAF67B8C7B5020267"
+  },
+  {
+    "RelativePath": "docs/reports/2026-09-03-saved-results-review/01_msp_validation_comparison.svg",
+    "Exists": true,
+    "SHA256": "A7A20C1A2A3E5B4BF6422274597D5579A885E328BF21A2660A805D2F232C94D5"
+  },
+  {
+    "RelativePath": "docs/reports/2026-09-03-saved-results-review/02_msp_validation_history.png",
+    "Exists": true,
+    "SHA256": "FA3C83DCF4D5209BD27B14EB680F67D0E6946D1BC631844227A0F2F9064BEE3E"
+  },
+  {
+    "RelativePath": "docs/reports/2026-09-03-saved-results-review/02_msp_validation_history.svg",
+    "Exists": true,
+    "SHA256": "272349C0AF40406F89ACA4EF4D3ABC795F78204949FB224E03B0C8FD25B173C0"
+  },
+  {
+    "RelativePath": "docs/reports/2026-09-03-saved-results-review/03_msp_loss_history.png",
+    "Exists": true,
+    "SHA256": "F233E12892DF1DFC837A20A63A4D66B4A8D7984547241625C6F69683647F3312"
+  },
+  {
+    "RelativePath": "docs/reports/2026-09-03-saved-results-review/03_msp_loss_history.svg",
+    "Exists": true,
+    "SHA256": "D20BF2D7BD680D334FB36C129611C0F79342A51A6D1B4F69471A4ADD4AE3E560"
+  },
+  {
+    "RelativePath": "docs/reports/2026-09-03-saved-results-review/04_msp_class_scores.png",
+    "Exists": true,
+    "SHA256": "16013D8C75C79E342519CE7107F76198CC1B7FB6194545922C0A0131253BEE4B"
+  },
+  {
+    "RelativePath": "docs/reports/2026-09-03-saved-results-review/04_msp_class_scores.svg",
+    "Exists": true,
+    "SHA256": "155850C331E187E7AE34430471F52431A463B5A4D68A33708FCD1DC6FD9137FF"
+  },
+  {
+    "RelativePath": "docs/reports/2026-09-03-saved-results-review/05_saved_transfer_test.png",
+    "Exists": true,
+    "SHA256": "F8CF8AF8E2622F37441BA4AFB2BF5FCD9E595917A136A5E295175D05782194F0"
+  },
+  {
+    "RelativePath": "docs/reports/2026-09-03-saved-results-review/05_saved_transfer_test.svg",
+    "Exists": true,
+    "SHA256": "9D8657A49F6E1B89C503B0699D4C4504116C2ADEF6F56F7E23FA4703ADF2B3BC"
+  },
+  {
+    "RelativePath": "docs/reports/2026-09-03-saved-results-review/06_hcudb_validation_history.png",
+    "Exists": true,
+    "SHA256": "E6413887233D5437798B19B429DA25C228647FDE9D433816DFBC36613EEB2050"
+  },
+  {
+    "RelativePath": "docs/reports/2026-09-03-saved-results-review/06_hcudb_validation_history.svg",
+    "Exists": true,
+    "SHA256": "21A9C036AFAB0089C3B39CFA335D7BE95FA3E6231D7B769EEEBCD204D8ACC461"
+  },
+  {
+    "RelativePath": "docs/reports/2026-09-03-saved-results-review/aggregate_metrics.json",
+    "Exists": true,
+    "SHA256": "A0D3719AB9DFAC6D3B5F4C31FF42FC7EF4BE6F85C4DB3AD8447AC5547296FD00"
+  },
+  {
+    "RelativePath": "docs/reports/2026-09-03-saved-results-review/report.html",
+    "Exists": true,
+    "SHA256": "6FEDA30DED345A0BD24AF130EE8DDD73A3D8F5BCCAAA4B94F692FB065EC89C63"
+  },
+  {
+    "RelativePath": "docs/reports/2026-09-03-saved-results-review/report.md",
+    "Exists": true,
+    "SHA256": "E9320BE84D72C66FA9381354BEC7432EA68F5327561107D1BA8DDD727518B5F6"
+  },
+  {
+    "RelativePath": "docs/reports/2026-09-03-saved-results-review/source_manifest.json",
+    "Exists": true,
+    "SHA256": "B2D054D9386416376871DEBDCAFA61C522552039D20B3B6B75F1F1EDE4D5CA2C"
+  },
+  {
+    "RelativePath": "download_msp_batch.ps1",
+    "Exists": true,
+    "SHA256": "71EEC6E950BDCF8EBA57FAE5F6C34A9F2C225DB1BFA7FF8FBBE1DE9A34124BCB"
+  },
+  {
+    "RelativePath": "download_msp_wavs.ps1",
+    "Exists": true,
+    "SHA256": "070601D14E8FA3A577096FC1BE9A248090EAAC30EDFF22B98391B97B45F2245A"
+  },
+  {
+    "RelativePath": "hcudb.txt",
+    "Exists": true,
+    "SHA256": "A57CBA9D62C70FC59158E04CF511A0CB30D7326F87AA005CFF9A119A1EBE5AC1"
+  },
+  {
+    "RelativePath": "iemocap_downstream/README.md",
+    "Exists": true,
+    "SHA256": "4AE914D102BD8BC829427459DE34061725B0449D29FFBFCE22155C9AB492C460"
+  },
+  {
+    "RelativePath": "iemocap_downstream/__init__.py",
+    "Exists": true,
+    "SHA256": "64AAD72FBC00AC9E188E3F6BD3E734C2B957126C1A8E9C55DA259B2560F9E9FF"
+  },
+  {
+    "RelativePath": "iemocap_downstream/config/default.yaml",
+    "Exists": true,
+    "SHA256": "1C2C53813B1CCCCAA45515144615BBDD4385AA28775497E15EDAB83415747781"
+  },
+  {
+    "RelativePath": "iemocap_downstream/data.py",
+    "Exists": true,
+    "SHA256": "F6FBA19545C91B78E515D0C6F12DFBDE3A7F4626C59D8243443E16F74ABC48C5"
+  },
+  {
+    "RelativePath": "iemocap_downstream/main.py",
+    "Exists": true,
+    "SHA256": "AFC34E86CD5C887C3125DA5EA33CCF78030B90A75AD0CA49907A45C8D8A8D8E0"
+  },
+  {
+    "RelativePath": "iemocap_downstream/model.py",
+    "Exists": true,
+    "SHA256": "8299ADFB09A627012F4839075591E6160311E52EAF5C3C147F7B74962C3914F9"
+  },
+  {
+    "RelativePath": "iemocap_downstream/notebook_pipeline.py",
+    "Exists": true,
+    "SHA256": "6BE85ED1D7E82F6B5183C62098834F08D0ED88C14100DE1AD71B37D0A2525164"
+  },
+  {
+    "RelativePath": "iemocap_downstream/scripts/csv_to_labels.py",
+    "Exists": true,
+    "SHA256": "4FAC9673CDCEFBB7ED7CF3F629DEA469882966CC8D2B220C4A6A1EBE71821EF0"
+  },
+  {
+    "RelativePath": "iemocap_downstream/scripts/emotion2vec_extract_features.sh",
+    "Exists": true,
+    "SHA256": "AB80646D0DFFF5D4F4D1CC74CBA2BF987874A3CF792479EAB660C575CA238120"
+  },
+  {
+    "RelativePath": "iemocap_downstream/scripts/emotion2vec_speech_features.py",
+    "Exists": true,
+    "SHA256": "BCB2907CB72EB6B1AC68D6B5EE102D575CCE08C41844D125098C2A93D8CA0290"
+  },
+  {
+    "RelativePath": "iemocap_downstream/scripts/iemocap_manifest.py",
+    "Exists": true,
+    "SHA256": "A9268E4A6DF629F2DB9BEBC9C59CD5935BFB530BEC8BA3ECAF3EB5C93243F545"
+  },
+  {
+    "RelativePath": "iemocap_downstream/scripts/iemocap_manifest_and_labels.sh",
+    "Exists": true,
+    "SHA256": "C387809183EAA782F1A8C66FCFD1E97409D9CBA19075C909056ED0EEA483A122"
+  },
+  {
+    "RelativePath": "iemocap_downstream/train.sh",
+    "Exists": true,
+    "SHA256": "075FBCB23B4E0D611D698D0AD53C91081C45222AB0EC0889CE734DB100984BAF"
+  },
+  {
+    "RelativePath": "iemocap_downstream/utils.py",
+    "Exists": true,
+    "SHA256": "21948B16238660FF2BD75A125A692D21C4D144C399412B26FE51FB0014B187A3"
+  },
+  {
+    "RelativePath": "msp_download_notified.txt",
+    "Exists": true,
+    "SHA256": "6F3E559BBD93FA2F9B25CBD9B5F348A4B20C902D8E6498DE5C28D73DF8E2F571"
+  },
+  {
+    "RelativePath": "msp_download_progress.csv",
+    "Exists": true,
+    "SHA256": "2D8CCF5895AEECE0F9A4B3765E76345D71FA18F2DA9F0A8D386E8C917AF675A9"
+  },
+  {
+    "RelativePath": "msp_download_retry_notified.txt",
+    "Exists": true,
+    "SHA256": "9CC769DBFFE94530981ADF18500B8894CDCBF7FDCC3B71918471BC6C8F9E7AD6"
+  },
+  {
+    "RelativePath": "msp_download_retry_progress.csv",
+    "Exists": true,
+    "SHA256": "D494F9F342B06D3C1833553F0E61ACB8CB37933C006E142AEDB8DE1A491257B8"
+  },
+  {
+    "RelativePath": "msp_download_run.error.log",
+    "Exists": true,
+    "SHA256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+  },
+  {
+    "RelativePath": "msp_download_run.log",
+    "Exists": true,
+    "SHA256": "7E691DFFCA6AB63E166FBFA5619C1501BBCC92DE58C8757C598B0DA6961612C2"
+  },
+  {
+    "RelativePath": "msp_unavailable_filenames.txt",
+    "Exists": true,
+    "SHA256": "35A498806BA9A8FE746919AD5DB12C89F89B6B970E26A72FAE7A5AA33AE391AB"
+  },
+  {
+    "RelativePath": "msp_unavailable_files.csv",
+    "Exists": true,
+    "SHA256": "EB59C72A8CD8D1B0B9CD48312508E3AD81CB55AA756E01C24F9C5A01B2AF4FCE"
+  },
+  {
+    "RelativePath": "notebooks/01_extract_emotion2vec_features.ipynb",
+    "Exists": true,
+    "SHA256": "0E085E953287838976DFCA906574B338B056658AA8E09AE580CD6CBECF8D8359"
+  },
+  {
+    "RelativePath": "notebooks/02_train_and_evaluate_decoder.ipynb",
+    "Exists": true,
+    "SHA256": "CC893BA5F1F0E5B56D13CE5E6ADCB83AF02E7C3931D876844FB0A7855E28CCB8"
+  },
+  {
+    "RelativePath": "notebooks/audio_to_emotion_vad.ipynb",
+    "Exists": true,
+    "SHA256": "76DA3483BC292266DC5C023CA3FDF34272BFE38741B349D7E37C8A5027F61920"
+  },
+  {
+    "RelativePath": "notebooks/iemocap_base_downstream_training.ipynb",
+    "Exists": true,
+    "SHA256": "FE7994164855E8F364A1E95A827075CD8769E75D3AB7C3194CC497F661FE3773"
+  },
+  {
+    "RelativePath": "notebooks/machine_learning_dataset_analysis.ipynb",
+    "Exists": true,
+    "SHA256": "A6DFD62582C5631F06AFA4850F05C630D06DA93EF5431EEC893C6FE19F5265E9"
+  },
+  {
+    "RelativePath": "notebooks/msp_unavailable_label_audit.ipynb",
+    "Exists": true,
+    "SHA256": "9689FDD117CB11D7AE8A33EE00FCD9C2E052F8308E3F0A3FBFBC344A606211CE"
+  },
+  {
+    "RelativePath": "references_log.md",
+    "Exists": true,
+    "SHA256": "C6349B0F74362B4961EEF131358FCB9061B202068C09ABF9A1F82DFC3BA33344"
+  },
+  {
+    "RelativePath": "requirements-notebook.txt",
+    "Exists": true,
+    "SHA256": "C4FB63008A79F2FE725F7000FE8915330BF08EB770FB39E98C013AD4570B3529"
+  },
+  {
+    "RelativePath": "requirements.txt",
+    "Exists": true,
+    "SHA256": "D014C1F3704A4E2C3DCC1937CBB275F3954145C408152A25254DFBAF83E6F5CE"
+  },
+  {
+    "RelativePath": "retry_msp_pending_after_all.ps1",
+    "Exists": true,
+    "SHA256": "EAA6F03944FA5E6042D8D4ACFF211DA1C671F21D743CE07F3CE9B8936730E618"
+  },
+  {
+    "RelativePath": "run_msp_batches.ps1",
+    "Exists": true,
+    "SHA256": "690717D8A1865F5E00A36F66D710C27049D4EE8C9426B45F717E2831960E7FC8"
+  },
+  {
+    "RelativePath": "scripts/build_iemocap_base_notebook.py",
+    "Exists": true,
+    "SHA256": "0F11CB56CD390CD95971C848DCC45F21E9211222867BDD104B012C079C7FBD09"
+  },
+  {
+    "RelativePath": "scripts/build_ser_notebooks.py",
+    "Exists": true,
+    "SHA256": "46183E0C6CC3CA78B1E2099AB0628782287741972671E9182F89F9271A395F57"
+  },
+  {
+    "RelativePath": "scripts/extract_features.py",
+    "Exists": true,
+    "SHA256": "9E0005A6C3202B254AF0D082B4C4D598668566FE345B1DBA24F706720AD23922"
+  },
+  {
+    "RelativePath": "scripts/extract_features.sh",
+    "Exists": true,
+    "SHA256": "EAA39065F1915F056D0A8DBD3F7B2B98A9E7981B69C612DDA224A3839DB3D030"
+  },
+  {
+    "RelativePath": "scripts/summarize_ser_saved_results.py",
+    "Exists": true,
+    "SHA256": "75DD9B9E07EC8C8FA4542CEB7DBA44FF7B03C634D9EEEF03B551F26F1E048340"
+  },
+  {
+    "RelativePath": "scripts/test.wav",
+    "Exists": true,
+    "SHA256": "A4839EAAA3D54BD2DB6EB48AA3D40DEF1B5C5004DF3FD163A8DCD045097F8A23"
+  },
+  {
+    "RelativePath": "ser_pipeline/__init__.py",
+    "Exists": true,
+    "SHA256": "729DC23AD0C08AAC7B3F9D1297D481B4AD8FBBAA297E146A4573143CF6EE52FD"
+  },
+  {
+    "RelativePath": "ser_pipeline/__main__.py",
+    "Exists": true,
+    "SHA256": "AB5B8A7CD35270A2809112F60E9CA00643B0C23EFFD6F5D6A57593A9868FBF0B"
+  },
+  {
+    "RelativePath": "ser_pipeline/audio.py",
+    "Exists": true,
+    "SHA256": "61194ED7FCCC39F05EA7F5C65419B12197BB125FD03182CB9F5ADEA76D956D84"
+  },
+  {
+    "RelativePath": "ser_pipeline/cache.py",
+    "Exists": true,
+    "SHA256": "5EFF85978CB95AF50B5B2549C5E69581AFD50B6D80542A8CAAF357D4D1176BBC"
+  },
+  {
+    "RelativePath": "ser_pipeline/checkpoints.py",
+    "Exists": true,
+    "SHA256": "67F175DAD3230549081B1F92E7AC550DF5ED9B6F3F6A407EBD1A5D8EC392010A"
+  },
+  {
+    "RelativePath": "ser_pipeline/cli.py",
+    "Exists": true,
+    "SHA256": "4D7369B49E6A742B48516AE42D936C66B37C449AA5EC67660A832C1A26F8F60F"
+  },
+  {
+    "RelativePath": "ser_pipeline/config/hcudb1_speaker_split.v1.json",
+    "Exists": true,
+    "SHA256": "2051D74DD3F510AFF83FB709D9B4DCCA7565C449EB1FDC9BABC7E10BC97AC9A5"
+  },
+  {
+    "RelativePath": "ser_pipeline/config/mappings.v1.json",
+    "Exists": true,
+    "SHA256": "AD62256F36258138557062F1CCDB1E8F6DA32E3187AB830517516A0F2AFF6DD4"
+  },
+  {
+    "RelativePath": "ser_pipeline/contracts.py",
+    "Exists": true,
+    "SHA256": "C1E21F091EFC7B15E2E17562D1F9A389309D91397B16A81317D2EF22A84FE004"
+  },
+  {
+    "RelativePath": "ser_pipeline/duplicates.py",
+    "Exists": true,
+    "SHA256": "283F84C2FFAB1233A078FB58EC02EE9DD035AC90720CCFC22378564D468E3A28"
+  },
+  {
+    "RelativePath": "ser_pipeline/evaluation.py",
+    "Exists": true,
+    "SHA256": "38BB9647321C69C6DF42353A60E210FA1CD4227178E0C92E5A367F1BA1975C91"
+  },
+  {
+    "RelativePath": "ser_pipeline/exclusions.py",
+    "Exists": true,
+    "SHA256": "C13888F337CAFB52BA7314B1785C04B369B364472C97217A3D0ABCDC622ADB38"
+  },
+  {
+    "RelativePath": "ser_pipeline/features.py",
+    "Exists": true,
+    "SHA256": "A84194A26E632153CAE7F8535ABA13D6760D1D785EA005BE64C3348CA807BA25"
+  },
+  {
+    "RelativePath": "ser_pipeline/manifest.py",
+    "Exists": true,
+    "SHA256": "2430945CBAD8D1A1BAB593A6C18FA4A77C731CE60A59F97F390EABC9A801C03A"
+  },
+  {
+    "RelativePath": "ser_pipeline/model.py",
+    "Exists": true,
+    "SHA256": "9BD697D599DE4B6E1BB790DB10A7979E10FCBFDD3774E94EDF9744B0B056CCAA"
+  },
+  {
+    "RelativePath": "ser_pipeline/notebook_api.py",
+    "Exists": true,
+    "SHA256": "BC8AEE1B6C93205A5234FA8924B5507AE9D28B8F58DE6B90C3BA9563264796DD"
+  },
+  {
+    "RelativePath": "ser_pipeline/preflight.py",
+    "Exists": true,
+    "SHA256": "F963C2CC8A4211596FA3A87F472274C18AED315C224E3DC5B7793A261189560C"
+  },
+  {
+    "RelativePath": "ser_pipeline/readers.py",
+    "Exists": true,
+    "SHA256": "3203F97EA3326ACE95A44AEDC1223ABE1E0994C4067EACFD417227CDDDD9C8BA"
+  },
+  {
+    "RelativePath": "ser_pipeline/splits.py",
+    "Exists": true,
+    "SHA256": "C1F51AD6CAED42D90288BB9BF48997B066F878309C078ECDC1FA26AD5D959AC9"
+  },
+  {
+    "RelativePath": "ser_pipeline/study.py",
+    "Exists": true,
+    "SHA256": "16D17364E3979E20F15E734190B533EF24040B5C4B8A40D14019971F66F28482"
+  },
+  {
+    "RelativePath": "ser_pipeline/timing.py",
+    "Exists": true,
+    "SHA256": "926BD9A565601C4A867F44A80B936964155338A0DA485704DD505DAE28621A36"
+  },
+  {
+    "RelativePath": "ser_pipeline/training.py",
+    "Exists": true,
+    "SHA256": "05FD72ED59DA7BF4420A027D2E8D8CEFD42F9614B870B3E443E791B16472DA0E"
+  },
+  {
+    "RelativePath": "src/IEMOCAP.png",
+    "Exists": true,
+    "SHA256": "72D536D28C9289AC0D7D7C90D2C846C3F18567E485D25481021ABED59F9EE39B"
+  },
+  {
+    "RelativePath": "src/Languages.png",
+    "Exists": true,
+    "SHA256": "E1D9D26D349B7836CC945A11D3C6260395217CC4EF38333FBD78F12A5A71ECCD"
+  },
+  {
+    "RelativePath": "src/UMAP.png",
+    "Exists": true,
+    "SHA256": "E33EB5163EDEF7B9AD71DFF0FBD6E3C75F4C6DFBB75FB1C1F858C608032057DD"
+  },
+  {
+    "RelativePath": "src/Wechat.jpg",
+    "Exists": true,
+    "SHA256": "5C31F6ED81784EF112C0EB0A84D9BB7D73F760F9ABAD361134D2745ED6BC6535"
+  },
+  {
+    "RelativePath": "src/emotion2vec+performance.png",
+    "Exists": true,
+    "SHA256": "7E094B8B987E58BE5702CB0A104375DE0B2DEA3584191CB354A421051D70178D"
+  },
+  {
+    "RelativePath": "src/emotion2vec+radar.png",
+    "Exists": true,
+    "SHA256": "18243E296CD73CEBAA9C4B3C31C792D5AE0291EAB50ED498F8E02A920C1608FE"
+  },
+  {
+    "RelativePath": "src/logo.png",
+    "Exists": true,
+    "SHA256": "8A1AA31431BFB2BF126D7CF383C8B681B2372C333F1328B342BAB5969DC0A569"
+  },
+  {
+    "RelativePath": "src/vad_mediated_emotion_structure.svg",
+    "Exists": false,
+    "SHA256": null
+  },
+  {
+    "RelativePath": "tests/execute_demo_notebook.py",
+    "Exists": true,
+    "SHA256": "8F08C3053D044967B4B42764F95C5C6EB05A2C46266EA36B18D227979144F593"
+  },
+  {
+    "RelativePath": "tests/execute_iemocap_base_demo_notebook.py",
+    "Exists": true,
+    "SHA256": "3E073CE0FF862E3742BFA8DEAA1D1294ACFDA6E4865C41470F4BDAADD25C775E"
+  },
+  {
+    "RelativePath": "tests/execute_ser_demo_notebooks.py",
+    "Exists": true,
+    "SHA256": "92D3A2D7D918C2D88451BBD2FE8D220FD15DF4C9864D216116BFC91B4EDDBC70"
+  },
+  {
+    "RelativePath": "tests/fixtures/ser4_dummy/README.md",
+    "Exists": true,
+    "SHA256": "3D6B50CB038998E7D556DB556BB8D661FC3C994D1B6D17F473572460307482F3"
+  },
+  {
+    "RelativePath": "tests/fixtures/ser4_dummy/fixture_spec.json",
+    "Exists": true,
+    "SHA256": "58BB4245B1545B2E73859C84D442CD9C2CDE0880EB05C8ED40B657873C92ED0C"
+  },
+  {
+    "RelativePath": "tests/fixtures/vad_dummy/cache/000000_sample001_2d946af38128.npy",
+    "Exists": true,
+    "SHA256": "1F582925DB91B155A8B1F448E9F17AD793FDCF002B68521933A96D876982AA0F"
+  },
+  {
+    "RelativePath": "tests/fixtures/vad_dummy/cache/000001_sample002_26bfe4be12bb.npy",
+    "Exists": true,
+    "SHA256": "1B96BE8FA8C9C1E7F092F62134000741F468449FC62D8539A671D72A0728C69B"
+  },
+  {
+    "RelativePath": "tests/fixtures/vad_dummy/cache/000002_sample003_119e8115ab5d.npy",
+    "Exists": true,
+    "SHA256": "1940A46D621557D3DE73995277DC683A6BACE8E518F3438BBF445672568D9F24"
+  },
+  {
+    "RelativePath": "tests/fixtures/vad_dummy/cache/000003_sample004_def5217a4c9a.npy",
+    "Exists": true,
+    "SHA256": "915C585A55FC8F29B11267BEFEE0D21EA0C992F54D3C087FB2E80BDB8C06775B"
+  },
+  {
+    "RelativePath": "tests/fixtures/vad_dummy/cache/000004_sample005_bc31aaf28ea2.npy",
+    "Exists": true,
+    "SHA256": "ED2873D80727DC4989021F3B1A3FE1A10D0975E9595408F1AA3B9048C7028A07"
+  },
+  {
+    "RelativePath": "tests/fixtures/vad_dummy/cache/000005_sample006_1a799b0571c1.npy",
+    "Exists": true,
+    "SHA256": "DE92EF0FFE1FC2A45AF8EC3B4145B8CDA71E39BC868AC3B32EE7072ACE3F6B70"
+  },
+  {
+    "RelativePath": "tests/fixtures/vad_dummy/cache/000006_sample007_5f1535606525.npy",
+    "Exists": true,
+    "SHA256": "288462E2576DA7A8A86A2A44BDA2B8375FF802215260263313E838A29AA826A5"
+  },
+  {
+    "RelativePath": "tests/fixtures/vad_dummy/cache/000007_sample008_d5ec72266134.npy",
+    "Exists": true,
+    "SHA256": "81C7EB6A7B546172D4EA4570CA8E1A27F68F1E90A9ECC50098D553272C591414"
+  },
+  {
+    "RelativePath": "tests/fixtures/vad_dummy/vad_labels_dummy.csv",
+    "Exists": true,
+    "SHA256": "72AD3DFEBFF8EBBBEEF76FF55BF2BBC541CAC77BE94710A91F817BA9CC4DD640"
+  },
+  {
+    "RelativePath": "tests/test_emotion2vec_feature_device.py",
+    "Exists": true,
+    "SHA256": "4188B07F3C331FD033F0FD2EC13BE1A00199B6694A5D8DD507BFD17BBC23204F"
+  },
+  {
+    "RelativePath": "tests/test_iemocap_notebook_pipeline.py",
+    "Exists": true,
+    "SHA256": "2341E3F8B3EF6DAB545ADE83643D433EC70CD42FB55CFF42D4A11E93E3B14A9D"
+  },
+  {
+    "RelativePath": "tests/test_msp_unavailable_label_notebook.py",
+    "Exists": true,
+    "SHA256": "32FD73A579C2A4BD966174EB2202132C2DA57C02FB3D06B0325E2071DDE0057C"
+  },
+  {
+    "RelativePath": "tests/test_notebook_pipeline.py",
+    "Exists": true,
+    "SHA256": "853260F1D08C0D92EF7CF9C406BC365168F3759B8AE825B79059DFFFB5714788"
+  },
+  {
+    "RelativePath": "tests/test_parallel_emotion_vad.py",
+    "Exists": true,
+    "SHA256": "85DC6832EE3E2720AB5F3095E306BAAD783288EE1738696712030EEBD59C94B4"
+  },
+  {
+    "RelativePath": "tests/test_ser_cache.py",
+    "Exists": true,
+    "SHA256": "AB7519C1676C6699C2A79B633D8676052F12A6A65CABAAC607E44999440C9683"
+  },
+  {
+    "RelativePath": "tests/test_ser_cache_reuse.py",
+    "Exists": true,
+    "SHA256": "ED45164E7A5232F44E0E37D3F43FBD38F565D6AD5A46ACC9EE3BAF020A8AF30B"
+  },
+  {
+    "RelativePath": "tests/test_ser_class_weights.py",
+    "Exists": true,
+    "SHA256": "87BD33390D9840941C045804D86B2795A171195C1F7FC63437635923E92FE56D"
+  },
+  {
+    "RelativePath": "tests/test_ser_decoder.py",
+    "Exists": true,
+    "SHA256": "0A8CC3A82675B1B5196BE225772B76ED4E71483C763178DF7CC6D95FC5598DC9"
+  },
+  {
+    "RelativePath": "tests/test_ser_duplicates.py",
+    "Exists": true,
+    "SHA256": "4125130BBE3E29C37D03F4DCF02F2B0918F2CE6AB03AEE2A13C56828B0788BA4"
+  },
+  {
+    "RelativePath": "tests/test_ser_e2e.py",
+    "Exists": true,
+    "SHA256": "4C9A46A2D7B76BEE997B74E4C5FD060DCD787684FE0884E22108897587C91F9A"
+  },
+  {
+    "RelativePath": "tests/test_ser_exclusions.py",
+    "Exists": true,
+    "SHA256": "8D17803E81C541126D3F40E50FD67407CEEF008E10C64E2485C09B42D582E1B8"
+  },
+  {
+    "RelativePath": "tests/test_ser_manifest.py",
+    "Exists": true,
+    "SHA256": "9D039D993BE3EEAB03EA58A167A2A1946AB04F2B45DD7AB7F52E3CD9266B1012"
+  },
+  {
+    "RelativePath": "tests/test_ser_mappings.py",
+    "Exists": true,
+    "SHA256": "6DA09A351F792D811569D715826FEAAE37FE7A7F045290488B17BF7D71FC0337"
+  },
+  {
+    "RelativePath": "tests/test_ser_notebook_boundaries.py",
+    "Exists": true,
+    "SHA256": "96BB7E005B1EE852CF06C9384873D7F4D7474696C3B0CB33F39D0D25501C5EA3"
+  },
+  {
+    "RelativePath": "tests/test_ser_splits.py",
+    "Exists": true,
+    "SHA256": "809F8E5A28D6D782886ACD689C619823A7A499DB5B119175D4CB6989DC41AAA4"
+  },
+  {
+    "RelativePath": "tests/test_ser_training_monitoring.py",
+    "Exists": true,
+    "SHA256": "51A94E480E692B5970A899FB5034BBFFC170081218D0CF94EA941C04B877E1C8"
+  },
+  {
+    "RelativePath": "tests/test_vad_downstream.py",
+    "Exists": true,
+    "SHA256": "8AB0CD49392D59AEDF8502C8BD29FA93C99C6C669AAE2881635777A298E401D9"
+  },
+  {
+    "RelativePath": "tests/test_vad_downstream_data.py",
+    "Exists": true,
+    "SHA256": "C70E20E52EDBDBAFEA56ABB1CB090E193176BAFD51D8376B2A7E859EC35CA516"
+  },
+  {
+    "RelativePath": "tests/test_vad_downstream_emotion_training.py",
+    "Exists": true,
+    "SHA256": "87B3D8D7D97D321E4D208187BDE46A6F9821927A249544FD0473EC290A7C4F4C"
+  },
+  {
+    "RelativePath": "tests/test_vad_downstream_infer_vad_emotion.py",
+    "Exists": true,
+    "SHA256": "A83DD4602E56D0D5C7FDBE1F6AC526C022EDFF25D17E8300DDFD5B273B6FD20C"
+  },
+  {
+    "RelativePath": "tests/test_vad_downstream_inference.py",
+    "Exists": true,
+    "SHA256": "E5DD9DE716D4D22D75E4418AF5586DE450296C6C5AA55F5FDAB3EF9F5379254C"
+  },
+  {
+    "RelativePath": "tests/test_vad_downstream_model.py",
+    "Exists": true,
+    "SHA256": "5D6F9D985BD9A4035119E9F1C2ED005E632B6A5433C6CE543B59F4314F92D261"
+  },
+  {
+    "RelativePath": "tests/test_vad_downstream_train_head.py",
+    "Exists": true,
+    "SHA256": "64C13083363B299320646F7D582C5C73AF87406561EB24D084A3B60CF063092B"
+  },
+  {
+    "RelativePath": "tests/test_vad_downstream_train_vad_emotion.py",
+    "Exists": true,
+    "SHA256": "63AC305BA55DCB109F31F292860608B3F4512FD3BB831921378B116A5AC6ED54"
+  },
+  {
+    "RelativePath": "tests/test_vad_downstream_training.py",
+    "Exists": true,
+    "SHA256": "9F5ACA14DF34231139164CF04FA66ECF3A3FDF3D12D07BB0C6F7305622B4FD56"
+  },
+  {
+    "RelativePath": "upstream/models/audio.py",
+    "Exists": true,
+    "SHA256": "35134B4A63C53A09C37D2A77CA48886CF212D48A0D0CA4BED395C9B1BE169A21"
+  },
+  {
+    "RelativePath": "upstream/models/base.py",
+    "Exists": true,
+    "SHA256": "F60608F5FA08DF3574ECB8D63845D974353283A86A0791D7B55F911AA3DDBEA4"
+  },
+  {
+    "RelativePath": "upstream/models/config.py",
+    "Exists": true,
+    "SHA256": "551DD5D8D89E486AAF4C1E2CBE25ADA58F1ECFAD8E08666745CFA8C7A9B1599D"
+  },
+  {
+    "RelativePath": "upstream/models/emotion2vec.py",
+    "Exists": true,
+    "SHA256": "4D49523A84D68511A1E9EF8DC4DBF5A5107B115016EE189D7DEED67C49019219"
+  },
+  {
+    "RelativePath": "upstream/models/modules.py",
+    "Exists": true,
+    "SHA256": "F9BDC93931BF0B158E1848EA634BA9A4247808382662A6AF8562E5FE6815C0BB"
+  },
+  {
+    "RelativePath": "upstream/tasks/audio_pretraining.py",
+    "Exists": true,
+    "SHA256": "850936100E069824EFAB015DA7B03088A5CF20322A628D72CA37F6349C80AA09"
+  },
+  {
+    "RelativePath": "vad_downstream/MODEL_ARCHITECTURES_JA.md",
+    "Exists": true,
+    "SHA256": "17C79D0263D5FB9E8BF874C379C8DEC263346635E1498A1C261C3E21FC257479"
+  },
+  {
+    "RelativePath": "vad_downstream/README.md",
+    "Exists": true,
+    "SHA256": "ED21B9B8F7DAB19245AFCC9E684ADDD30991B1D54E29135764A5E6833D84764C"
+  },
+  {
+    "RelativePath": "vad_downstream/__init__.py",
+    "Exists": true,
+    "SHA256": "172096A7975B085BFAFFBCDE0716AED8B0ECB62A304EC6E6A5595895792E85F2"
+  },
+  {
+    "RelativePath": "vad_downstream/config/default.yaml",
+    "Exists": true,
+    "SHA256": "877F3C72488836AA099457A21BEF1D067FB3D3A9BED8480B0D2415268F0826FD"
+  },
+  {
+    "RelativePath": "vad_downstream/data.py",
+    "Exists": true,
+    "SHA256": "243B660D43A32051F1198F4AFB7E2C55DE3A5B205C0D18DC42C53D75BBA58BF1"
+  },
+  {
+    "RelativePath": "vad_downstream/emotion_training.py",
+    "Exists": true,
+    "SHA256": "EB43406AA0F1A7266DDC2456D1EAB2A541BCEEDCD080C28EB51A1A4B53E622A1"
+  },
+  {
+    "RelativePath": "vad_downstream/infer_parallel_emotion_vad.py",
+    "Exists": true,
+    "SHA256": "AF355142E2D05E701E88E3FB0A3788EA337FDFCDDFB34034F37EC90A733F22DE"
+  },
+  {
+    "RelativePath": "vad_downstream/infer_vad_emotion.py",
+    "Exists": true,
+    "SHA256": "2CC5A1C57EE0EDE5B1C26404B7CBB28E2BFE2259D6F706744791EB08D764B505"
+  },
+  {
+    "RelativePath": "vad_downstream/inference.py",
+    "Exists": true,
+    "SHA256": "C15DBAAEE9154FE56E8F551DB602F87AAEAA9C76D23819F0CC53B19DD31F550E"
+  },
+  {
+    "RelativePath": "vad_downstream/loss.py",
+    "Exists": true,
+    "SHA256": "CA4D57A25213A3DC2AAB634A9820C91B00DD9BBC0268CAACE8D07FB24D23A6E7"
+  },
+  {
+    "RelativePath": "vad_downstream/model.py",
+    "Exists": true,
+    "SHA256": "10FB380DA2027B5FDD3F99DB7C7171E7B773F2D43DD5B60D5CDC1E7C06C9CD63"
+  },
+  {
+    "RelativePath": "vad_downstream/notebook_pipeline.py",
+    "Exists": true,
+    "SHA256": "04802F117191413AB9F4B4106BBE45A99AAFBF6FC3F5F8EA8EEF57C2DEBAE5C7"
+  },
+  {
+    "RelativePath": "vad_downstream/parallel_training.py",
+    "Exists": true,
+    "SHA256": "C43FC2A81F57E2B03AB053A49ED6FC1B82C1BF4237177E02E84868687500BCA2"
+  },
+  {
+    "RelativePath": "vad_downstream/train_head.py",
+    "Exists": true,
+    "SHA256": "1DBF1F039C8631898CE21C38FACD74EB1CC65F65A5B4BED91106EA3A64A23830"
+  },
+  {
+    "RelativePath": "vad_downstream/train_parallel_emotion_vad.py",
+    "Exists": true,
+    "SHA256": "6BA605819FF870E6757934000EB0177A2FB90412AD82065AC3653CCA8DA40787"
+  },
+  {
+    "RelativePath": "vad_downstream/train_vad.py",
+    "Exists": true,
+    "SHA256": "08B3A1FC15D50EC5EBEADE5F09E9FB6C732C1721A29EF08F4AE307A27A84726F"
+  },
+  {
+    "RelativePath": "vad_downstream/train_vad_emotion.py",
+    "Exists": true,
+    "SHA256": "133E67430C9FCF0109EB5AA204AD0E849A181BE6035CFCB5EB56E627D13A13B8"
+  },
+  {
+    "RelativePath": "vad_downstream/training.py",
+    "Exists": true,
+    "SHA256": "ADC9E8F7D766E544DB066CE8205162956D1E02BAEAB907E634356C52C63BD905"
+  }
+]

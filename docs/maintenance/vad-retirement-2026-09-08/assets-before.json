@@ -1,0 +1,4058 @@
+[
+  {
+    "RelativePath": "runs/msp_class_weight_comparison/seeds-42/provenance/msp_audio_duplicate_audit_v1.json",
+    "Size": 15333890,
+    "LastWriteUtc": "2026-09-03T07:15:09.1616639Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_comparison/seeds-42/provenance/msp_audio_duplicate_exclusions_v1.json",
+    "Size": 25003,
+    "LastWriteUtc": "2026-09-03T07:15:10.0998541Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_comparison/seeds-42/provenance/msp_missing_audio_exclusions_v1.json",
+    "Size": 336905,
+    "LastWriteUtc": "2026-09-03T07:14:38.5242977Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_comparison/seeds-42/seed-42/balanced/msp_train_seed42_best.pt",
+    "Size": 3176161,
+    "LastWriteUtc": "2026-09-03T07:36:19.6098721Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_comparison/seeds-42/seed-42/balanced/msp_train_seed42_last.pt",
+    "Size": 3179489,
+    "LastWriteUtc": "2026-09-03T08:45:23.3823094Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_comparison/seeds-42/seed-42/balanced/msp_train_seed42_timings.json",
+    "Size": 4840,
+    "LastWriteUtc": "2026-09-03T08:45:23.5964278Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_comparison/seeds-42/comparison_summary.json",
+    "Size": 70998,
+    "LastWriteUtc": "2026-09-03T08:45:23.8404280Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_comparison/seeds-43-44/provenance/msp_audio_duplicate_audit_v1.json",
+    "Size": 15333890,
+    "LastWriteUtc": "2026-09-03T09:14:08.0820063Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_comparison/seeds-43-44/provenance/msp_audio_duplicate_exclusions_v1.json",
+    "Size": 25003,
+    "LastWriteUtc": "2026-09-03T09:14:08.8850186Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_comparison/seeds-43-44/provenance/msp_missing_audio_exclusions_v1.json",
+    "Size": 336905,
+    "LastWriteUtc": "2026-09-03T09:13:41.1341885Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_comparison/seeds-43-44/seed-43/balanced/msp_train_seed43_best.pt",
+    "Size": 3176609,
+    "LastWriteUtc": "2026-09-03T09:36:46.8687948Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_comparison/seeds-43-44/seed-43/balanced/msp_train_seed43_last.pt",
+    "Size": 3179489,
+    "LastWriteUtc": "2026-09-03T10:21:29.4034742Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_comparison/seeds-43-44/seed-43/balanced/msp_train_seed43_timings.json",
+    "Size": 4856,
+    "LastWriteUtc": "2026-09-03T10:21:29.5454350Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_comparison/seeds-43-44/seed-44/balanced/msp_train_seed44_best.pt",
+    "Size": 3177825,
+    "LastWriteUtc": "2026-09-03T10:59:37.3117562Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_comparison/seeds-43-44/seed-44/balanced/msp_train_seed44_last.pt",
+    "Size": 3179489,
+    "LastWriteUtc": "2026-09-03T11:24:43.4893668Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_comparison/seeds-43-44/seed-44/balanced/msp_train_seed44_timings.json",
+    "Size": 4858,
+    "LastWriteUtc": "2026-09-03T11:24:43.6353884Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_comparison/seeds-43-44/comparison_summary.json",
+    "Size": 125145,
+    "LastWriteUtc": "2026-09-03T11:24:43.7387526Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_score_loss_20260904/seeds-42/provenance/msp_audio_duplicate_audit_v1.json",
+    "Size": 15333890,
+    "LastWriteUtc": "2026-09-04T01:15:43.0825834Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_score_loss_20260904/seeds-42/provenance/msp_audio_duplicate_exclusions_v1.json",
+    "Size": 25003,
+    "LastWriteUtc": "2026-09-04T01:15:43.8676847Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_score_loss_20260904/seeds-42/provenance/msp_missing_audio_exclusions_v1.json",
+    "Size": 336905,
+    "LastWriteUtc": "2026-09-04T01:15:26.5276985Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_score_loss_20260904/seeds-42/seed-42/balanced/msp_train_seed42_best.losses.png",
+    "Size": 103838,
+    "LastWriteUtc": "2026-09-04T03:05:22.8027573Z",
+    "SHA256": "9AE1FFD4424590F49E07AEA208D76233E722F3D725D65D18CE093E9E0B4AB6FA"
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_score_loss_20260904/seeds-42/seed-42/balanced/msp_train_seed42_best.pt",
+    "Size": 3178273,
+    "LastWriteUtc": "2026-09-04T01:41:28.3262784Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_score_loss_20260904/seeds-42/seed-42/balanced/msp_train_seed42_best.scores.png",
+    "Size": 92135,
+    "LastWriteUtc": "2026-09-04T03:05:22.4262747Z",
+    "SHA256": "2968B6E68EB647D9D8BA04D591723A5FEA63C31F7ADA62D75876A674F0B0893A"
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_score_loss_20260904/seeds-42/seed-42/balanced/msp_train_seed42_last.pt",
+    "Size": 3184673,
+    "LastWriteUtc": "2026-09-04T03:04:53.1845033Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_score_loss_20260904/seeds-42/seed-42/balanced/msp_train_seed42_timings.json",
+    "Size": 7212,
+    "LastWriteUtc": "2026-09-04T03:04:53.2949456Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/msp_class_weight_score_loss_20260904/seeds-42/comparison_summary.json",
+    "Size": 107301,
+    "LastWriteUtc": "2026-09-04T03:04:53.5451516Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/notebooks/01_extract_emotion2vec_features.demo.executed.ipynb",
+    "Size": 58847,
+    "LastWriteUtc": "2026-09-01T09:51:34.2610704Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/notebooks/02_train_and_evaluate_decoder.demo.executed.ipynb",
+    "Size": 12820,
+    "LastWriteUtc": "2026-09-01T09:51:37.4025224Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/hcudb1/cache/hcudb1/test/_SUCCESS",
+    "Size": 498,
+    "LastWriteUtc": "2026-08-23T02:13:32.0461854Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/hcudb1/cache/hcudb1/test/shard-00000.index.jsonl",
+    "Size": 613,
+    "LastWriteUtc": "2026-08-23T02:13:31.9254999Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/hcudb1/cache/hcudb1/test/shard-00000.meta.json",
+    "Size": 320,
+    "LastWriteUtc": "2026-08-23T02:13:31.9983999Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/hcudb1/cache/hcudb1/test/shard-00000.npy",
+    "Size": 736,
+    "LastWriteUtc": "2026-08-23T02:13:31.9114169Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/hcudb1/cache/hcudb1/train/_SUCCESS",
+    "Size": 499,
+    "LastWriteUtc": "2026-08-23T02:13:32.2117954Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/hcudb1/cache/hcudb1/train/shard-00000.index.jsonl",
+    "Size": 1244,
+    "LastWriteUtc": "2026-08-23T02:13:32.1090432Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/hcudb1/cache/hcudb1/train/shard-00000.meta.json",
+    "Size": 320,
+    "LastWriteUtc": "2026-08-23T02:13:32.1723113Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/hcudb1/cache/hcudb1/train/shard-00000.npy",
+    "Size": 1120,
+    "LastWriteUtc": "2026-08-23T02:13:32.0963191Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/hcudb1/cache/hcudb1/validation/_SUCCESS",
+    "Size": 504,
+    "LastWriteUtc": "2026-08-23T02:13:32.4000274Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/hcudb1/cache/hcudb1/validation/shard-00000.index.jsonl",
+    "Size": 661,
+    "LastWriteUtc": "2026-08-23T02:13:32.2722627Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/hcudb1/cache/hcudb1/validation/shard-00000.meta.json",
+    "Size": 320,
+    "LastWriteUtc": "2026-08-23T02:13:32.3422503Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/hcudb1/cache/hcudb1/validation/shard-00000.npy",
+    "Size": 608,
+    "LastWriteUtc": "2026-08-23T02:13:32.2581697Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/hcudb1/cache/cache_meta.json",
+    "Size": 826,
+    "LastWriteUtc": "2026-08-23T02:13:32.4577922Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/hcudb1/manifest.jsonl",
+    "Size": 11308,
+    "LastWriteUtc": "2026-08-23T02:13:31.8630591Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/iemocap/cache/iemocap/test/_SUCCESS",
+    "Size": 499,
+    "LastWriteUtc": "2026-08-23T02:13:33.2390208Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/iemocap/cache/iemocap/test/shard-00000.index.jsonl",
+    "Size": 1245,
+    "LastWriteUtc": "2026-08-23T02:13:33.0248798Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/iemocap/cache/iemocap/test/shard-00000.meta.json",
+    "Size": 320,
+    "LastWriteUtc": "2026-08-23T02:13:33.1919142Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/iemocap/cache/iemocap/test/shard-00000.npy",
+    "Size": 1120,
+    "LastWriteUtc": "2026-08-23T02:13:33.0146760Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/iemocap/cache/cache_meta.json",
+    "Size": 836,
+    "LastWriteUtc": "2026-08-23T02:13:33.2820993Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/iemocap/manifest.jsonl",
+    "Size": 5928,
+    "LastWriteUtc": "2026-08-23T02:13:32.9817187Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/msp_podcast/cache/msp_podcast/test/_SUCCESS",
+    "Size": 503,
+    "LastWriteUtc": "2026-08-23T02:13:31.0202469Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/msp_podcast/cache/msp_podcast/test/shard-00000.index.jsonl",
+    "Size": 652,
+    "LastWriteUtc": "2026-08-23T02:13:30.8907916Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/msp_podcast/cache/msp_podcast/test/shard-00000.meta.json",
+    "Size": 320,
+    "LastWriteUtc": "2026-08-23T02:13:30.9718680Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/msp_podcast/cache/msp_podcast/test/shard-00000.npy",
+    "Size": 512,
+    "LastWriteUtc": "2026-08-23T02:13:30.8752384Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/msp_podcast/cache/msp_podcast/train/_SUCCESS",
+    "Size": 504,
+    "LastWriteUtc": "2026-08-23T02:13:31.1952421Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/msp_podcast/cache/msp_podcast/train/shard-00000.index.jsonl",
+    "Size": 1325,
+    "LastWriteUtc": "2026-08-23T02:13:31.0953048Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/msp_podcast/cache/msp_podcast/train/shard-00000.meta.json",
+    "Size": 320,
+    "LastWriteUtc": "2026-08-23T02:13:31.1568454Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/msp_podcast/cache/msp_podcast/train/shard-00000.npy",
+    "Size": 1056,
+    "LastWriteUtc": "2026-08-23T02:13:31.0802979Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/msp_podcast/cache/msp_podcast/validation/_SUCCESS",
+    "Size": 509,
+    "LastWriteUtc": "2026-08-23T02:13:31.3682837Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/msp_podcast/cache/msp_podcast/validation/shard-00000.index.jsonl",
+    "Size": 701,
+    "LastWriteUtc": "2026-08-23T02:13:31.2569675Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/msp_podcast/cache/msp_podcast/validation/shard-00000.meta.json",
+    "Size": 320,
+    "LastWriteUtc": "2026-08-23T02:13:31.3241787Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/msp_podcast/cache/msp_podcast/validation/shard-00000.npy",
+    "Size": 672,
+    "LastWriteUtc": "2026-08-23T02:13:31.2447961Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/msp_podcast/cache/cache_meta.json",
+    "Size": 837,
+    "LastWriteUtc": "2026-08-23T02:13:31.4302156Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/artifacts/msp_podcast/manifest.jsonl",
+    "Size": 12024,
+    "LastWriteUtc": "2026-08-23T02:13:30.8188088Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/after/hcudb1/class_metrics.csv",
+    "Size": 164,
+    "LastWriteUtc": "2026-08-23T02:13:42.6055599Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/after/hcudb1/confusion_matrix.csv",
+    "Size": 108,
+    "LastWriteUtc": "2026-08-23T02:13:42.5930157Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/after/hcudb1/metrics.json",
+    "Size": 2248,
+    "LastWriteUtc": "2026-08-23T02:13:42.5805103Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/after/hcudb1/predictions.csv",
+    "Size": 606,
+    "LastWriteUtc": "2026-08-23T02:13:42.6161990Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/after/hcudb1/predictions.json",
+    "Size": 1209,
+    "LastWriteUtc": "2026-08-23T02:13:42.6262200Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/after/iemocap/class_metrics.csv",
+    "Size": 164,
+    "LastWriteUtc": "2026-08-23T02:13:43.1113293Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/after/iemocap/confusion_matrix.csv",
+    "Size": 108,
+    "LastWriteUtc": "2026-08-23T02:13:43.1008388Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/after/iemocap/metrics.json",
+    "Size": 3486,
+    "LastWriteUtc": "2026-08-23T02:13:43.0901437Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/after/iemocap/predictions.csv",
+    "Size": 1064,
+    "LastWriteUtc": "2026-08-23T02:13:43.1236794Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/after/iemocap/predictions.json",
+    "Size": 2423,
+    "LastWriteUtc": "2026-08-23T02:13:43.1317132Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/after/msp_podcast/class_metrics.csv",
+    "Size": 164,
+    "LastWriteUtc": "2026-08-23T02:13:41.7104388Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/after/msp_podcast/confusion_matrix.csv",
+    "Size": 108,
+    "LastWriteUtc": "2026-08-23T02:13:41.6978155Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/after/msp_podcast/metrics.json",
+    "Size": 2259,
+    "LastWriteUtc": "2026-08-23T02:13:41.6817066Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/after/msp_podcast/predictions.csv",
+    "Size": 626,
+    "LastWriteUtc": "2026-08-23T02:13:41.7300829Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/after/msp_podcast/predictions.json",
+    "Size": 1229,
+    "LastWriteUtc": "2026-08-23T02:13:41.7471535Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/before/hcudb1/class_metrics.csv",
+    "Size": 150,
+    "LastWriteUtc": "2026-08-23T02:13:39.0930374Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/before/hcudb1/confusion_matrix.csv",
+    "Size": 108,
+    "LastWriteUtc": "2026-08-23T02:13:39.0782660Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/before/hcudb1/metrics.json",
+    "Size": 2215,
+    "LastWriteUtc": "2026-08-23T02:13:39.0590239Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/before/hcudb1/predictions.csv",
+    "Size": 605,
+    "LastWriteUtc": "2026-08-23T02:13:39.1030422Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/before/hcudb1/predictions.json",
+    "Size": 1208,
+    "LastWriteUtc": "2026-08-23T02:13:39.1100734Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/before/iemocap/class_metrics.csv",
+    "Size": 150,
+    "LastWriteUtc": "2026-08-23T02:13:39.5656825Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/before/iemocap/confusion_matrix.csv",
+    "Size": 108,
+    "LastWriteUtc": "2026-08-23T02:13:39.5504680Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/before/iemocap/metrics.json",
+    "Size": 3453,
+    "LastWriteUtc": "2026-08-23T02:13:39.5369649Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/before/iemocap/predictions.csv",
+    "Size": 1061,
+    "LastWriteUtc": "2026-08-23T02:13:39.5799571Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/before/iemocap/predictions.json",
+    "Size": 2420,
+    "LastWriteUtc": "2026-08-23T02:13:39.5914296Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/before/msp_podcast/class_metrics.csv",
+    "Size": 150,
+    "LastWriteUtc": "2026-08-23T02:13:38.2495378Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/before/msp_podcast/confusion_matrix.csv",
+    "Size": 108,
+    "LastWriteUtc": "2026-08-23T02:13:38.2354672Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/before/msp_podcast/metrics.json",
+    "Size": 2225,
+    "LastWriteUtc": "2026-08-23T02:13:38.2233112Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/before/msp_podcast/predictions.csv",
+    "Size": 624,
+    "LastWriteUtc": "2026-08-23T02:13:38.2638200Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/before/msp_podcast/predictions.json",
+    "Size": 1227,
+    "LastWriteUtc": "2026-08-23T02:13:38.2775040Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/checkpoints/hcudb/hcudb_continue_seed42_best.pt",
+    "Size": 11043,
+    "LastWriteUtc": "2026-08-23T02:13:40.6325270Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/checkpoints/hcudb/hcudb_continue_seed42_last.pt",
+    "Size": 10979,
+    "LastWriteUtc": "2026-08-23T02:13:40.6986855Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/checkpoints/msp/msp_train_seed42_best.pt",
+    "Size": 10785,
+    "LastWriteUtc": "2026-08-23T02:13:37.0421756Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/seed-42/checkpoints/msp/msp_train_seed42_last.pt",
+    "Size": 10785,
+    "LastWriteUtc": "2026-08-23T02:13:37.0941652Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/demo/study/study_summary.json",
+    "Size": 52775,
+    "LastWriteUtc": "2026-08-23T02:13:43.1432361Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/provenance/msp_audio_duplicate_audit_v1.json",
+    "Size": 15333890,
+    "LastWriteUtc": "2026-09-02T08:51:01.1178579Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/provenance/msp_audio_duplicate_exclusions_v1.json",
+    "Size": 25003,
+    "LastWriteUtc": "2026-09-02T08:51:01.6494558Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/provenance/msp_missing_audio_exclusions_v1.json",
+    "Size": 336905,
+    "LastWriteUtc": "2026-09-02T08:50:44.6101564Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/after/hcudb1/class_metrics.csv",
+    "Size": 307,
+    "LastWriteUtc": "2026-09-02T10:49:17.6740504Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/after/hcudb1/confusion_matrix.csv",
+    "Size": 120,
+    "LastWriteUtc": "2026-09-02T10:49:17.6724401Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/after/hcudb1/metrics.json",
+    "Size": 2557,
+    "LastWriteUtc": "2026-09-02T10:49:17.6621555Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/after/hcudb1/predictions.csv",
+    "Size": 33474,
+    "LastWriteUtc": "2026-09-02T10:49:17.7043244Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/after/hcudb1/predictions.json",
+    "Size": 90021,
+    "LastWriteUtc": "2026-09-02T10:49:17.7204769Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/after/msp_podcast/class_metrics.csv",
+    "Size": 343,
+    "LastWriteUtc": "2026-09-02T10:48:58.6874387Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/after/msp_podcast/confusion_matrix.csv",
+    "Size": 135,
+    "LastWriteUtc": "2026-09-02T10:48:58.6713863Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/after/msp_podcast/metrics.json",
+    "Size": 4333,
+    "LastWriteUtc": "2026-09-02T10:48:58.6576017Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/after/msp_podcast/predictions.csv",
+    "Size": 697548,
+    "LastWriteUtc": "2026-09-02T10:48:58.7897721Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/after/msp_podcast/predictions.json",
+    "Size": 1773183,
+    "LastWriteUtc": "2026-09-02T10:48:58.8929153Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/before/hcudb1/class_metrics.csv",
+    "Size": 297,
+    "LastWriteUtc": "2026-09-02T10:31:34.2075378Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/before/hcudb1/confusion_matrix.csv",
+    "Size": 116,
+    "LastWriteUtc": "2026-09-02T10:31:34.1891840Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/before/hcudb1/metrics.json",
+    "Size": 2567,
+    "LastWriteUtc": "2026-09-02T10:31:34.1774629Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/before/hcudb1/predictions.csv",
+    "Size": 33206,
+    "LastWriteUtc": "2026-09-02T10:31:34.2226843Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/before/hcudb1/predictions.json",
+    "Size": 89753,
+    "LastWriteUtc": "2026-09-02T10:31:34.2372779Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/before/msp_podcast/class_metrics.csv",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-02T10:31:14.6635939Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/before/msp_podcast/confusion_matrix.csv",
+    "Size": 138,
+    "LastWriteUtc": "2026-09-02T10:31:14.6419029Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/before/msp_podcast/metrics.json",
+    "Size": 4315,
+    "LastWriteUtc": "2026-09-02T10:31:14.6137427Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/before/msp_podcast/predictions.csv",
+    "Size": 694813,
+    "LastWriteUtc": "2026-09-02T10:31:14.8138350Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/before/msp_podcast/predictions.json",
+    "Size": 1770448,
+    "LastWriteUtc": "2026-09-02T10:31:14.9426819Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/checkpoints/hcudb/hcudb_continue_seed43_best.pt",
+    "Size": 3179363,
+    "LastWriteUtc": "2026-09-02T10:32:07.9895587Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/checkpoints/hcudb/hcudb_continue_seed43_last.pt",
+    "Size": 3179363,
+    "LastWriteUtc": "2026-09-02T10:32:08.1883936Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/checkpoints/msp/msp_train_seed43_best.pt",
+    "Size": 3178785,
+    "LastWriteUtc": "2026-09-02T10:05:57.1193959Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-43/checkpoints/msp/msp_train_seed43_last.pt",
+    "Size": 3179169,
+    "LastWriteUtc": "2026-09-02T10:13:16.4643265Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/after/hcudb1/class_metrics.csv",
+    "Size": 308,
+    "LastWriteUtc": "2026-09-02T13:08:06.5832047Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/after/hcudb1/confusion_matrix.csv",
+    "Size": 120,
+    "LastWriteUtc": "2026-09-02T13:08:06.5517937Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/after/hcudb1/metrics.json",
+    "Size": 2560,
+    "LastWriteUtc": "2026-09-02T13:08:06.5420323Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/after/hcudb1/predictions.csv",
+    "Size": 33213,
+    "LastWriteUtc": "2026-09-02T13:08:06.6074328Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/after/hcudb1/predictions.json",
+    "Size": 89760,
+    "LastWriteUtc": "2026-09-02T13:08:06.6387273Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/after/msp_podcast/class_metrics.csv",
+    "Size": 344,
+    "LastWriteUtc": "2026-09-02T13:07:26.4155216Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/after/msp_podcast/confusion_matrix.csv",
+    "Size": 136,
+    "LastWriteUtc": "2026-09-02T13:07:26.3818634Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/after/msp_podcast/metrics.json",
+    "Size": 4335,
+    "LastWriteUtc": "2026-09-02T13:07:26.3582253Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/after/msp_podcast/predictions.csv",
+    "Size": 694066,
+    "LastWriteUtc": "2026-09-02T13:07:26.6186951Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/after/msp_podcast/predictions.json",
+    "Size": 1769701,
+    "LastWriteUtc": "2026-09-02T13:07:26.7990608Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/before/hcudb1/class_metrics.csv",
+    "Size": 280,
+    "LastWriteUtc": "2026-09-02T12:30:36.9400551Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/before/hcudb1/confusion_matrix.csv",
+    "Size": 116,
+    "LastWriteUtc": "2026-09-02T12:30:36.9300259Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/before/hcudb1/metrics.json",
+    "Size": 2541,
+    "LastWriteUtc": "2026-09-02T12:30:36.9142834Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/before/hcudb1/predictions.csv",
+    "Size": 33408,
+    "LastWriteUtc": "2026-09-02T12:30:36.9756851Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/before/hcudb1/predictions.json",
+    "Size": 89955,
+    "LastWriteUtc": "2026-09-02T12:30:37.0064693Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/before/msp_podcast/class_metrics.csv",
+    "Size": 338,
+    "LastWriteUtc": "2026-09-02T12:30:00.4001248Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/before/msp_podcast/confusion_matrix.csv",
+    "Size": 137,
+    "LastWriteUtc": "2026-09-02T12:30:00.3787488Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/before/msp_podcast/metrics.json",
+    "Size": 4324,
+    "LastWriteUtc": "2026-09-02T12:30:00.3585108Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/before/msp_podcast/predictions.csv",
+    "Size": 694616,
+    "LastWriteUtc": "2026-09-02T12:30:00.5729085Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/before/msp_podcast/predictions.json",
+    "Size": 1770251,
+    "LastWriteUtc": "2026-09-02T12:30:00.7336869Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/checkpoints/hcudb/hcudb_continue_seed44_best.pt",
+    "Size": 3177379,
+    "LastWriteUtc": "2026-09-02T12:31:20.4088679Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/checkpoints/hcudb/hcudb_continue_seed44_last.pt",
+    "Size": 3179363,
+    "LastWriteUtc": "2026-09-02T12:31:30.7422019Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/checkpoints/msp/msp_train_seed44_best.pt",
+    "Size": 3179169,
+    "LastWriteUtc": "2026-09-02T12:10:19.6136814Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/seed-44/checkpoints/msp/msp_train_seed44_last.pt",
+    "Size": 3179169,
+    "LastWriteUtc": "2026-09-02T12:10:19.7411897Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/followup-seeds-43-44/study_summary.json",
+    "Size": 11340514,
+    "LastWriteUtc": "2026-09-02T13:08:07.4002061Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/provenance/msp_audio_duplicate_audit_v1.json",
+    "Size": 15333890,
+    "LastWriteUtc": "2026-09-02T05:19:30.9549411Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/provenance/msp_audio_duplicate_exclusions_v1.json",
+    "Size": 25003,
+    "LastWriteUtc": "2026-09-02T05:19:31.4637256Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/provenance/msp_missing_audio_exclusions_v1.json",
+    "Size": 336905,
+    "LastWriteUtc": "2026-09-02T05:18:57.3947163Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/after/hcudb1/class_metrics.csv",
+    "Size": 264,
+    "LastWriteUtc": "2026-09-02T08:09:42.2440201Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/after/hcudb1/confusion_matrix.csv",
+    "Size": 119,
+    "LastWriteUtc": "2026-09-02T08:09:42.2154904Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/after/hcudb1/metrics.json",
+    "Size": 2513,
+    "LastWriteUtc": "2026-09-02T08:09:42.2021222Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/after/hcudb1/predictions.csv",
+    "Size": 33038,
+    "LastWriteUtc": "2026-09-02T08:09:42.2701800Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/after/hcudb1/predictions.json",
+    "Size": 89585,
+    "LastWriteUtc": "2026-09-02T08:09:42.2999186Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/after/msp_podcast/class_metrics.csv",
+    "Size": 343,
+    "LastWriteUtc": "2026-09-02T08:09:07.4805568Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/after/msp_podcast/confusion_matrix.csv",
+    "Size": 136,
+    "LastWriteUtc": "2026-09-02T08:09:07.4510667Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/after/msp_podcast/metrics.json",
+    "Size": 4331,
+    "LastWriteUtc": "2026-09-02T08:09:07.4274846Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/after/msp_podcast/predictions.csv",
+    "Size": 688542,
+    "LastWriteUtc": "2026-09-02T08:09:07.6290882Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/after/msp_podcast/predictions.json",
+    "Size": 1764177,
+    "LastWriteUtc": "2026-09-02T08:09:07.7513883Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/before/hcudb1/class_metrics.csv",
+    "Size": 238,
+    "LastWriteUtc": "2026-09-02T07:33:02.3582043Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/before/hcudb1/confusion_matrix.csv",
+    "Size": 115,
+    "LastWriteUtc": "2026-09-02T07:33:02.3456747Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/before/hcudb1/metrics.json",
+    "Size": 2507,
+    "LastWriteUtc": "2026-09-02T07:33:02.3320655Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/before/hcudb1/predictions.csv",
+    "Size": 32918,
+    "LastWriteUtc": "2026-09-02T07:33:02.3797266Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/before/hcudb1/predictions.json",
+    "Size": 89465,
+    "LastWriteUtc": "2026-09-02T07:33:02.4034233Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/before/msp_podcast/class_metrics.csv",
+    "Size": 342,
+    "LastWriteUtc": "2026-09-02T07:32:31.3112278Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/before/msp_podcast/confusion_matrix.csv",
+    "Size": 137,
+    "LastWriteUtc": "2026-09-02T07:32:31.2820723Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/before/msp_podcast/metrics.json",
+    "Size": 4328,
+    "LastWriteUtc": "2026-09-02T07:32:31.2567324Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/before/msp_podcast/predictions.csv",
+    "Size": 690417,
+    "LastWriteUtc": "2026-09-02T07:32:31.4849646Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/before/msp_podcast/predictions.json",
+    "Size": 1766052,
+    "LastWriteUtc": "2026-09-02T07:32:31.6103764Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/checkpoints/hcudb/hcudb_continue_seed42_best.pt",
+    "Size": 3176931,
+    "LastWriteUtc": "2026-09-02T07:33:49.8346096Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/checkpoints/hcudb/hcudb_continue_seed42_last.pt",
+    "Size": 3179363,
+    "LastWriteUtc": "2026-09-02T07:34:02.4099287Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/checkpoints/msp/msp_train_seed42_best.pt",
+    "Size": 3177569,
+    "LastWriteUtc": "2026-09-02T06:21:02.6430025Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/seed-42/checkpoints/msp/msp_train_seed42_last.pt",
+    "Size": 3179169,
+    "LastWriteUtc": "2026-09-02T06:56:20.0501298Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/formal/initial-seed-42/study_summary.json",
+    "Size": 5658473,
+    "LastWriteUtc": "2026-09-02T08:09:42.7160736Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/provenance/msp_audio_duplicate_audit_v1.json",
+    "Size": 15333890,
+    "LastWriteUtc": "2026-09-02T03:10:26.4281801Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/provenance/msp_audio_duplicate_exclusions_v1.json",
+    "Size": 25003,
+    "LastWriteUtc": "2026-09-02T03:10:27.2635840Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/provenance/msp_missing_audio_exclusions_v1.json",
+    "Size": 336905,
+    "LastWriteUtc": "2026-09-02T03:09:47.7122113Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/after/hcudb1/class_metrics.csv",
+    "Size": 282,
+    "LastWriteUtc": "2026-09-02T04:35:39.1121426Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/after/hcudb1/confusion_matrix.csv",
+    "Size": 116,
+    "LastWriteUtc": "2026-09-02T04:35:39.0969438Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/after/hcudb1/metrics.json",
+    "Size": 2557,
+    "LastWriteUtc": "2026-09-02T04:35:39.0843289Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/after/hcudb1/predictions.csv",
+    "Size": 32630,
+    "LastWriteUtc": "2026-09-02T04:35:39.1334883Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/after/hcudb1/predictions.json",
+    "Size": 89177,
+    "LastWriteUtc": "2026-09-02T04:35:39.1635585Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/after/msp_podcast/class_metrics.csv",
+    "Size": 345,
+    "LastWriteUtc": "2026-09-02T04:35:05.3685096Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/after/msp_podcast/confusion_matrix.csv",
+    "Size": 133,
+    "LastWriteUtc": "2026-09-02T04:35:05.3504122Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/after/msp_podcast/metrics.json",
+    "Size": 4332,
+    "LastWriteUtc": "2026-09-02T04:35:05.3368979Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/after/msp_podcast/predictions.csv",
+    "Size": 682027,
+    "LastWriteUtc": "2026-09-02T04:35:05.4637926Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/after/msp_podcast/predictions.json",
+    "Size": 1757662,
+    "LastWriteUtc": "2026-09-02T04:35:06.4289642Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/before/hcudb1/class_metrics.csv",
+    "Size": 219,
+    "LastWriteUtc": "2026-09-02T04:12:36.9512103Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/before/hcudb1/confusion_matrix.csv",
+    "Size": 116,
+    "LastWriteUtc": "2026-09-02T04:12:36.9383553Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/before/hcudb1/metrics.json",
+    "Size": 2490,
+    "LastWriteUtc": "2026-09-02T04:12:36.9352928Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/before/hcudb1/predictions.csv",
+    "Size": 32451,
+    "LastWriteUtc": "2026-09-02T04:12:36.9638285Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/before/hcudb1/predictions.json",
+    "Size": 88998,
+    "LastWriteUtc": "2026-09-02T04:12:36.9800612Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/before/msp_podcast/class_metrics.csv",
+    "Size": 294,
+    "LastWriteUtc": "2026-09-02T04:12:16.9416870Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/before/msp_podcast/confusion_matrix.csv",
+    "Size": 129,
+    "LastWriteUtc": "2026-09-02T04:12:16.9193610Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/before/msp_podcast/metrics.json",
+    "Size": 4272,
+    "LastWriteUtc": "2026-09-02T04:12:16.8908467Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/before/msp_podcast/predictions.csv",
+    "Size": 681427,
+    "LastWriteUtc": "2026-09-02T04:12:17.0686356Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/before/msp_podcast/predictions.json",
+    "Size": 1757062,
+    "LastWriteUtc": "2026-09-02T04:12:17.1482618Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/checkpoints/hcudb/hcudb_continue_seed42_best.pt",
+    "Size": 3175715,
+    "LastWriteUtc": "2026-09-02T04:12:59.6292755Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/checkpoints/hcudb/hcudb_continue_seed42_last.pt",
+    "Size": 3175715,
+    "LastWriteUtc": "2026-09-02T04:12:59.7285790Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/checkpoints/msp/msp_train_seed42_best.pt",
+    "Size": 3175521,
+    "LastWriteUtc": "2026-09-02T03:52:31.0009320Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/seed-42/checkpoints/msp/msp_train_seed42_last.pt",
+    "Size": 3175457,
+    "LastWriteUtc": "2026-09-02T03:52:31.1182804Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_study/smoke/study_summary.json",
+    "Size": 5601339,
+    "LastWriteUtc": "2026-09-02T04:35:39.5563365Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/provenance/msp_audio_duplicate_audit_v1.json",
+    "Size": 15333890,
+    "LastWriteUtc": "2026-09-03T04:34:04.2977368Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/provenance/msp_audio_duplicate_exclusions_v1.json",
+    "Size": 25003,
+    "LastWriteUtc": "2026-09-03T04:34:05.0295528Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/provenance/msp_missing_audio_exclusions_v1.json",
+    "Size": 336905,
+    "LastWriteUtc": "2026-09-03T04:33:38.7667571Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/after/hcudb1/class_metrics.csv",
+    "Size": 264,
+    "LastWriteUtc": "2026-09-03T05:49:28.3682194Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/after/hcudb1/confusion_matrix.csv",
+    "Size": 119,
+    "LastWriteUtc": "2026-09-03T05:49:28.3619712Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/after/hcudb1/metrics.json",
+    "Size": 2513,
+    "LastWriteUtc": "2026-09-03T05:49:28.3514414Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/after/hcudb1/predictions.csv",
+    "Size": 33038,
+    "LastWriteUtc": "2026-09-03T05:49:28.3871824Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/after/hcudb1/predictions.json",
+    "Size": 89585,
+    "LastWriteUtc": "2026-09-03T05:49:28.3991793Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/after/hcudb1/timings.json",
+    "Size": 383,
+    "LastWriteUtc": "2026-09-03T05:49:28.4209558Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/after/msp_podcast/class_metrics.csv",
+    "Size": 343,
+    "LastWriteUtc": "2026-09-03T05:49:26.5800612Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/after/msp_podcast/confusion_matrix.csv",
+    "Size": 136,
+    "LastWriteUtc": "2026-09-03T05:49:26.5671779Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/after/msp_podcast/metrics.json",
+    "Size": 4331,
+    "LastWriteUtc": "2026-09-03T05:49:26.5504178Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/after/msp_podcast/predictions.csv",
+    "Size": 688542,
+    "LastWriteUtc": "2026-09-03T05:49:26.6766913Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/after/msp_podcast/predictions.json",
+    "Size": 1764177,
+    "LastWriteUtc": "2026-09-03T05:49:26.7501816Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/after/msp_podcast/timings.json",
+    "Size": 376,
+    "LastWriteUtc": "2026-09-03T05:49:26.7734155Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/before/hcudb1/class_metrics.csv",
+    "Size": 238,
+    "LastWriteUtc": "2026-09-03T05:48:16.9449325Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/before/hcudb1/confusion_matrix.csv",
+    "Size": 115,
+    "LastWriteUtc": "2026-09-03T05:48:16.9304000Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/before/hcudb1/metrics.json",
+    "Size": 2507,
+    "LastWriteUtc": "2026-09-03T05:48:16.9181430Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/before/hcudb1/predictions.csv",
+    "Size": 32918,
+    "LastWriteUtc": "2026-09-03T05:48:16.9603915Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/before/hcudb1/predictions.json",
+    "Size": 89465,
+    "LastWriteUtc": "2026-09-03T05:48:16.9778645Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/before/hcudb1/timings.json",
+    "Size": 382,
+    "LastWriteUtc": "2026-09-03T05:48:17.0119163Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/before/msp_podcast/class_metrics.csv",
+    "Size": 342,
+    "LastWriteUtc": "2026-09-03T05:48:13.4887594Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/before/msp_podcast/confusion_matrix.csv",
+    "Size": 137,
+    "LastWriteUtc": "2026-09-03T05:48:13.4762949Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/before/msp_podcast/metrics.json",
+    "Size": 4328,
+    "LastWriteUtc": "2026-09-03T05:48:13.4619748Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/before/msp_podcast/predictions.csv",
+    "Size": 690417,
+    "LastWriteUtc": "2026-09-03T05:48:13.5760810Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/before/msp_podcast/predictions.json",
+    "Size": 1766052,
+    "LastWriteUtc": "2026-09-03T05:48:13.6396108Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/before/msp_podcast/timings.json",
+    "Size": 377,
+    "LastWriteUtc": "2026-09-03T05:48:13.6821841Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/checkpoints/hcudb/hcudb_continue_seed42_best.pt",
+    "Size": 3176931,
+    "LastWriteUtc": "2026-09-03T05:48:32.6080393Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/checkpoints/hcudb/hcudb_continue_seed42_last.pt",
+    "Size": 3179363,
+    "LastWriteUtc": "2026-09-03T05:48:41.6120119Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/checkpoints/hcudb/hcudb_continue_seed42_timings.json",
+    "Size": 4954,
+    "LastWriteUtc": "2026-09-03T05:48:41.7413451Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/checkpoints/msp/msp_train_seed42_best.pt",
+    "Size": 3177569,
+    "LastWriteUtc": "2026-09-03T05:19:39.6901961Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/checkpoints/msp/msp_train_seed42_last.pt",
+    "Size": 3179169,
+    "LastWriteUtc": "2026-09-03T05:45:31.1122093Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/seed-42/checkpoints/msp/msp_train_seed42_timings.json",
+    "Size": 4840,
+    "LastWriteUtc": "2026-09-03T05:45:31.3050935Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/study_summary.json",
+    "Size": 5677650,
+    "LastWriteUtc": "2026-09-03T05:49:28.6668389Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_decoder_timing_check_20260903/formal/initial-seed-42/study_timings.json",
+    "Size": 383,
+    "LastWriteUtc": "2026-09-03T05:49:28.6850304Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/hcudb1_base_final_v1/hcudb1/test/_SUCCESS",
+    "Size": 507,
+    "LastWriteUtc": "2026-08-23T15:14:23.4819726Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/hcudb1_base_final_v1/hcudb1/test/shard-00000.index.jsonl",
+    "Size": 46345,
+    "LastWriteUtc": "2026-08-23T15:14:21.6414422Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/hcudb1_base_final_v1/hcudb1/test/shard-00000.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-08-23T15:14:22.2116528Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/hcudb1_base_final_v1/hcudb1/test/shard-00000.npy",
+    "Size": 63237248,
+    "LastWriteUtc": "2026-08-23T15:14:21.6137188Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/hcudb1_base_final_v1/hcudb1/train/_SUCCESS",
+    "Size": 877,
+    "LastWriteUtc": "2026-08-23T15:20:23.0566235Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/hcudb1_base_final_v1/hcudb1/train/shard-00000.index.jsonl",
+    "Size": 147028,
+    "LastWriteUtc": "2026-08-23T15:18:09.0361475Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/hcudb1_base_final_v1/hcudb1/train/shard-00000.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-08-23T15:18:11.2913641Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/hcudb1_base_final_v1/hcudb1/train/shard-00000.npy",
+    "Size": 201213056,
+    "LastWriteUtc": "2026-08-23T15:18:08.9927049Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/hcudb1_base_final_v1/hcudb1/train/shard-00001.index.jsonl",
+    "Size": 86727,
+    "LastWriteUtc": "2026-08-23T15:20:15.3684519Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/hcudb1_base_final_v1/hcudb1/train/shard-00001.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-08-23T15:20:16.5836813Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/hcudb1_base_final_v1/hcudb1/train/shard-00001.npy",
+    "Size": 106967168,
+    "LastWriteUtc": "2026-08-23T15:20:15.3212386Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/hcudb1_base_final_v1/hcudb1/validation/_SUCCESS",
+    "Size": 513,
+    "LastWriteUtc": "2026-08-23T15:21:30.7867524Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/hcudb1_base_final_v1/hcudb1/validation/shard-00000.index.jsonl",
+    "Size": 48148,
+    "LastWriteUtc": "2026-08-23T15:21:28.7407941Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/hcudb1_base_final_v1/hcudb1/validation/shard-00000.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-08-23T15:21:29.4265564Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/hcudb1_base_final_v1/hcudb1/validation/shard-00000.npy",
+    "Size": 60285056,
+    "LastWriteUtc": "2026-08-23T15:21:28.7065366Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/hcudb1_base_final_v1/cache_meta.json",
+    "Size": 858,
+    "LastWriteUtc": "2026-08-23T15:21:30.8105749Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/_SUCCESS",
+    "Size": 9345,
+    "LastWriteUtc": "2026-09-01T15:14:33.4717148Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00000.index.jsonl",
+    "Size": 38841,
+    "LastWriteUtc": "2026-09-01T14:09:57.1077102Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00000.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T14:09:58.7081561Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00000.npy",
+    "Size": 200998016,
+    "LastWriteUtc": "2026-09-01T14:09:57.0749601Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00001.index.jsonl",
+    "Size": 36807,
+    "LastWriteUtc": "2026-09-01T14:12:37.0471516Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00001.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T14:12:38.4981030Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00001.npy",
+    "Size": 200853632,
+    "LastWriteUtc": "2026-09-01T14:12:36.9823625Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00002.index.jsonl",
+    "Size": 38087,
+    "LastWriteUtc": "2026-09-01T14:15:20.4726671Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00002.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T14:15:22.3373060Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00002.npy",
+    "Size": 200801408,
+    "LastWriteUtc": "2026-09-01T14:15:20.4411009Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00003.index.jsonl",
+    "Size": 42355,
+    "LastWriteUtc": "2026-09-01T14:18:01.7433736Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00003.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T14:18:03.5494513Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00003.npy",
+    "Size": 201216128,
+    "LastWriteUtc": "2026-09-01T14:18:01.7095025Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00004.index.jsonl",
+    "Size": 40034,
+    "LastWriteUtc": "2026-09-01T14:20:42.4634983Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00004.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T14:20:44.1004488Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00004.npy",
+    "Size": 201010304,
+    "LastWriteUtc": "2026-09-01T14:20:42.4192389Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00005.index.jsonl",
+    "Size": 39707,
+    "LastWriteUtc": "2026-09-01T14:23:23.7868163Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00005.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T14:23:25.5976129Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00005.npy",
+    "Size": 201151616,
+    "LastWriteUtc": "2026-09-01T14:23:23.7507872Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00006.index.jsonl",
+    "Size": 37279,
+    "LastWriteUtc": "2026-09-01T14:26:02.2707758Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00006.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T14:26:03.8301654Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00006.npy",
+    "Size": 201320576,
+    "LastWriteUtc": "2026-09-01T14:26:02.2432282Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00007.index.jsonl",
+    "Size": 39535,
+    "LastWriteUtc": "2026-09-01T14:28:40.3805761Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00007.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T14:28:42.0482954Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00007.npy",
+    "Size": 201240704,
+    "LastWriteUtc": "2026-09-01T14:28:40.3377901Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00008.index.jsonl",
+    "Size": 37970,
+    "LastWriteUtc": "2026-09-01T14:31:20.1997571Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00008.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T14:31:21.7112782Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00008.npy",
+    "Size": 201216128,
+    "LastWriteUtc": "2026-09-01T14:31:20.1552227Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00009.index.jsonl",
+    "Size": 35415,
+    "LastWriteUtc": "2026-09-01T14:33:59.7732058Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00009.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T14:34:01.2255856Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00009.npy",
+    "Size": 200552576,
+    "LastWriteUtc": "2026-09-01T14:33:59.7279008Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00010.index.jsonl",
+    "Size": 39403,
+    "LastWriteUtc": "2026-09-01T14:36:38.0091653Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00010.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T14:36:39.7182895Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00010.npy",
+    "Size": 200322176,
+    "LastWriteUtc": "2026-09-01T14:36:37.9806540Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00011.index.jsonl",
+    "Size": 39211,
+    "LastWriteUtc": "2026-09-01T14:39:16.8000719Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00011.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T14:39:18.2713282Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00011.npy",
+    "Size": 200761472,
+    "LastWriteUtc": "2026-09-01T14:39:16.7210887Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00012.index.jsonl",
+    "Size": 39081,
+    "LastWriteUtc": "2026-09-01T14:41:53.7930189Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00012.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T14:41:55.2402380Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00012.npy",
+    "Size": 200951936,
+    "LastWriteUtc": "2026-09-01T14:41:53.7476289Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00013.index.jsonl",
+    "Size": 37124,
+    "LastWriteUtc": "2026-09-01T14:44:31.7649141Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00013.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T14:44:33.2936988Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00013.npy",
+    "Size": 200847488,
+    "LastWriteUtc": "2026-09-01T14:44:31.7275368Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00014.index.jsonl",
+    "Size": 33093,
+    "LastWriteUtc": "2026-09-01T14:47:09.7789804Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00014.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T14:47:11.5263778Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00014.npy",
+    "Size": 201256064,
+    "LastWriteUtc": "2026-09-01T14:47:09.7399736Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00015.index.jsonl",
+    "Size": 40285,
+    "LastWriteUtc": "2026-09-01T14:49:47.3241896Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00015.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T14:49:49.0165332Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00015.npy",
+    "Size": 200316032,
+    "LastWriteUtc": "2026-09-01T14:49:47.2697434Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00016.index.jsonl",
+    "Size": 42657,
+    "LastWriteUtc": "2026-09-01T14:52:25.7360240Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00016.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T14:52:27.4768293Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00016.npy",
+    "Size": 200798336,
+    "LastWriteUtc": "2026-09-01T14:52:25.6953204Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00017.index.jsonl",
+    "Size": 40771,
+    "LastWriteUtc": "2026-09-01T14:55:04.8686404Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00017.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T14:55:06.4300959Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00017.npy",
+    "Size": 200985728,
+    "LastWriteUtc": "2026-09-01T14:55:04.8376655Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00018.index.jsonl",
+    "Size": 39681,
+    "LastWriteUtc": "2026-09-01T14:57:47.9387086Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00018.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T14:57:50.1346232Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00018.npy",
+    "Size": 201289856,
+    "LastWriteUtc": "2026-09-01T14:57:47.8958727Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00019.index.jsonl",
+    "Size": 39184,
+    "LastWriteUtc": "2026-09-01T15:00:36.9475800Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00019.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:00:38.6606866Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00019.npy",
+    "Size": 200614016,
+    "LastWriteUtc": "2026-09-01T15:00:36.9200643Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00020.index.jsonl",
+    "Size": 40352,
+    "LastWriteUtc": "2026-09-01T15:03:16.3960236Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00020.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:03:18.0298397Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00020.npy",
+    "Size": 201047168,
+    "LastWriteUtc": "2026-09-01T15:03:16.3509421Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00021.index.jsonl",
+    "Size": 46211,
+    "LastWriteUtc": "2026-09-01T15:05:56.4287068Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00021.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:05:57.9758408Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00021.npy",
+    "Size": 200438912,
+    "LastWriteUtc": "2026-09-01T15:05:56.3882360Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00022.index.jsonl",
+    "Size": 48798,
+    "LastWriteUtc": "2026-09-01T15:08:36.5530796Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00022.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:08:38.3584090Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00022.npy",
+    "Size": 201154688,
+    "LastWriteUtc": "2026-09-01T15:08:36.5216678Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00023.index.jsonl",
+    "Size": 54803,
+    "LastWriteUtc": "2026-09-01T15:11:13.4713553Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00023.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:11:14.9086936Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00023.npy",
+    "Size": 200604800,
+    "LastWriteUtc": "2026-09-01T15:11:13.4114429Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00024.index.jsonl",
+    "Size": 18716,
+    "LastWriteUtc": "2026-09-01T15:12:47.8525452Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00024.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:12:48.9826912Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/test/shard-00024.npy",
+    "Size": 122797184,
+    "LastWriteUtc": "2026-09-01T15:12:47.8128117Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/_SUCCESS",
+    "Size": 27010,
+    "LastWriteUtc": "2026-09-01T18:29:43.6937598Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00000.index.jsonl",
+    "Size": 32345,
+    "LastWriteUtc": "2026-09-01T15:17:08.8223674Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00000.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:17:10.4613227Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00000.npy",
+    "Size": 200266880,
+    "LastWriteUtc": "2026-09-01T15:17:08.7524735Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00001.index.jsonl",
+    "Size": 38681,
+    "LastWriteUtc": "2026-09-01T15:19:45.7980948Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00001.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:19:47.3383458Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00001.npy",
+    "Size": 200770688,
+    "LastWriteUtc": "2026-09-01T15:19:45.7458139Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00002.index.jsonl",
+    "Size": 37970,
+    "LastWriteUtc": "2026-09-01T15:22:22.9455736Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00002.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:22:24.6118125Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00002.npy",
+    "Size": 200540288,
+    "LastWriteUtc": "2026-09-01T15:22:22.9004017Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00003.index.jsonl",
+    "Size": 41313,
+    "LastWriteUtc": "2026-09-01T15:25:01.3160209Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00003.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:25:02.8743094Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00003.npy",
+    "Size": 201013376,
+    "LastWriteUtc": "2026-09-01T15:25:01.2865837Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00004.index.jsonl",
+    "Size": 42336,
+    "LastWriteUtc": "2026-09-01T15:27:39.4791357Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00004.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:27:41.1340768Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00004.npy",
+    "Size": 200927360,
+    "LastWriteUtc": "2026-09-01T15:27:39.4247668Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00005.index.jsonl",
+    "Size": 39581,
+    "LastWriteUtc": "2026-09-01T15:30:16.0165268Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00005.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:30:17.4115784Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00005.npy",
+    "Size": 200334464,
+    "LastWriteUtc": "2026-09-01T15:30:15.9769487Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00006.index.jsonl",
+    "Size": 37329,
+    "LastWriteUtc": "2026-09-01T15:32:53.0893426Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00006.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:32:54.8521314Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00006.npy",
+    "Size": 199996544,
+    "LastWriteUtc": "2026-09-01T15:32:53.0547104Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00007.index.jsonl",
+    "Size": 37502,
+    "LastWriteUtc": "2026-09-01T15:35:31.7622983Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00007.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:35:33.1661062Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00007.npy",
+    "Size": 201173120,
+    "LastWriteUtc": "2026-09-01T15:35:31.7057206Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00008.index.jsonl",
+    "Size": 33127,
+    "LastWriteUtc": "2026-09-01T15:38:09.1428990Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00008.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:38:10.7458006Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00008.npy",
+    "Size": 201077888,
+    "LastWriteUtc": "2026-09-01T15:38:09.1183882Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00009.index.jsonl",
+    "Size": 35778,
+    "LastWriteUtc": "2026-09-01T15:40:46.7269166Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00009.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:40:48.0887289Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00009.npy",
+    "Size": 201289856,
+    "LastWriteUtc": "2026-09-01T15:40:46.6992198Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00010.index.jsonl",
+    "Size": 37320,
+    "LastWriteUtc": "2026-09-01T15:43:25.0298538Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00010.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:43:26.8747994Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00010.npy",
+    "Size": 200644736,
+    "LastWriteUtc": "2026-09-01T15:43:24.9623083Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00011.index.jsonl",
+    "Size": 36837,
+    "LastWriteUtc": "2026-09-01T15:46:02.7569283Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00011.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:46:04.3444578Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00011.npy",
+    "Size": 201077888,
+    "LastWriteUtc": "2026-09-01T15:46:02.7381898Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00012.index.jsonl",
+    "Size": 38589,
+    "LastWriteUtc": "2026-09-01T15:48:40.6259349Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00012.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:48:42.1882526Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00012.npy",
+    "Size": 201037952,
+    "LastWriteUtc": "2026-09-01T15:48:40.5733307Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00013.index.jsonl",
+    "Size": 38623,
+    "LastWriteUtc": "2026-09-01T15:51:18.4717559Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00013.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:51:20.0638911Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00013.npy",
+    "Size": 200936576,
+    "LastWriteUtc": "2026-09-01T15:51:18.4457158Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00014.index.jsonl",
+    "Size": 31453,
+    "LastWriteUtc": "2026-09-01T15:53:56.0578709Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00014.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:53:57.5689351Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00014.npy",
+    "Size": 201179264,
+    "LastWriteUtc": "2026-09-01T15:53:56.0319294Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00015.index.jsonl",
+    "Size": 34530,
+    "LastWriteUtc": "2026-09-01T15:56:32.9295672Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00015.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:56:34.5580469Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00015.npy",
+    "Size": 200230016,
+    "LastWriteUtc": "2026-09-01T15:56:32.8995325Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00016.index.jsonl",
+    "Size": 35245,
+    "LastWriteUtc": "2026-09-01T15:59:08.3354408Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00016.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T15:59:10.1966718Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00016.npy",
+    "Size": 200730752,
+    "LastWriteUtc": "2026-09-01T15:59:08.2918973Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00017.index.jsonl",
+    "Size": 33353,
+    "LastWriteUtc": "2026-09-01T16:01:45.0940770Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00017.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:01:46.9004209Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00017.npy",
+    "Size": 200660096,
+    "LastWriteUtc": "2026-09-01T16:01:45.0618986Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00018.index.jsonl",
+    "Size": 38971,
+    "LastWriteUtc": "2026-09-01T16:04:22.2730008Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00018.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:04:23.6790513Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00018.npy",
+    "Size": 200693888,
+    "LastWriteUtc": "2026-09-01T16:04:22.2418279Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00019.index.jsonl",
+    "Size": 38610,
+    "LastWriteUtc": "2026-09-01T16:06:58.6599412Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00019.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:06:59.9811627Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00019.npy",
+    "Size": 200368256,
+    "LastWriteUtc": "2026-09-01T16:06:58.6169337Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00020.index.jsonl",
+    "Size": 36846,
+    "LastWriteUtc": "2026-09-01T16:09:34.6665718Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00020.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:09:36.5198735Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00020.npy",
+    "Size": 201314432,
+    "LastWriteUtc": "2026-09-01T16:09:34.6319836Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00021.index.jsonl",
+    "Size": 37603,
+    "LastWriteUtc": "2026-09-01T16:12:12.0043734Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00021.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:12:13.7243232Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00021.npy",
+    "Size": 201130112,
+    "LastWriteUtc": "2026-09-01T16:12:11.9737320Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00022.index.jsonl",
+    "Size": 38769,
+    "LastWriteUtc": "2026-09-01T16:14:48.8909132Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00022.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:14:50.3371443Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00022.npy",
+    "Size": 201034880,
+    "LastWriteUtc": "2026-09-01T16:14:48.8409169Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00023.index.jsonl",
+    "Size": 39860,
+    "LastWriteUtc": "2026-09-01T16:17:26.8207013Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00023.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:17:28.5569669Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00023.npy",
+    "Size": 200884352,
+    "LastWriteUtc": "2026-09-01T16:17:26.7855967Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00024.index.jsonl",
+    "Size": 38681,
+    "LastWriteUtc": "2026-09-01T16:20:02.6536114Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00024.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:20:04.2105946Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00024.npy",
+    "Size": 201025664,
+    "LastWriteUtc": "2026-09-01T16:20:02.6027942Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00025.index.jsonl",
+    "Size": 37498,
+    "LastWriteUtc": "2026-09-01T16:22:39.4826992Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00025.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:22:41.0348345Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00025.npy",
+    "Size": 201148544,
+    "LastWriteUtc": "2026-09-01T16:22:39.4531893Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00026.index.jsonl",
+    "Size": 38131,
+    "LastWriteUtc": "2026-09-01T16:25:16.6014304Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00026.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:25:18.2999410Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00026.npy",
+    "Size": 201305216,
+    "LastWriteUtc": "2026-09-01T16:25:16.5570210Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00027.index.jsonl",
+    "Size": 40621,
+    "LastWriteUtc": "2026-09-01T16:27:53.3995702Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00027.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:27:55.1568193Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00027.npy",
+    "Size": 200165504,
+    "LastWriteUtc": "2026-09-01T16:27:53.3695362Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00028.index.jsonl",
+    "Size": 38525,
+    "LastWriteUtc": "2026-09-01T16:30:29.8757553Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00028.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:30:31.7196197Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00028.npy",
+    "Size": 201277568,
+    "LastWriteUtc": "2026-09-01T16:30:29.8436874Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00029.index.jsonl",
+    "Size": 37323,
+    "LastWriteUtc": "2026-09-01T16:33:06.6047946Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00029.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:33:08.1666944Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00029.npy",
+    "Size": 201256064,
+    "LastWriteUtc": "2026-09-01T16:33:06.5448054Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00030.index.jsonl",
+    "Size": 41396,
+    "LastWriteUtc": "2026-09-01T16:35:44.9400092Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00030.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:35:46.4091242Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00030.npy",
+    "Size": 200921216,
+    "LastWriteUtc": "2026-09-01T16:35:44.9021736Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00031.index.jsonl",
+    "Size": 45199,
+    "LastWriteUtc": "2026-09-01T16:38:21.7778560Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00031.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:38:23.4840036Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00031.npy",
+    "Size": 201001088,
+    "LastWriteUtc": "2026-09-01T16:38:21.7533490Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00032.index.jsonl",
+    "Size": 40476,
+    "LastWriteUtc": "2026-09-01T16:40:59.1154947Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00032.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:41:00.6110751Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00032.npy",
+    "Size": 200752256,
+    "LastWriteUtc": "2026-09-01T16:40:59.0771509Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00033.index.jsonl",
+    "Size": 43405,
+    "LastWriteUtc": "2026-09-01T16:43:36.5483896Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00033.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:43:38.3504090Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00033.npy",
+    "Size": 200703104,
+    "LastWriteUtc": "2026-09-01T16:43:36.5185308Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00034.index.jsonl",
+    "Size": 41785,
+    "LastWriteUtc": "2026-09-01T16:46:13.2149730Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00034.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:46:14.8683972Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00034.npy",
+    "Size": 201317504,
+    "LastWriteUtc": "2026-09-01T16:46:13.1854559Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00035.index.jsonl",
+    "Size": 37709,
+    "LastWriteUtc": "2026-09-01T16:48:50.5386238Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00035.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:48:52.2659892Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00035.npy",
+    "Size": 200807552,
+    "LastWriteUtc": "2026-09-01T16:48:50.5080801Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00036.index.jsonl",
+    "Size": 39599,
+    "LastWriteUtc": "2026-09-01T16:51:28.3927111Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00036.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:51:30.1813288Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00036.npy",
+    "Size": 201243776,
+    "LastWriteUtc": "2026-09-01T16:51:28.3657080Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00037.index.jsonl",
+    "Size": 41659,
+    "LastWriteUtc": "2026-09-01T16:54:06.5662543Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00037.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:54:08.2379457Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00037.npy",
+    "Size": 201314432,
+    "LastWriteUtc": "2026-09-01T16:54:06.5345326Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00038.index.jsonl",
+    "Size": 45973,
+    "LastWriteUtc": "2026-09-01T16:56:45.7852553Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00038.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:56:47.4332124Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00038.npy",
+    "Size": 201188480,
+    "LastWriteUtc": "2026-09-01T16:56:45.7474421Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00039.index.jsonl",
+    "Size": 39909,
+    "LastWriteUtc": "2026-09-01T16:59:25.0063954Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00039.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T16:59:26.6544296Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00039.npy",
+    "Size": 200104064,
+    "LastWriteUtc": "2026-09-01T16:59:24.9788791Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00040.index.jsonl",
+    "Size": 38357,
+    "LastWriteUtc": "2026-09-01T17:02:02.6391495Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00040.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:02:04.4584719Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00040.npy",
+    "Size": 200770688,
+    "LastWriteUtc": "2026-09-01T17:02:02.6072921Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00041.index.jsonl",
+    "Size": 43571,
+    "LastWriteUtc": "2026-09-01T17:04:41.5343721Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00041.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:04:43.3757116Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00041.npy",
+    "Size": 200951936,
+    "LastWriteUtc": "2026-09-01T17:04:41.4850164Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00042.index.jsonl",
+    "Size": 54784,
+    "LastWriteUtc": "2026-09-01T17:07:23.4081587Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00042.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:07:25.1805985Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00042.npy",
+    "Size": 200967296,
+    "LastWriteUtc": "2026-09-01T17:07:23.3179113Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00043.index.jsonl",
+    "Size": 56685,
+    "LastWriteUtc": "2026-09-01T17:10:07.5876297Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00043.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:10:09.3657297Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00043.npy",
+    "Size": 201034880,
+    "LastWriteUtc": "2026-09-01T17:10:07.5528418Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00044.index.jsonl",
+    "Size": 50458,
+    "LastWriteUtc": "2026-09-01T17:12:49.1804560Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00044.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:12:50.7155551Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00044.npy",
+    "Size": 200902784,
+    "LastWriteUtc": "2026-09-01T17:12:49.1093734Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00045.index.jsonl",
+    "Size": 49247,
+    "LastWriteUtc": "2026-09-01T17:15:28.3421665Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00045.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:15:30.0747419Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00045.npy",
+    "Size": 200426624,
+    "LastWriteUtc": "2026-09-01T17:15:28.3030866Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00046.index.jsonl",
+    "Size": 46830,
+    "LastWriteUtc": "2026-09-01T17:18:06.6010266Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00046.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:18:08.2429557Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00046.npy",
+    "Size": 201053312,
+    "LastWriteUtc": "2026-09-01T17:18:06.5673664Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00047.index.jsonl",
+    "Size": 51849,
+    "LastWriteUtc": "2026-09-01T17:20:46.8032139Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00047.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:20:48.4524181Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00047.npy",
+    "Size": 201013376,
+    "LastWriteUtc": "2026-09-01T17:20:46.7746732Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00048.index.jsonl",
+    "Size": 52365,
+    "LastWriteUtc": "2026-09-01T17:23:28.0244425Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00048.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:23:29.8487414Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00048.npy",
+    "Size": 200666240,
+    "LastWriteUtc": "2026-09-01T17:23:27.9973572Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00049.index.jsonl",
+    "Size": 27301,
+    "LastWriteUtc": "2026-09-01T17:26:02.2557053Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00049.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:26:04.0956958Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00049.npy",
+    "Size": 199744640,
+    "LastWriteUtc": "2026-09-01T17:26:02.2168075Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00050.index.jsonl",
+    "Size": 28516,
+    "LastWriteUtc": "2026-09-01T17:28:34.8748388Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00050.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:28:36.4893665Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00050.npy",
+    "Size": 200187008,
+    "LastWriteUtc": "2026-09-01T17:28:34.8447129Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00051.index.jsonl",
+    "Size": 29206,
+    "LastWriteUtc": "2026-09-01T17:31:09.2531799Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00051.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:31:10.9655748Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00051.npy",
+    "Size": 200764544,
+    "LastWriteUtc": "2026-09-01T17:31:09.2121427Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00052.index.jsonl",
+    "Size": 39225,
+    "LastWriteUtc": "2026-09-01T17:33:44.7258056Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00052.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:33:46.4063637Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00052.npy",
+    "Size": 200681600,
+    "LastWriteUtc": "2026-09-01T17:33:44.6827414Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00053.index.jsonl",
+    "Size": 29380,
+    "LastWriteUtc": "2026-09-01T17:36:20.2243301Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00053.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:36:21.6357571Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00053.npy",
+    "Size": 200441984,
+    "LastWriteUtc": "2026-09-01T17:36:20.1927927Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00054.index.jsonl",
+    "Size": 36642,
+    "LastWriteUtc": "2026-09-01T17:38:57.0409272Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00054.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:38:58.7071257Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00054.npy",
+    "Size": 201074816,
+    "LastWriteUtc": "2026-09-01T17:38:57.0093982Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00055.index.jsonl",
+    "Size": 28846,
+    "LastWriteUtc": "2026-09-01T17:41:33.2451471Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00055.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:41:35.0292909Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00055.npy",
+    "Size": 199919744,
+    "LastWriteUtc": "2026-09-01T17:41:33.1937582Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00056.index.jsonl",
+    "Size": 36476,
+    "LastWriteUtc": "2026-09-01T17:44:10.2970335Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00056.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:44:11.8834456Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00056.npy",
+    "Size": 201114752,
+    "LastWriteUtc": "2026-09-01T17:44:10.2604960Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00057.index.jsonl",
+    "Size": 41478,
+    "LastWriteUtc": "2026-09-01T17:46:46.0632118Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00057.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:46:47.4388803Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00057.npy",
+    "Size": 200908928,
+    "LastWriteUtc": "2026-09-01T17:46:46.0111883Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00058.index.jsonl",
+    "Size": 31967,
+    "LastWriteUtc": "2026-09-01T17:49:20.8094403Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00058.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:49:22.3801318Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00058.npy",
+    "Size": 199756928,
+    "LastWriteUtc": "2026-09-01T17:49:20.7698501Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00059.index.jsonl",
+    "Size": 25058,
+    "LastWriteUtc": "2026-09-01T17:51:57.5475051Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00059.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:51:59.3020764Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00059.npy",
+    "Size": 200994944,
+    "LastWriteUtc": "2026-09-01T17:51:57.4870708Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00060.index.jsonl",
+    "Size": 27479,
+    "LastWriteUtc": "2026-09-01T17:54:34.5523254Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00060.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:54:36.1956927Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00060.npy",
+    "Size": 200813696,
+    "LastWriteUtc": "2026-09-01T17:54:34.5127401Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00061.index.jsonl",
+    "Size": 36284,
+    "LastWriteUtc": "2026-09-01T17:57:09.7173819Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00061.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:57:11.3769122Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00061.npy",
+    "Size": 200018048,
+    "LastWriteUtc": "2026-09-01T17:57:09.6857814Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00062.index.jsonl",
+    "Size": 26612,
+    "LastWriteUtc": "2026-09-01T17:59:44.3661018Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00062.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T17:59:46.3827584Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00062.npy",
+    "Size": 200736896,
+    "LastWriteUtc": "2026-09-01T17:59:44.3394273Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00063.index.jsonl",
+    "Size": 36457,
+    "LastWriteUtc": "2026-09-01T18:02:21.7914276Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00063.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T18:02:23.6494762Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00063.npy",
+    "Size": 200263808,
+    "LastWriteUtc": "2026-09-01T18:02:21.7618822Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00064.index.jsonl",
+    "Size": 24194,
+    "LastWriteUtc": "2026-09-01T18:04:59.2552776Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00064.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T18:05:01.1089050Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00064.npy",
+    "Size": 199932032,
+    "LastWriteUtc": "2026-09-01T18:04:59.2295255Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00065.index.jsonl",
+    "Size": 25576,
+    "LastWriteUtc": "2026-09-01T18:07:36.7389128Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00065.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T18:07:38.1643851Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00065.npy",
+    "Size": 200079488,
+    "LastWriteUtc": "2026-09-01T18:07:36.6934873Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00066.index.jsonl",
+    "Size": 25747,
+    "LastWriteUtc": "2026-09-01T18:10:14.3967800Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00066.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T18:10:16.1842888Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00066.npy",
+    "Size": 200908928,
+    "LastWriteUtc": "2026-09-01T18:10:14.3662740Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00067.index.jsonl",
+    "Size": 24709,
+    "LastWriteUtc": "2026-09-01T18:12:51.3173144Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00067.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T18:12:53.0003801Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00067.npy",
+    "Size": 200552576,
+    "LastWriteUtc": "2026-09-01T18:12:51.2922695Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00068.index.jsonl",
+    "Size": 29555,
+    "LastWriteUtc": "2026-09-01T18:15:28.4357992Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00068.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T18:15:29.9854209Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00068.npy",
+    "Size": 200604800,
+    "LastWriteUtc": "2026-09-01T18:15:28.4155376Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00069.index.jsonl",
+    "Size": 27477,
+    "LastWriteUtc": "2026-09-01T18:18:05.7951556Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00069.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T18:18:07.6227491Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00069.npy",
+    "Size": 200878208,
+    "LastWriteUtc": "2026-09-01T18:18:05.7731300Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00070.index.jsonl",
+    "Size": 29380,
+    "LastWriteUtc": "2026-09-01T18:20:44.2153964Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00070.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T18:20:45.9220438Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00070.npy",
+    "Size": 201136256,
+    "LastWriteUtc": "2026-09-01T18:20:44.1787745Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00071.index.jsonl",
+    "Size": 31454,
+    "LastWriteUtc": "2026-09-01T18:23:21.0444042Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00071.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T18:23:22.7198628Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00071.npy",
+    "Size": 201025664,
+    "LastWriteUtc": "2026-09-01T18:23:21.0208736Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00072.index.jsonl",
+    "Size": 15368,
+    "LastWriteUtc": "2026-09-01T18:24:54.7239485Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00072.meta.json",
+    "Size": 326,
+    "LastWriteUtc": "2026-09-01T18:24:55.9636026Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/train/shard-00072.npy",
+    "Size": 120514688,
+    "LastWriteUtc": "2026-09-01T18:24:54.6946643Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/_SUCCESS",
+    "Size": 6405,
+    "LastWriteUtc": "2026-09-01T19:13:04.4438428Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00000.index.jsonl",
+    "Size": 38071,
+    "LastWriteUtc": "2026-09-01T18:32:16.9526008Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00000.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T18:32:18.4341165Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00000.npy",
+    "Size": 201277568,
+    "LastWriteUtc": "2026-09-01T18:32:16.9145616Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00001.index.jsonl",
+    "Size": 35562,
+    "LastWriteUtc": "2026-09-01T18:34:54.4249186Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00001.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T18:34:55.7606455Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00001.npy",
+    "Size": 200936576,
+    "LastWriteUtc": "2026-09-01T18:34:54.3902642Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00002.index.jsonl",
+    "Size": 33685,
+    "LastWriteUtc": "2026-09-01T18:37:33.4622553Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00002.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T18:37:35.1441376Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00002.npy",
+    "Size": 201166976,
+    "LastWriteUtc": "2026-09-01T18:37:33.4239818Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00003.index.jsonl",
+    "Size": 39305,
+    "LastWriteUtc": "2026-09-01T18:40:12.1783797Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00003.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T18:40:14.0305091Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00003.npy",
+    "Size": 200696960,
+    "LastWriteUtc": "2026-09-01T18:40:12.1498227Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00004.index.jsonl",
+    "Size": 33606,
+    "LastWriteUtc": "2026-09-01T18:42:50.2367296Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00004.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T18:42:51.6028955Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00004.npy",
+    "Size": 201068672,
+    "LastWriteUtc": "2026-09-01T18:42:50.1905942Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00005.index.jsonl",
+    "Size": 39315,
+    "LastWriteUtc": "2026-09-01T18:45:28.6713427Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00005.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T18:45:29.9170024Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00005.npy",
+    "Size": 201136256,
+    "LastWriteUtc": "2026-09-01T18:45:28.6163861Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00006.index.jsonl",
+    "Size": 40277,
+    "LastWriteUtc": "2026-09-01T18:48:06.4192820Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00006.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T18:48:07.9062793Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00006.npy",
+    "Size": 200395904,
+    "LastWriteUtc": "2026-09-01T18:48:06.3713221Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00007.index.jsonl",
+    "Size": 39493,
+    "LastWriteUtc": "2026-09-01T18:50:44.0780494Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00007.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T18:50:45.8629216Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00007.npy",
+    "Size": 200303744,
+    "LastWriteUtc": "2026-09-01T18:50:44.0468732Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00008.index.jsonl",
+    "Size": 39846,
+    "LastWriteUtc": "2026-09-01T18:53:22.0508531Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00008.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T18:53:23.4742290Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00008.npy",
+    "Size": 200896640,
+    "LastWriteUtc": "2026-09-01T18:53:21.9828770Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00009.index.jsonl",
+    "Size": 41298,
+    "LastWriteUtc": "2026-09-01T18:55:59.5379891Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00009.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T18:56:00.9153740Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00009.npy",
+    "Size": 200948864,
+    "LastWriteUtc": "2026-09-01T18:55:59.5179054Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00010.index.jsonl",
+    "Size": 48920,
+    "LastWriteUtc": "2026-09-01T18:58:39.8335469Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00010.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T18:58:41.1498648Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00010.npy",
+    "Size": 201271424,
+    "LastWriteUtc": "2026-09-01T18:58:39.7780829Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00011.index.jsonl",
+    "Size": 53882,
+    "LastWriteUtc": "2026-09-01T19:01:21.3128666Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00011.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T19:01:22.9661363Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00011.npy",
+    "Size": 200478848,
+    "LastWriteUtc": "2026-09-01T19:01:21.2888053Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00012.index.jsonl",
+    "Size": 42845,
+    "LastWriteUtc": "2026-09-01T19:03:59.0348677Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00012.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T19:04:00.4803195Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00012.npy",
+    "Size": 200776832,
+    "LastWriteUtc": "2026-09-01T19:03:58.9915337Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00013.index.jsonl",
+    "Size": 41435,
+    "LastWriteUtc": "2026-09-01T19:06:34.9409795Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00013.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T19:06:36.4788800Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00013.npy",
+    "Size": 200856704,
+    "LastWriteUtc": "2026-09-01T19:06:34.8995123Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00014.index.jsonl",
+    "Size": 38227,
+    "LastWriteUtc": "2026-09-01T19:09:13.1586934Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00014.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T19:09:14.5345714Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00014.npy",
+    "Size": 200377472,
+    "LastWriteUtc": "2026-09-01T19:09:13.1220221Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00015.index.jsonl",
+    "Size": 35915,
+    "LastWriteUtc": "2026-09-01T19:11:48.8187612Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00015.meta.json",
+    "Size": 327,
+    "LastWriteUtc": "2026-09-01T19:11:50.6018713Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00015.npy",
+    "Size": 200749184,
+    "LastWriteUtc": "2026-09-01T19:11:48.7872193Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00016.index.jsonl",
+    "Size": 1941,
+    "LastWriteUtc": "2026-09-01T19:11:59.2895127Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00016.meta.json",
+    "Size": 325,
+    "LastWriteUtc": "2026-09-01T19:11:59.4892239Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/msp_podcast/validation/shard-00016.npy",
+    "Size": 12816512,
+    "LastWriteUtc": "2026-09-01T19:11:59.2597051Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_cache/msp_podcast_base_final_v1/cache_meta.json",
+    "Size": 2092,
+    "LastWriteUtc": "2026-09-01T19:13:04.4949056Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/hcudb1/cache/hcudb1/test/_SUCCESS",
+    "Size": 498,
+    "LastWriteUtc": "2026-08-23T02:13:24.2065794Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/hcudb1/cache/hcudb1/test/shard-00000.index.jsonl",
+    "Size": 613,
+    "LastWriteUtc": "2026-08-23T02:13:24.1216525Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/hcudb1/cache/hcudb1/test/shard-00000.meta.json",
+    "Size": 320,
+    "LastWriteUtc": "2026-08-23T02:13:24.1739411Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/hcudb1/cache/hcudb1/test/shard-00000.npy",
+    "Size": 736,
+    "LastWriteUtc": "2026-08-23T02:13:24.1107562Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/hcudb1/cache/hcudb1/train/_SUCCESS",
+    "Size": 499,
+    "LastWriteUtc": "2026-08-23T02:13:24.3758088Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/hcudb1/cache/hcudb1/train/shard-00000.index.jsonl",
+    "Size": 1244,
+    "LastWriteUtc": "2026-08-23T02:13:24.2579139Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/hcudb1/cache/hcudb1/train/shard-00000.meta.json",
+    "Size": 320,
+    "LastWriteUtc": "2026-08-23T02:13:24.3309646Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/hcudb1/cache/hcudb1/train/shard-00000.npy",
+    "Size": 1120,
+    "LastWriteUtc": "2026-08-23T02:13:24.2466787Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/hcudb1/cache/hcudb1/validation/_SUCCESS",
+    "Size": 504,
+    "LastWriteUtc": "2026-08-23T02:13:24.5250625Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/hcudb1/cache/hcudb1/validation/shard-00000.index.jsonl",
+    "Size": 661,
+    "LastWriteUtc": "2026-08-23T02:13:24.4350568Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/hcudb1/cache/hcudb1/validation/shard-00000.meta.json",
+    "Size": 320,
+    "LastWriteUtc": "2026-08-23T02:13:24.4907936Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/hcudb1/cache/hcudb1/validation/shard-00000.npy",
+    "Size": 608,
+    "LastWriteUtc": "2026-08-23T02:13:24.4212575Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/hcudb1/cache/cache_meta.json",
+    "Size": 826,
+    "LastWriteUtc": "2026-08-23T02:13:24.5603450Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/hcudb1/manifest.jsonl",
+    "Size": 11308,
+    "LastWriteUtc": "2026-08-23T02:13:24.0443301Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/iemocap/cache/iemocap/test/_SUCCESS",
+    "Size": 499,
+    "LastWriteUtc": "2026-08-23T02:13:25.1601704Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/iemocap/cache/iemocap/test/shard-00000.index.jsonl",
+    "Size": 1245,
+    "LastWriteUtc": "2026-08-23T02:13:25.0463004Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/iemocap/cache/iemocap/test/shard-00000.meta.json",
+    "Size": 320,
+    "LastWriteUtc": "2026-08-23T02:13:25.1274172Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/iemocap/cache/iemocap/test/shard-00000.npy",
+    "Size": 1120,
+    "LastWriteUtc": "2026-08-23T02:13:25.0250545Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/iemocap/cache/cache_meta.json",
+    "Size": 836,
+    "LastWriteUtc": "2026-08-23T02:13:25.1896642Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/iemocap/manifest.jsonl",
+    "Size": 5928,
+    "LastWriteUtc": "2026-08-23T02:13:24.9639575Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/msp_podcast/cache/msp_podcast/test/_SUCCESS",
+    "Size": 503,
+    "LastWriteUtc": "2026-08-23T02:13:23.2476792Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/msp_podcast/cache/msp_podcast/test/shard-00000.index.jsonl",
+    "Size": 652,
+    "LastWriteUtc": "2026-08-23T02:13:23.1504467Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/msp_podcast/cache/msp_podcast/test/shard-00000.meta.json",
+    "Size": 320,
+    "LastWriteUtc": "2026-08-23T02:13:23.2040926Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/msp_podcast/cache/msp_podcast/test/shard-00000.npy",
+    "Size": 512,
+    "LastWriteUtc": "2026-08-23T02:13:23.1408314Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/msp_podcast/cache/msp_podcast/train/_SUCCESS",
+    "Size": 504,
+    "LastWriteUtc": "2026-08-23T02:13:23.4129005Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/msp_podcast/cache/msp_podcast/train/shard-00000.index.jsonl",
+    "Size": 1325,
+    "LastWriteUtc": "2026-08-23T02:13:23.2998195Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/msp_podcast/cache/msp_podcast/train/shard-00000.meta.json",
+    "Size": 320,
+    "LastWriteUtc": "2026-08-23T02:13:23.3678371Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/msp_podcast/cache/msp_podcast/train/shard-00000.npy",
+    "Size": 1056,
+    "LastWriteUtc": "2026-08-23T02:13:23.2868315Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/msp_podcast/cache/msp_podcast/validation/_SUCCESS",
+    "Size": 509,
+    "LastWriteUtc": "2026-08-23T02:13:23.5702045Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/msp_podcast/cache/msp_podcast/validation/shard-00000.index.jsonl",
+    "Size": 701,
+    "LastWriteUtc": "2026-08-23T02:13:23.4720714Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/msp_podcast/cache/msp_podcast/validation/shard-00000.meta.json",
+    "Size": 320,
+    "LastWriteUtc": "2026-08-23T02:13:23.5294766Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/msp_podcast/cache/msp_podcast/validation/shard-00000.npy",
+    "Size": 672,
+    "LastWriteUtc": "2026-08-23T02:13:23.4597146Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/msp_podcast/cache/cache_meta.json",
+    "Size": 837,
+    "LastWriteUtc": "2026-08-23T02:13:23.6102570Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/demo/msp_podcast/manifest.jsonl",
+    "Size": 12024,
+    "LastWriteUtc": "2026-08-23T02:13:23.1051624Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/msp_podcast/audit.json",
+    "Size": 1881,
+    "LastWriteUtc": "2026-09-01T10:19:37.5385105Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/msp_podcast/cache_validation.json",
+    "Size": 1786,
+    "LastWriteUtc": "2026-09-01T21:58:47.5859800Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/msp_podcast/capacity_estimate.json",
+    "Size": 401,
+    "LastWriteUtc": "2026-09-01T14:05:02.8193794Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/msp_podcast/duplicate_audit_generation.json",
+    "Size": 879,
+    "LastWriteUtc": "2026-09-01T11:31:40.0169227Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/msp_podcast/duplicate_exclusion_contract_generation.json",
+    "Size": 640,
+    "LastWriteUtc": "2026-09-01T12:38:51.8521300Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/msp_podcast/duplicate_exclusion_contract_verification.json",
+    "Size": 1310,
+    "LastWriteUtc": "2026-09-01T12:38:59.4508852Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/msp_podcast/exclusion_contract_generation.json",
+    "Size": 668,
+    "LastWriteUtc": "2026-09-01T10:29:46.4471305Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/msp_podcast/exclusion_contract_verification.json",
+    "Size": 524,
+    "LastWriteUtc": "2026-09-01T10:30:00.5466139Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/msp_podcast/extraction_result.json",
+    "Size": 1735,
+    "LastWriteUtc": "2026-09-01T19:21:14.2427513Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/msp_podcast/manifest_build.json",
+    "Size": 6558,
+    "LastWriteUtc": "2026-09-01T13:21:02.6919889Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/msp_podcast/manifest_validation.json",
+    "Size": 3196,
+    "LastWriteUtc": "2026-09-01T13:47:23.0041881Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_feature_preflight/msp_podcast/one_audio_cpu_benchmark.json",
+    "Size": 877,
+    "LastWriteUtc": "2026-09-01T14:00:44.3093612Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_manifests/hcudb1_4class_v1.jsonl",
+    "Size": 5122621,
+    "LastWriteUtc": "2026-08-23T15:11:33.3936950Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_manifests/msp_audio_duplicate_audit_v1.json",
+    "Size": 15333890,
+    "LastWriteUtc": "2026-09-01T11:31:39.2549375Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_manifests/msp_audio_duplicate_candidates_v1.csv",
+    "Size": 19343,
+    "LastWriteUtc": "2026-09-01T11:31:39.8399659Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_manifests/msp_audio_duplicate_exclusions_v1.json",
+    "Size": 25003,
+    "LastWriteUtc": "2026-09-01T12:38:51.7949742Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_manifests/msp_missing_audio_exclusions_v1.json",
+    "Size": 336905,
+    "LastWriteUtc": "2026-09-01T10:29:46.2732523Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "runs/ser_manifests/msp_podcast_4class_v1.jsonl",
+    "Size": 150525686,
+    "LastWriteUtc": "2026-09-01T13:21:01.0266660Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "artifacts/checkpoints/emotion2vec_base.pt",
+    "Size": 1125606009,
+    "LastWriteUtc": "2026-07-16T01:24:35.8387413Z",
+    "SHA256": null
+  },
+  {
+    "RelativePath": "artifacts/Codex 画像 2026年9月5日 12_03_00.png",
+    "Size": 314298,
+    "LastWriteUtc": "2026-09-05T03:03:18.8985542Z",
+    "SHA256": "68F2A671DE39528ECEEB48B47394B31A8DDF201B8BB2C8923F4E7F5A6DD5A435"
+  },
+  {
+    "RelativePath": "artifacts/condition_a_model_diagram.png",
+    "Size": 314298,
+    "LastWriteUtc": "2026-09-05T02:43:22.2330000Z",
+    "SHA256": "68F2A671DE39528ECEEB48B47394B31A8DDF201B8BB2C8923F4E7F5A6DD5A435"
+  },
+  {
+    "RelativePath": "artifacts/condition_a_model_diagram.svg",
+    "Size": 3893,
+    "LastWriteUtc": "2026-09-05T02:43:18.6407822Z",
+    "SHA256": "F85E6238CFE4E3FE315F6566AB39573A0A3B8369F4F9226D7E7101C70D0BC820"
+  },
+  {
+    "RelativePath": "tests/fixtures/vad_dummy/cache/000000_sample001_2d946af38128.npy",
+    "Size": 36992,
+    "LastWriteUtc": "2026-07-28T02:02:26.5550852Z",
+    "SHA256": "1F582925DB91B155A8B1F448E9F17AD793FDCF002B68521933A96D876982AA0F"
+  },
+  {
+    "RelativePath": "tests/fixtures/vad_dummy/cache/000001_sample002_26bfe4be12bb.npy",
+    "Size": 40064,
+    "LastWriteUtc": "2026-07-28T02:02:26.5550852Z",
+    "SHA256": "1B96BE8FA8C9C1E7F092F62134000741F468449FC62D8539A671D72A0728C69B"
+  },
+  {
+    "RelativePath": "tests/fixtures/vad_dummy/cache/000002_sample003_119e8115ab5d.npy",
+    "Size": 43136,
+    "LastWriteUtc": "2026-07-28T02:02:26.5550852Z",
+    "SHA256": "1940A46D621557D3DE73995277DC683A6BACE8E518F3438BBF445672568D9F24"
+  },
+  {
+    "RelativePath": "tests/fixtures/vad_dummy/cache/000003_sample004_def5217a4c9a.npy",
+    "Size": 46208,
+    "LastWriteUtc": "2026-07-28T02:02:26.5550852Z",
+    "SHA256": "915C585A55FC8F29B11267BEFEE0D21EA0C992F54D3C087FB2E80BDB8C06775B"
+  },
+  {
+    "RelativePath": "tests/fixtures/vad_dummy/cache/000004_sample005_bc31aaf28ea2.npy",
+    "Size": 36992,
+    "LastWriteUtc": "2026-07-28T02:02:26.5550852Z",
+    "SHA256": "ED2873D80727DC4989021F3B1A3FE1A10D0975E9595408F1AA3B9048C7028A07"
+  },
+  {
+    "RelativePath": "tests/fixtures/vad_dummy/cache/000005_sample006_1a799b0571c1.npy",
+    "Size": 40064,
+    "LastWriteUtc": "2026-07-28T02:02:26.5655633Z",
+    "SHA256": "DE92EF0FFE1FC2A45AF8EC3B4145B8CDA71E39BC868AC3B32EE7072ACE3F6B70"
+  },
+  {
+    "RelativePath": "tests/fixtures/vad_dummy/cache/000006_sample007_5f1535606525.npy",
+    "Size": 43136,
+    "LastWriteUtc": "2026-07-28T02:02:26.5655633Z",
+    "SHA256": "288462E2576DA7A8A86A2A44BDA2B8375FF802215260263313E838A29AA826A5"
+  },
+  {
+    "RelativePath": "tests/fixtures/vad_dummy/cache/000007_sample008_d5ec72266134.npy",
+    "Size": 46208,
+    "LastWriteUtc": "2026-07-28T02:02:26.5655633Z",
+    "SHA256": "81C7EB6A7B546172D4EA4570CA8E1A27F68F1E90A9ECC50098D553272C591414"
+  },
+  {
+    "RelativePath": "src/emotion2vec+performance.png",
+    "Size": 807602,
+    "LastWriteUtc": "2026-03-06T01:50:01.4350337Z",
+    "SHA256": "7E094B8B987E58BE5702CB0A104375DE0B2DEA3584191CB354A421051D70178D"
+  },
+  {
+    "RelativePath": "src/emotion2vec+radar.png",
+    "Size": 682444,
+    "LastWriteUtc": "2026-03-06T01:50:01.4430449Z",
+    "SHA256": "18243E296CD73CEBAA9C4B3C31C792D5AE0291EAB50ED498F8E02A920C1608FE"
+  },
+  {
+    "RelativePath": "src/IEMOCAP.png",
+    "Size": 743790,
+    "LastWriteUtc": "2026-03-06T01:50:01.4049297Z",
+    "SHA256": "72D536D28C9289AC0D7D7C90D2C846C3F18567E485D25481021ABED59F9EE39B"
+  },
+  {
+    "RelativePath": "src/Languages.png",
+    "Size": 670682,
+    "LastWriteUtc": "2026-03-06T01:50:01.4134451Z",
+    "SHA256": "E1D9D26D349B7836CC945A11D3C6260395217CC4EF38333FBD78F12A5A71ECCD"
+  },
+  {
+    "RelativePath": "src/logo.png",
+    "Size": 1848809,
+    "LastWriteUtc": "2026-03-06T01:50:01.4562796Z",
+    "SHA256": "8A1AA31431BFB2BF126D7CF383C8B681B2372C333F1328B342BAB5969DC0A569"
+  },
+  {
+    "RelativePath": "src/UMAP.png",
+    "Size": 711073,
+    "LastWriteUtc": "2026-03-06T01:50:01.4219974Z",
+    "SHA256": "E33EB5163EDEF7B9AD71DFF0FBD6E3C75F4C6DFBB75FB1C1F858C608032057DD"
+  },
+  {
+    "RelativePath": "src/Wechat.jpg",
+    "Size": 116748,
+    "LastWriteUtc": "2026-03-06T01:50:01.4249975Z",
+    "SHA256": "5C31F6ED81784EF112C0EB0A84D9BB7D73F760F9ABAD361134D2745ED6BC6535"
+  }
+]

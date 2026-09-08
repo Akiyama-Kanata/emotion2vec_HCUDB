@@ -1,3 +1,5 @@
+> 2026-09-08: 独立VAD実装・専用Notebook・専用テストはリポジトリ外へ移動しました。[保管先・台帳・復元手順](RETIRED_VAD.md)を参照してください。本文に残すVADの説明は保管した実装の参考情報です。
+
 <div align="center">
     <h1>
     EMOTION2VEC

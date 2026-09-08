@@ -1,5 +1,9 @@
 # emotion2vec リポジトリガイド
 
+> 2026-09-08: 独立VAD実装・専用Notebook・専用テストはリポジトリ外へ移動しました。[保管先・台帳・復元手順](RETIRED_VAD.md)を参照してください。本文に残すVADの説明は保管した実装の参考情報です。
+
+現行SERの入口はser_pipeline/とnotebooks/です。IEMOCAP実装は互換性テストとデモのため保持しています。A/B資料・結果とC/D計画はdocs/および既存の保存先を参照してください。
+
 ## 1. このリポジトリについて
 
 このリポジトリは、音声から感情に関係する特徴表現を抽出する **emotion2vec** の公式 PyTorch コードを基盤に、下流タスクの研究実装を追加したものです。
@@ -11,23 +15,11 @@
   - 音声特徴量の抽出
   - IEMOCAP における4クラス感情分類
   - FunASR 経由の emotion2vec+ 推論方法
-- このリポジトリで追加された研究実装
-  - Valence / Arousal / Dominance の連続値回帰
-  - VAD を中間表現として利用する感情分類
-  - 分類結果に対する VAD の寄与度出力
-  - 学習・推論 CLI と単体テスト
-
-全体として、次の処理を研究するためのコードベースになっています。
-
-```text
-音声
-  ↓
-emotion2vec による感情特徴
-  ↓
-VA/VAD の推定
-  ↓
-カテゴリ感情の分類と説明
-```
+- 現行SER実装・研究資料
+  - ser_pipeline/、SER Notebook、関連テスト
+  - A/Bの資料・過去結果、C/D計画
+- 独立VAD研究実装
+  - [リポジトリ外の保管先](RETIRED_VAD.md)へ移動済み
 
 ## 2. emotion2vec と emotion2vec+ の違い
 
@@ -95,7 +87,7 @@ emotion2vec で抽出済みの768次元特徴を下流モデルへ入力しま�
 
 実装は `iemocap_downstream/main.py` にあります。
 
-### 3.4 VA/VAD の連続値回帰
+### 3.4 VA/VAD の連続値回帰（保管実装の説明）
 
 事前抽出したフレーム特徴から、感情を連続値として予測できます。
 
@@ -118,7 +110,7 @@ predicted VA/VAD
 loss = 1 - mean(CCC)
 ```
 
-### 3.5 VAD を介した説明可能な4クラス分類
+### 3.5 VAD を介した説明可能な4クラス分類（保管実装の説明）
 
 このリポジトリで追加された主要な研究実装です。
 
@@ -167,16 +159,10 @@ emotion2vec/
 │   ├── utils.py                学習・評価処理
 │   ├── config/                 Hydra設定
 │   └── scripts/                マニフェスト作成・特徴抽出
-├── vad_downstream/
-│   ├── data.py                 VA/VAD・感情データのロード
-│   ├── model.py                回帰head・VAD経由分類器
-│   ├── training.py             CCC loss・回帰評価
-│   ├── emotion_training.py     回帰＋分類の学習・評価
-│   ├── train_head.py           VA/VAD回帰headの学習CLI
-│   ├── inference.py            WAV→VA/VAD推論
-│   ├── train_vad_emotion.py    VAD経由分類器の学習CLI
-│   └── infer_vad_emotion.py    説明付き感情推論
-├── tests/                      VAD系実装の単体テスト
+├── ser_pipeline/              現行SER処理
+├── notebooks/                 現行研究Notebook・分析・互換デモ
+├── RETIRED_VAD.md              独立VAD実装の保管案内
+├── tests/                      SER・IEMOCAP互換・Notebook等のテスト
 ├── src/                        README・発表資料用画像
 ├── archive/                    過去のログ・計画・資料
 ├── requirements.txt
@@ -196,7 +182,7 @@ train.npy + train.lengths + train.emo
 WA / UA / Weighted F1
 ```
 
-### VAD 下流処理のデータフロー
+### VAD 下流処理のデータフロー（保管実装の説明）
 
 ```text
 <prefix>.npy
@@ -339,70 +325,12 @@ bash train.sh /path/to/features/train
 
 評価は5セッション固定の leave-one-session-out です。各 fold では1セッションをテスト用とし、残り4セッションを80:20で学習用と検証用にランダム分割します。セッション数とセッションごとの発話数は `iemocap_downstream/main.py` にハードコードされており、現在の実装では `default.yaml` の `dataset.fold` と `dataset.test_ratio` は参照されません。
 
-### 6.5 VA/VAD 回帰 head を学習する
+### 6.5 独立VAD実装の利用手順
 
-```bash
-python -m vad_downstream.train_head \
-  --train-prefix data/vad/train \
-  --valid-prefix data/vad/valid \
-  --output runs/vad_head.pt \
-  --epochs 10 \
-  --batch-size 32 \
-  --device auto
-```
+VADの学習・推論CLIと専用READMEは[保管先](RETIRED_VAD.md)へ移動しました。
+利用する場合は台帳と復元手順を確認してください。
 
-検証データを指定した場合は、`mean_ccc` が最大となった epoch の head が保存されます。検証データがなければ最終 epoch が保存されます。
-
-### 6.6 WAV から VA/VAD を推論する
-
-```bash
-python -m vad_downstream.inference \
-  --wav sample.wav \
-  --target-dim 3 \
-  --head-checkpoint runs/vad_head.pt \
-  --model-dir upstream \
-  --checkpoint /path/to/emotion2vec_checkpoint.pt \
-  --output prediction.json \
-  --device auto
-```
-
-`--target-dim 2` なら VA、`--target-dim 3` なら VAD です。
-
-### 6.7 VAD 経由の感情分類器を学習する
-
-```bash
-python -m vad_downstream.train_vad_emotion \
-  --train-prefix data/vad_emotion/train \
-  --valid-prefix data/vad_emotion/valid \
-  --output runs/vad_emotion.pt \
-  --epochs 10 \
-  --batch-size 32 \
-  --lambda-vad 1.0 \
-  --lambda-emo 1.0 \
-  --device auto
-```
-
-損失関数は次の合成です。
-
-```text
-loss
-  = lambda_vad × CCC loss
-  + lambda_emo × CrossEntropyLoss
-```
-
-### 6.8 説明付き感情推論
-
-```bash
-python -m vad_downstream.infer_vad_emotion \
-  --wav sample.wav \
-  --classifier-checkpoint runs/vad_emotion.pt \
-  --model-dir upstream \
-  --checkpoint /path/to/emotion2vec_checkpoint.pt \
-  --output vad_emotion_prediction.json \
-  --device auto
-```
-
-## 7. VAD 用データ形式
+## 7. VAD 用データ形式（保管実装の説明）
 
 同じ split には同じ prefix を使います。
 
@@ -472,27 +400,9 @@ dis
 
 ## 8. テスト
 
-標準のテストコマンドは次のとおりです。
-
-```powershell
-wsl -d Ubuntu `
-  --cd /mnt/c/Users/RD004/Documents/lab/emotion2vec `
-  -e /home/akiyama/miniforge/envs/emotion2vec-py310/bin/python `
-  -m unittest discover -s tests
-```
-
-テストでは主に次の項目を確認しています。
-
-- VAD データ形式の検証
-- padding と masked mean pooling
-- CCC loss と評価指標
-- checkpoint の保存・ロード
-- CLI の入力検証
-- VA/VAD 推論 JSON
-- VAD 経由分類
-- 分類根拠となる寄与度の整合性
-
-`TESTING.md` には過去の期待値として `Ran 32 tests` と記載されていますが、現行ソースにはその後追加されたテストがあります。実行時の件数は現行コードを正としてください。
+現行の非学習テストは[TESTING.md](TESTING.md)を参照してください。
+SER互換性、データ契約、Notebook構造などを確認します。学習を行う回帰テストは別途ユーザーが実行します。
+VAD専用テストは[保管先](RETIRED_VAD.md)へ移動済みです。
 
 ## 9. 必要な外部データ・モデル
 
@@ -557,14 +467,7 @@ bash iemocap_downstream/scripts/iemocap_manifest_and_labels.sh \
 
 単一 WAV 特徴抽出スクリプトには、例外を生成するだけで再送出していない箇所があります。失敗時に分かりにくい可能性があるため、出力ファイルの生成を確認してください。
 
-## 11. 初めて使う場合の推奨順序
+## 11. 現行研究の入口
 
-1. FunASR で emotion2vec+ の単一 WAV 推論を試す。
-2. emotion2vec checkpoint を用意する。
-3. WAV から768次元特徴を抽出する。
-4. 公開済み IEMOCAP 特徴または自前特徴で4クラス分類を動かす。
-5. `.vad` ラベルを用意して VAD 回帰 head を学習する。
-6. `.emo` を追加して VAD 経由分類を学習する。
-7. 寄与度付き JSON を解析し、VAD とカテゴリ感情の関係を評価する。
-
-このリポジトリの研究上の中心は、既存の emotion2vec 特徴抽出に加え、**連続感情次元である VAD を解釈可能な中間表現としてカテゴリ感情分類へ接続すること**にあります。
+[Python索引](PYTHON_FILES.md)、[テスト案内](TESTING.md)、docs/plans/の現行計画を参照してください。
+A/Bの実装・結果、C/D計画、共通実装・資料は保持しています。独立VAD実装の利用・復元は[保管案内](RETIRED_VAD.md)を参照してください。

@@ -32,7 +32,7 @@ class SerManifestTest(unittest.TestCase):
         value = (sum(path.name.encode("utf-8")) % 100 + 1) / 1000.0
         sf.write(path, np.full(sample_rate // 20, value, dtype=np.float32), sample_rate)
 
-    def _write_msp(self, include_missing=False, nested_audio=False):
+    def _write_msp(self, include_missing=False, nested_audio=False, official6=False):
         labels = self.root / "Labels"
         labels.mkdir()
         rows = [
@@ -43,6 +43,11 @@ class SerManifestTest(unittest.TestCase):
             ("unknown.wav", "D", "Unknown", "Train"),
             ("excluded.wav", "N", "s5", "Train"),
         ]
+        if official6:
+            rows.extend([
+                ("fear.wav", "F", "s6", "Train"),
+                ("surprise.wav", "U", "s7", "Development"),
+            ])
         with (labels / "labels_consensus.csv").open("w", encoding="utf-8", newline="") as destination:
             writer = csv.writer(destination)
             writer.writerow(["FileName", "EmoClass", "EmoAct", "EmoVal", "EmoDom", "SpkrID", "Gender", "Split_Set"])
@@ -155,6 +160,22 @@ class SerManifestTest(unittest.TestCase):
         manifest.write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows), encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "relative"):
             validate_manifest(manifest)
+
+    def test_official6_manifest_includes_fear_and_surprise_without_changing_ab4_default(self):
+        self._write_msp(official6=True)
+        official_path = self.root / "official6.jsonl"
+        build_manifest(
+            "msp_podcast", self.root, official_path,
+            label_profile="official6", inspect_excluded_audio=False,
+        )
+        rows = load_manifest(official_path)
+        by_id = {row["utterance_id"]: row for row in rows}
+        self.assertEqual(by_id["fear"]["mapped_emotion"], "fearful")
+        self.assertEqual(by_id["fear"]["class_index"], 2)
+        self.assertEqual(by_id["surprise"]["mapped_emotion"], "surprised")
+        self.assertEqual(by_id["surprise"]["class_index"], 5)
+        self.assertEqual(by_id["excluded"]["exclusion_reasons"], ["label_not_in_official6"])
+        self.assertEqual(validate_manifest(official_path)["status"], "ok")
 
 
 if __name__ == "__main__":

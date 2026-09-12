@@ -6,6 +6,7 @@ from ser_pipeline.contracts import (
     CLASS_TO_INDEX,
     FEATURE_LAYER,
     LABEL_ORDER,
+    OFFICIAL_TARGET_ORDER,
     load_mapping_config,
     map_emotion,
     normalize_layer,
@@ -42,6 +43,38 @@ class SerMappingTest(unittest.TestCase):
         self.assertTrue(map_emotion("hcudb1", "嫌い").approximate_mapping)
         for label in ("怒り", "狂喜・楽しい", "余裕・嬉しい", "憂鬱・悲しい"):
             self.assertFalse(map_emotion("hcudb1", label).approximate_mapping)
+
+    def test_official6_profile_preserves_six_targets_and_contiguous_indices(self):
+        self.assertEqual(
+            OFFICIAL_TARGET_ORDER,
+            ("angry", "disgusted", "fearful", "happy", "sad", "surprised"),
+        )
+        config = load_mapping_config(label_profile="official6")
+        expected = {
+            "msp_podcast": ({"A", "D", "F", "H", "S", "U"}, {"C", "N", "O", "X"}),
+            "hcudb1": (
+                {"怒り", "嫌い", "恐れ", "狂喜・楽しい", "余裕・嬉しい", "憂鬱・悲しい", "驚き"},
+                {"冷静", "軽蔑", "リラックス・気楽", "眠い・疲れた"},
+            ),
+        }
+        for dataset, (included, excluded) in expected.items():
+            contract = config["datasets"][dataset]
+            self.assertEqual(set(contract["mappings"]), included)
+            self.assertEqual(set(contract["excluded_labels"]), excluded)
+            for label in included:
+                decision = map_emotion(dataset, label, label_profile="official6")
+                self.assertTrue(decision.included)
+                self.assertEqual(decision.class_index, OFFICIAL_TARGET_ORDER.index(decision.mapped_emotion))
+            for label in excluded:
+                decision = map_emotion(dataset, label, label_profile="official6")
+                self.assertFalse(decision.included)
+                self.assertEqual(decision.exclusion_reasons, ("label_not_in_official6",))
+        happy = [
+            map_emotion("hcudb1", label, label_profile="official6")
+            for label in ("狂喜・楽しい", "余裕・嬉しい")
+        ]
+        self.assertEqual({decision.mapped_emotion for decision in happy}, {"happy"})
+        self.assertEqual({decision.class_index for decision in happy}, {3})
 
     def test_unknown_label_and_intermediate_layer_are_rejected(self):
         with self.assertRaisesRegex(ValueError, "unknown"):

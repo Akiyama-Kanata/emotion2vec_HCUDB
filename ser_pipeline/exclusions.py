@@ -1,4 +1,4 @@
-"""Create and validate the fixed MSP-Podcast missing-audio exclusion contract."""
+"""Create and validate profile-specific MSP-Podcast missing-audio contracts."""
 
 from __future__ import annotations
 
@@ -9,11 +9,14 @@ from collections import Counter
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterable, Mapping
 
-from .duplicates import MSP_DUPLICATE_EXCLUSION_REASON
+from .duplicates import MSP_DUPLICATE_EXCLUSION_REASON, msp_duplicate_schemas
+from .contracts import dataset_contract
 
 
 MSP_EXCLUSION_SCHEMA_VERSION = "msp_missing_audio_exclusions_v1"
 MSP_EXCLUSION_REASON = "msp_missing_audio_exclusion_approved_v1"
+MSP_OFFICIAL6_EXCLUSION_SCHEMA_VERSION = "msp_missing_audio_exclusions_official6_v1"
+MSP_OFFICIAL6_EXCLUSION_REASON = "msp_missing_audio_exclusion_approved_official6_v1"
 MSP_EXPECTED_EXCLUDED_COUNT = 1_128
 MSP_EXPECTED_INCLUDED_COUNT = 24_857
 MSP_EXPECTED_ELIGIBLE_COUNT = MSP_EXPECTED_EXCLUDED_COUNT + MSP_EXPECTED_INCLUDED_COUNT
@@ -51,6 +54,24 @@ _RECORD_FIELDS = {
 _SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 
 
+def msp_exclusion_schema_version(label_profile: str) -> str:
+    return MSP_EXCLUSION_SCHEMA_VERSION if label_profile == "ab4" else MSP_OFFICIAL6_EXCLUSION_SCHEMA_VERSION
+
+
+def msp_exclusion_reason(label_profile: str) -> str:
+    return MSP_EXCLUSION_REASON if label_profile == "ab4" else MSP_OFFICIAL6_EXCLUSION_REASON
+
+
+def _contract_profile(payload: Mapping[str, Any], expected: str | None = None) -> str:
+    schema = payload.get("schema_version")
+    profile = "ab4" if schema == MSP_EXCLUSION_SCHEMA_VERSION else (
+        "official6" if schema == MSP_OFFICIAL6_EXCLUSION_SCHEMA_VERSION else None
+    )
+    if profile is None or (expected is not None and profile != expected):
+        raise ValueError("MSP exclusion contract label profile/schema mismatch")
+    return profile
+
+
 def _canonical_json(value: Mapping[str, Any]) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
@@ -62,7 +83,7 @@ def normalized_exclusion_contract_sha256(payload: Mapping[str, Any]) -> str:
     return hashlib.sha256(_canonical_json(normalized).encode("utf-8")).hexdigest()
 
 
-def _record_from_metadata(row: Mapping[str, Any]) -> dict[str, Any]:
+def _record_from_metadata(row: Mapping[str, Any], *, label_profile: str) -> dict[str, Any]:
     if row.get("dataset") != "msp_podcast" or not bool(row.get("included")):
         raise ValueError(f"exclusion candidate is not an eligible MSP row: {row.get('utterance_id')}")
     filename = PurePosixPath(str(row["audio_relpath"])).name
@@ -73,25 +94,34 @@ def _record_from_metadata(row: Mapping[str, Any]) -> dict[str, Any]:
         "mapped_emotion": str(row["mapped_emotion"]),
         "official_split": str(row["source_split"]),
         "split": str(row["split"]),
-        "exclusion_reason": MSP_EXCLUSION_REASON,
+        "exclusion_reason": msp_exclusion_reason(label_profile),
     }
 
 
 def build_msp_missing_audio_exclusion_contract(
     missing_metadata_rows: Iterable[Mapping[str, Any]],
+    *,
+    eligible_metadata_count: int | None = None,
+    label_profile: str = "ab4",
 ) -> dict[str, Any]:
-    """Build a deterministic v1 contract from currently missing eligible rows."""
+    """Build a deterministic contract from currently missing eligible rows."""
+    if label_profile == "official6" and eligible_metadata_count is None:
+        raise ValueError("official6 exclusion contract requires its eligible metadata count")
     records = sorted(
-        (_record_from_metadata(row) for row in missing_metadata_rows),
+        (_record_from_metadata(row, label_profile=label_profile) for row in missing_metadata_rows),
         key=lambda row: (row["filename"].casefold(), row["filename"]),
     )
     payload: dict[str, Any] = {
-        "schema_version": MSP_EXCLUSION_SCHEMA_VERSION,
+        "schema_version": msp_exclusion_schema_version(label_profile),
         "dataset": "msp_podcast",
         "dataset_release": "R1.10",
-        "exclusion_reason": MSP_EXCLUSION_REASON,
+        "exclusion_reason": msp_exclusion_reason(label_profile),
         "count": len(records),
-        "expected_included_count": MSP_EXPECTED_INCLUDED_COUNT,
+        "expected_included_count": (
+            MSP_EXPECTED_INCLUDED_COUNT
+            if label_profile == "ab4"
+            else int(eligible_metadata_count) - len(records)
+        ),
         "counts": {
             "mapped_emotion": dict(sorted(Counter(row["mapped_emotion"] for row in records).items())),
             "official_split": dict(sorted(Counter(row["official_split"] for row in records).items())),
@@ -99,8 +129,16 @@ def build_msp_missing_audio_exclusion_contract(
         },
         "records": records,
     }
+    if label_profile == "official6":
+        if int(eligible_metadata_count) < len(records):
+            raise ValueError("official6 exclusion contract requires its eligible metadata count")
+        payload.update(
+            label_profile="official6",
+            mapping_version=dataset_contract("msp_podcast", label_profile="official6")["mapping_version"],
+            eligible_metadata_count=int(eligible_metadata_count),
+        )
     payload["normalized_sha256"] = normalized_exclusion_contract_sha256(payload)
-    validate_msp_missing_audio_exclusion_contract(payload)
+    validate_msp_missing_audio_exclusion_contract(payload, label_profile=label_profile)
     return payload
 
 
@@ -113,37 +151,53 @@ def validate_msp_missing_audio_exclusion_contract(
     payload: Mapping[str, Any],
     *,
     expected_sha256: str | None = None,
+    label_profile: str | None = None,
 ) -> dict[str, Any]:
-    """Validate schema, fixed counts, ordering, uniqueness, and normalized SHA-256."""
-    if set(payload) != _CONTRACT_FIELDS:
-        raise ValueError(f"MSP exclusion contract fields mismatch: {sorted(set(payload) ^ _CONTRACT_FIELDS)}")
-    if payload.get("schema_version") != MSP_EXCLUSION_SCHEMA_VERSION:
-        raise ValueError("MSP exclusion contract schema_version mismatch")
+    """Validate population rules, ordering, uniqueness, and normalized SHA-256."""
+    profile = _contract_profile(payload, label_profile)
+    expected_fields = _CONTRACT_FIELDS | (
+        {"label_profile", "mapping_version", "eligible_metadata_count"} if profile == "official6" else set()
+    )
+    if set(payload) != expected_fields:
+        raise ValueError(f"MSP exclusion contract fields mismatch: {sorted(set(payload) ^ expected_fields)}")
     if payload.get("dataset") != "msp_podcast" or payload.get("dataset_release") != "R1.10":
         raise ValueError("MSP exclusion contract dataset identity mismatch")
-    if payload.get("exclusion_reason") != MSP_EXCLUSION_REASON:
+    reason = msp_exclusion_reason(profile)
+    if payload.get("exclusion_reason") != reason:
         raise ValueError("MSP exclusion contract reason mismatch")
-    if payload.get("count") != MSP_EXPECTED_EXCLUDED_COUNT:
+    if profile == "ab4" and payload.get("count") != MSP_EXPECTED_EXCLUDED_COUNT:
         raise ValueError(
             f"MSP exclusion contract count mismatch: expected {MSP_EXPECTED_EXCLUDED_COUNT}, "
             f"got {payload.get('count')}"
         )
-    if payload.get("expected_included_count") != MSP_EXPECTED_INCLUDED_COUNT:
+    if profile == "ab4" and payload.get("expected_included_count") != MSP_EXPECTED_INCLUDED_COUNT:
         raise ValueError("MSP exclusion contract expected included count mismatch")
 
     records = payload.get("records")
-    if not isinstance(records, list) or len(records) != MSP_EXPECTED_EXCLUDED_COUNT:
+    expected_count = MSP_EXPECTED_EXCLUDED_COUNT if profile == "ab4" else payload.get("count")
+    if not isinstance(records, list) or payload.get("count") != len(records) or len(records) != expected_count:
         raise ValueError("MSP exclusion contract records count mismatch")
+    if profile == "official6":
+        contract = dataset_contract("msp_podcast", label_profile="official6")
+        eligible_count = payload.get("eligible_metadata_count")
+        if (payload.get("label_profile") != "official6"
+                or payload.get("mapping_version") != contract["mapping_version"]
+                or type(eligible_count) is not int or eligible_count < len(records)
+                or payload.get("expected_included_count") != eligible_count - len(records)):
+            raise ValueError("MSP official6 exclusion population contract mismatch")
     for index, record in enumerate(records):
         if not isinstance(record, dict) or set(record) != _RECORD_FIELDS:
             raise ValueError(f"MSP exclusion contract record fields mismatch at index {index}")
         original = record.get("original_emotion")
         official_split = record.get("official_split")
-        if record.get("mapped_emotion") != MSP_ORIGINAL_TO_MAPPED.get(str(original)):
+        original_to_mapped = (
+            MSP_ORIGINAL_TO_MAPPED if profile == "ab4" else dataset_contract("msp_podcast", label_profile="official6")["mappings"]
+        )
+        if record.get("mapped_emotion") != original_to_mapped.get(str(original)):
             raise ValueError(f"MSP exclusion contract mapped label mismatch: {record.get('utterance_id')}")
         if record.get("split") != MSP_SOURCE_TO_SPLIT.get(str(official_split)):
             raise ValueError(f"MSP exclusion contract official split mismatch: {record.get('utterance_id')}")
-        if record.get("exclusion_reason") != MSP_EXCLUSION_REASON:
+        if record.get("exclusion_reason") != reason:
             raise ValueError(f"MSP exclusion contract record reason mismatch: {record.get('utterance_id')}")
         if not str(record.get("filename", "")) or not str(record.get("utterance_id", "")):
             raise ValueError(f"MSP exclusion contract has an empty filename or utterance ID at index {index}")
@@ -161,24 +215,19 @@ def validate_msp_missing_audio_exclusion_contract(
     counts = payload.get("counts")
     if not isinstance(counts, dict) or set(counts) != {"original_emotion", "mapped_emotion", "official_split"}:
         raise ValueError("MSP exclusion contract counts fields mismatch")
-    _require_expected_counts("original label counts", counts["original_emotion"], MSP_EXPECTED_ORIGINAL_LABEL_COUNTS)
-    _require_expected_counts("mapped label counts", counts["mapped_emotion"], MSP_EXPECTED_MAPPED_LABEL_COUNTS)
-    _require_expected_counts("official split counts", counts["official_split"], MSP_EXPECTED_SOURCE_SPLIT_COUNTS)
-    _require_expected_counts(
-        "record original label counts",
-        dict(sorted(Counter(record["original_emotion"] for record in records).items())),
-        MSP_EXPECTED_ORIGINAL_LABEL_COUNTS,
-    )
-    _require_expected_counts(
-        "record mapped label counts",
-        dict(sorted(Counter(record["mapped_emotion"] for record in records).items())),
-        MSP_EXPECTED_MAPPED_LABEL_COUNTS,
-    )
-    _require_expected_counts(
-        "record official split counts",
-        dict(sorted(Counter(record["official_split"] for record in records).items())),
-        MSP_EXPECTED_SOURCE_SPLIT_COUNTS,
-    )
+    actual_counts = {
+        "original_emotion": dict(sorted(Counter(record["original_emotion"] for record in records).items())),
+        "mapped_emotion": dict(sorted(Counter(record["mapped_emotion"] for record in records).items())),
+        "official_split": dict(sorted(Counter(record["official_split"] for record in records).items())),
+    }
+    for name, actual in actual_counts.items():
+        if counts[name] != actual:
+            display_name = "official split" if name == "official_split" else name.replace("_", " ")
+            raise ValueError(f"MSP exclusion contract {display_name} counts mismatch with records")
+    if profile == "ab4":
+        _require_expected_counts("original label counts", counts["original_emotion"], MSP_EXPECTED_ORIGINAL_LABEL_COUNTS)
+        _require_expected_counts("mapped label counts", counts["mapped_emotion"], MSP_EXPECTED_MAPPED_LABEL_COUNTS)
+        _require_expected_counts("official split counts", counts["official_split"], MSP_EXPECTED_SOURCE_SPLIT_COUNTS)
 
     stored_sha256 = str(payload.get("normalized_sha256", "")).lower()
     actual_sha256 = normalized_exclusion_contract_sha256(payload)
@@ -192,10 +241,10 @@ def validate_msp_missing_audio_exclusion_contract(
             raise ValueError("approved MSP exclusion SHA-256 mismatch")
 
     return {
-        "schema_version": MSP_EXCLUSION_SCHEMA_VERSION,
+        "schema_version": msp_exclusion_schema_version(profile),
         "normalized_sha256": actual_sha256,
-        "count": MSP_EXPECTED_EXCLUDED_COUNT,
-        "expected_included_count": MSP_EXPECTED_INCLUDED_COUNT,
+        "count": len(records),
+        "expected_included_count": int(payload["expected_included_count"]),
         "counts": dict(counts),
     }
 
@@ -204,6 +253,7 @@ def load_msp_missing_audio_exclusion_contract(
     path: str | Path,
     *,
     expected_sha256: str | None = None,
+    label_profile: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Load a JSON contract and return its payload and validation report."""
     source = Path(path)
@@ -213,7 +263,9 @@ def load_msp_missing_audio_exclusion_contract(
         raise ValueError(f"invalid MSP exclusion contract JSON: {source}") from exc
     if not isinstance(payload, dict):
         raise ValueError("MSP exclusion contract must be a JSON object")
-    report = validate_msp_missing_audio_exclusion_contract(payload, expected_sha256=expected_sha256)
+    report = validate_msp_missing_audio_exclusion_contract(
+        payload, expected_sha256=expected_sha256, label_profile=label_profile
+    )
     return payload, report
 
 
@@ -238,10 +290,12 @@ def reconcile_msp_exclusion_contract(
 ) -> dict[str, Any]:
     """Require exact agreement between an approved contract, metadata, and current absence."""
     rows = list(metadata_rows)
+    profile = _contract_profile(payload)
     eligible = {str(row["utterance_id"]): row for row in rows if bool(row.get("included"))}
-    if len(eligible) != MSP_EXPECTED_ELIGIBLE_COUNT:
+    expected_eligible = MSP_EXPECTED_ELIGIBLE_COUNT if profile == "ab4" else int(payload["eligible_metadata_count"])
+    if len(eligible) != expected_eligible:
         raise ValueError(
-            f"MSP eligible metadata count mismatch: expected {MSP_EXPECTED_ELIGIBLE_COUNT}, got {len(eligible)}"
+            f"MSP eligible metadata count mismatch: expected {expected_eligible}, got {len(eligible)}"
         )
     records = list(payload["records"])
     contract_by_id = {str(record["utterance_id"]): record for record in records}
@@ -270,13 +324,14 @@ def reconcile_msp_exclusion_contract(
     unapproved = sorted(missing - contract_ids)
     if unapproved:
         raise ValueError(f"MSP eligible audio is missing outside the approved exclusion contract: {unapproved[:5]}")
-    if len(eligible) - len(contract_ids) != MSP_EXPECTED_INCLUDED_COUNT:
-        raise ValueError(f"MSP final included count does not equal {MSP_EXPECTED_INCLUDED_COUNT:,}")
+    expected_included = int(payload["expected_included_count"])
+    if len(eligible) - len(contract_ids) != expected_included:
+        raise ValueError(f"MSP final included count does not equal {expected_included:,}")
     return {
         "eligible_metadata": len(eligible),
         "approved_missing": len(contract_ids),
         "unapproved_missing": 0,
-        "final_included": MSP_EXPECTED_INCLUDED_COUNT,
+        "final_included": expected_included,
     }
 
 
@@ -297,56 +352,55 @@ def manifest_exclusion_contract_signature(records: Iterable[Mapping[str, Any]]) 
     contract_sha256 = next(iter(hashes))
     if not _SHA256_PATTERN.fullmatch(contract_sha256):
         raise ValueError("manifest exclusion contract SHA-256 is invalid")
-    if schemas != {MSP_EXCLUSION_SCHEMA_VERSION}:
+    schema = next(iter(schemas))
+    profile = "ab4" if schema == MSP_EXCLUSION_SCHEMA_VERSION else (
+        "official6" if schema == MSP_OFFICIAL6_EXCLUSION_SCHEMA_VERSION else None
+    )
+    if profile is None:
         raise ValueError("manifest exclusion contract schema version mismatch")
     if {str(row.get("dataset")) for row in rows} != {"msp_podcast"}:
         raise ValueError("MSP exclusion contract provenance is valid only for an MSP manifest")
 
-    excluded = [row for row in rows if MSP_EXCLUSION_REASON in row.get("exclusion_reasons", [])]
-    if len(excluded) != MSP_EXPECTED_EXCLUDED_COUNT:
+    reason = msp_exclusion_reason(profile)
+    excluded = [row for row in rows if reason in row.get("exclusion_reasons", [])]
+    if profile == "ab4" and len(excluded) != MSP_EXPECTED_EXCLUDED_COUNT:
         raise ValueError("manifest approved MSP exclusion count mismatch")
     if any(bool(row.get("included")) for row in excluded):
         raise ValueError("manifest approved MSP exclusions must have included=false")
-    duplicate_excluded = [
-        row for row in rows if MSP_DUPLICATE_EXCLUSION_REASON in row.get("exclusion_reasons", [])
-    ]
-    expected_final = MSP_EXPECTED_INCLUDED_COUNT - len(duplicate_excluded)
+    duplicate_reason = msp_duplicate_schemas(profile)[2]
+    duplicate_excluded = [row for row in rows if duplicate_reason in row.get("exclusion_reasons", [])]
+    pre_duplicate_included = sum(bool(row.get("included")) for row in rows) + len(duplicate_excluded)
+    expected_final = pre_duplicate_included - len(duplicate_excluded)
     if sum(bool(row.get("included")) for row in rows) != expected_final:
         raise ValueError(
             "manifest final included count does not equal the missing-audio contract count "
             "minus approved duplicate exclusions"
         )
-    _require_expected_counts(
-        "manifest original label counts",
-        dict(sorted(Counter(str(row["original_emotion"]) for row in excluded).items())),
-        MSP_EXPECTED_ORIGINAL_LABEL_COUNTS,
-    )
-    _require_expected_counts(
-        "manifest mapped label counts",
-        dict(sorted(Counter(str(row["mapped_emotion"]) for row in excluded).items())),
-        MSP_EXPECTED_MAPPED_LABEL_COUNTS,
-    )
-    _require_expected_counts(
-        "manifest official split counts",
-        dict(sorted(Counter(str(row["source_split"]) for row in excluded).items())),
-        MSP_EXPECTED_SOURCE_SPLIT_COUNTS,
-    )
+    actual_original = dict(sorted(Counter(str(row["original_emotion"]) for row in excluded).items()))
+    actual_mapped = dict(sorted(Counter(str(row["mapped_emotion"]) for row in excluded).items()))
+    actual_splits = dict(sorted(Counter(str(row["source_split"]) for row in excluded).items()))
+    if profile == "ab4":
+        _require_expected_counts("manifest original label counts", actual_original, MSP_EXPECTED_ORIGINAL_LABEL_COUNTS)
+        _require_expected_counts("manifest mapped label counts", actual_mapped, MSP_EXPECTED_MAPPED_LABEL_COUNTS)
+        _require_expected_counts("manifest official split counts", actual_splits, MSP_EXPECTED_SOURCE_SPLIT_COUNTS)
     return {
-        "schema_version": MSP_EXCLUSION_SCHEMA_VERSION,
+        "schema_version": schema,
         "normalized_sha256": contract_sha256,
-        "count": MSP_EXPECTED_EXCLUDED_COUNT,
+        "count": len(excluded),
         "counts": {
-            "mapped_emotion": dict(MSP_EXPECTED_MAPPED_LABEL_COUNTS),
-            "official_split": dict(MSP_EXPECTED_SOURCE_SPLIT_COUNTS),
-            "original_emotion": dict(MSP_EXPECTED_ORIGINAL_LABEL_COUNTS),
+            "mapped_emotion": actual_mapped,
+            "official_split": actual_splits,
+            "original_emotion": actual_original,
         },
-        "final_included": MSP_EXPECTED_INCLUDED_COUNT,
+        "final_included": pre_duplicate_included,
     }
 
 
 __all__ = [
     "MSP_EXCLUSION_REASON",
     "MSP_EXCLUSION_SCHEMA_VERSION",
+    "MSP_OFFICIAL6_EXCLUSION_REASON",
+    "MSP_OFFICIAL6_EXCLUSION_SCHEMA_VERSION",
     "MSP_EXPECTED_EXCLUDED_COUNT",
     "MSP_EXPECTED_INCLUDED_COUNT",
     "build_msp_missing_audio_exclusion_contract",

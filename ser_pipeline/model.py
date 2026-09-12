@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import torch
 from torch import nn
+import copy
 
 
 class BaseModel(nn.Module):
@@ -42,4 +43,51 @@ class BaseModel(nn.Module):
         return self.post_net(pooled)
 
 
-__all__ = ["BaseModel"]
+class OfficialHeadModel(nn.Module):
+    """Independent official nine-row projection over valid-frame means."""
+
+    def __init__(self, head, *, condition="C"):
+        super().__init__()
+        if condition not in {"C", "D"}:
+            raise ValueError("official condition must be C or D")
+        self.condition = condition
+        self.input_dim, self.output_dim = 1024, 9
+        self.label_spec = head.label_spec
+        self.provenance = copy.deepcopy(head.provenance)
+        if not isinstance(head.proj, nn.Linear) or head.proj.bias is None or head.proj.weight.dtype != torch.float32 or head.proj.bias.dtype != torch.float32:
+            raise ValueError("official head must be an FP32 nn.Linear with bias")
+        if "head_sha256" in self.provenance:
+            from .official import state_sha256
+            if state_sha256({"proj.weight": head.proj.weight, "proj.bias": head.proj.bias}) != self.provenance["head_sha256"]:
+                raise ValueError("official initial head hash mismatch")
+        self.proj = copy.deepcopy(head.proj).float()
+        if self.proj.weight.shape != (9, 1024) or self.proj.bias.shape != (9,):
+            raise ValueError("official proj must be Linear(1024, 9) with bias")
+        self.requires_grad_(condition == "D")
+        self.eval()
+
+    def train(self, mode=True):
+        if mode and self.condition == "C":
+            raise ValueError("condition C is a frozen baseline and cannot train")
+        return super().train(mode)
+
+    def forward(self, features, padding_mask=None):
+        if features.ndim != 3 or features.shape[0] == 0 or features.shape[1] == 0 or features.shape[2] != 1024:
+            raise ValueError("official features must be nonempty [B, T, 1024]")
+        if features.dtype != torch.float32:
+            raise ValueError("official features must be FP32")
+        if padding_mask is None:
+            padding_mask = torch.zeros(features.shape[:2], dtype=torch.bool, device=features.device)
+        if padding_mask.shape != features.shape[:2] or padding_mask.dtype != torch.bool:
+            raise ValueError("padding_mask must be bool [B, T]")
+        padding_mask = padding_mask.to(features.device)
+        counts = (~padding_mask).sum(1, keepdim=True)
+        if torch.any(counts == 0):
+            raise ValueError("every sample requires non-padding frames")
+        clean = features.masked_fill(padding_mask[..., None], 0)
+        if not torch.isfinite(clean).all():
+            raise ValueError("non-finite valid features")
+        return self.proj(clean.sum(1) / counts.to(features.dtype))
+
+
+__all__ = ["BaseModel", "OfficialHeadModel"]

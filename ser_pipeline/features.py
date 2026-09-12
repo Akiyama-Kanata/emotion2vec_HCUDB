@@ -254,6 +254,10 @@ def extract_feature_cache(
         "complete": False,
     }
     meta["cache_id"] = _cache_id(meta)
+    if hasattr(encoder, "provenance"):
+        meta["official_provenance"] = encoder.provenance
+        meta["extraction_code_version"] = encoder.provenance["extraction_code_version"]
+        meta["cache_id"] = _cache_id(meta)
     meta_path = root / "cache_meta.json"
     if not meta_path.exists() and any(root.glob("*/*/shard-*.meta.json")):
         raise ValueError("cannot resume existing shards without cache_meta.json")

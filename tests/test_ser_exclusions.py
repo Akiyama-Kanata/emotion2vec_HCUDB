@@ -17,6 +17,7 @@ from ser_pipeline.exclusions import (
     MSP_EXPECTED_ELIGIBLE_COUNT,
     MSP_EXPECTED_EXCLUDED_COUNT,
     MSP_EXPECTED_INCLUDED_COUNT,
+    MSP_OFFICIAL6_EXCLUSION_SCHEMA_VERSION,
     build_msp_missing_audio_exclusion_contract,
     normalized_exclusion_contract_sha256,
     reconcile_msp_exclusion_contract,
@@ -127,6 +128,26 @@ class MspExclusionContractTest(unittest.TestCase):
                 second_report = generate_msp_missing_audio_exclusion_contract(root, second)
             self.assertEqual(first.read_bytes(), second.read_bytes())
             self.assertEqual(first_report["normalized_sha256"], second_report["normalized_sha256"])
+
+    def test_official6_contract_uses_a_separate_dynamic_population(self):
+        row = dict(
+            metadata_row(99_999, "A", "Train"),
+            mapped_emotion="angry",
+            class_index=0,
+            mapping_version="msp_podcast_r1_10_official6_v1",
+        )
+        payload = build_msp_missing_audio_exclusion_contract(
+            [row],
+            eligible_metadata_count=7,
+            label_profile="official6",
+        )
+        self.assertEqual(payload["schema_version"], MSP_OFFICIAL6_EXCLUSION_SCHEMA_VERSION)
+        self.assertEqual(payload["label_profile"], "official6")
+        self.assertEqual(payload["eligible_metadata_count"], 7)
+        self.assertEqual(payload["expected_included_count"], 6)
+        validate_msp_missing_audio_exclusion_contract(payload, label_profile="official6")
+        with self.assertRaisesRegex(ValueError, "profile"):
+            validate_msp_missing_audio_exclusion_contract(payload, label_profile="ab4")
 
     def test_strict_manifest_succeeds_only_for_the_approved_missing_set(self):
         with tempfile.TemporaryDirectory() as directory:

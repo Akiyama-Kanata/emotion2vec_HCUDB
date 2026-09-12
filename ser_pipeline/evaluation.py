@@ -11,9 +11,31 @@ from typing import Any, Iterable, Mapping, Sequence
 import numpy as np
 import torch
 
-from .contracts import LABEL_ORDER, RESULT_LIMITATIONS, RESULT_SCHEMA_VERSION
+from .contracts import (
+    LABEL_ORDER,
+    OFFICIAL_EVALUATION_METHOD,
+    OFFICIAL_RESULT_SCHEMA_VERSION,
+    OFFICIAL_TARGET_ORDER,
+    PRIMARY_EVALUATION_METHOD,
+    RESULT_LIMITATIONS,
+    RESULT_SCHEMA_VERSION,
+    label_profile_for_mapping_version,
+)
 from .manifest import load_manifest, manifest_sha256, validate_manifest_records
 from .timing import measure, timed_batches
+
+
+def select_primary_logits(logits, label_spec=None):
+    """Use common-order A/B logits or dictionary-resolved C/D columns."""
+    if logits.ndim != 2:
+        raise ValueError("logits must have shape [B, classes]")
+    if label_spec is None:
+        if logits.shape[1] != len(LABEL_ORDER):
+            raise ValueError("nine logits require an official label specification")
+        return logits
+    if logits.shape[1] != 9:
+        raise ValueError("official model must return nine logits")
+    return logits[:, list(label_spec.primary_indices)]
 
 
 def confusion_matrix(y_true: Sequence[int], y_pred: Sequence[int], num_classes: int = 4) -> np.ndarray:
@@ -92,6 +114,149 @@ def classification_metrics(
     }
 
 
+def official_confusion_matrix(
+    y_true_target6: Sequence[int],
+    y_pred_official: Sequence[int],
+) -> np.ndarray:
+    """Build the C/D matrix with target6 truth rows and official prediction columns."""
+    truth = np.asarray(y_true_target6, dtype=np.int64)
+    prediction = np.asarray(y_pred_official, dtype=np.int64)
+    if truth.ndim != 1 or prediction.ndim != 1 or len(truth) != len(prediction) or len(truth) == 0:
+        raise ValueError("official truth and prediction must be aligned non-empty vectors")
+    if np.any(truth < 0) or np.any(truth >= len(OFFICIAL_TARGET_ORDER)):
+        raise ValueError("official truth must use contiguous target6 indices")
+    if np.any(prediction < 0) or np.any(prediction >= 9):
+        raise ValueError("official predictions must be indices 0 through 8")
+    matrix = np.zeros((len(OFFICIAL_TARGET_ORDER), 9), dtype=np.int64)
+    np.add.at(matrix, (truth, prediction), 1)
+    return matrix
+
+
+def official_classification_metrics(
+    y_true_target6: Sequence[int],
+    probabilities9: np.ndarray,
+    label_spec,
+) -> dict[str, Any]:
+    """Score six-class truth under an unchanged nine-way official decision rule."""
+    truth = np.asarray(y_true_target6, dtype=np.int64)
+    probs = np.asarray(probabilities9, dtype=np.float64)
+    if probs.shape != (len(truth), 9) or len(truth) == 0:
+        raise ValueError("official probabilities must have shape [samples, 9]")
+    if not np.isfinite(probs).all() or np.any(probs < 0) or not np.allclose(probs.sum(1), 1, atol=1e-6):
+        raise ValueError("official probabilities must be finite, non-negative, and sum to one")
+    target_indices = np.asarray(label_spec.target_indices, dtype=np.int64)
+    if tuple(label_spec.target_names) != OFFICIAL_TARGET_ORDER or tuple(target_indices) != (0, 1, 2, 3, 6, 7):
+        raise ValueError("official target label contract mismatch")
+    if np.any(truth < 0) or np.any(truth >= len(target_indices)):
+        raise ValueError("official truth must use contiguous target6 indices")
+    true_official = target_indices[truth]
+    prediction = probs.argmax(axis=1).astype(np.int64)
+    matrix = official_confusion_matrix(truth, prediction)
+    class_rows = []
+    recalls = []
+    f1_values = []
+    for target_index, (label, official_index) in enumerate(zip(OFFICIAL_TARGET_ORDER, target_indices)):
+        true_positive = int(matrix[target_index, official_index])
+        support = int(matrix[target_index].sum())
+        predicted = int(matrix[:, official_index].sum())
+        precision = true_positive / predicted if predicted else 0.0
+        recall = true_positive / support if support else 0.0
+        f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+        class_rows.append({
+            "target_index": target_index,
+            "target_label": label,
+            "official_index": int(official_index),
+            "precision": float(precision),
+            "recall": float(recall),
+            "f1": float(f1),
+            "support": support,
+        })
+        recalls.append(recall)
+        f1_values.append(f1)
+    fixed_counts = {
+        label_spec.labels[index]: int(np.count_nonzero(prediction == index))
+        for index in label_spec.fixed_indices
+    }
+    total = len(truth)
+    return {
+        "accuracy": float(np.mean(prediction == true_official)),
+        "uar": float(np.mean(recalls)),
+        "macro_f1": float(np.mean(f1_values)),
+        "loss": float(-np.log(np.clip(probs[np.arange(total), true_official], 1e-12, 1.0)).mean()),
+        "target_names": list(OFFICIAL_TARGET_ORDER),
+        "target_official_indices": target_indices.tolist(),
+        "class_metrics": class_rows,
+        "confusion_matrix_6x9": matrix.tolist(),
+        "non_target_predictions": {
+            "counts": fixed_counts,
+            "rates": {label: float(count / total) for label, count in fixed_counts.items()},
+            "total": int(sum(fixed_counts.values())),
+            "rate": float(sum(fixed_counts.values()) / total),
+        },
+    }
+
+
+def build_official_evaluation_result(
+    utterance_ids: Sequence[str],
+    y_true_target6: Sequence[int],
+    logits9: np.ndarray,
+    *,
+    label_spec,
+    dataset: str,
+    split: str,
+    set_signature: Mapping[str, Any],
+    source_rows: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    logits = np.asarray(logits9, dtype=np.float64)
+    if logits.shape != (len(utterance_ids), 9) or len(y_true_target6) != len(utterance_ids):
+        raise ValueError("official evaluation ids, labels, and logits must align")
+    shifted = logits - logits.max(axis=1, keepdims=True)
+    exponentials = np.exp(shifted)
+    probabilities = exponentials / exponentials.sum(axis=1, keepdims=True)
+    metrics = official_classification_metrics(y_true_target6, probabilities, label_spec)
+    predicted = probabilities.argmax(axis=1)
+    target_indices = np.asarray(label_spec.target_indices, dtype=np.int64)
+    prediction_rows = []
+    for identifier, truth, prediction, row_logits, row_probabilities in zip(
+        utterance_ids, y_true_target6, predicted, logits, probabilities
+    ):
+        source = source_rows[str(identifier)]
+        true_official = int(target_indices[int(truth)])
+        prediction_rows.append({
+            "utterance_id": str(identifier),
+            "true_target_index": int(truth),
+            "true_target_label": OFFICIAL_TARGET_ORDER[int(truth)],
+            "true_official_index": true_official,
+            "true_official_label": label_spec.labels[true_official],
+            "predicted_official_index": int(prediction),
+            "predicted_official_label": label_spec.labels[int(prediction)],
+            "correctness": bool(int(prediction) == true_official),
+            "original_emotion": str(source["original_emotion"]),
+            "logits9": [float(value) for value in row_logits],
+            "probabilities9": [float(value) for value in row_probabilities],
+        })
+    limitations = [dict(item) for item in RESULT_LIMITATIONS]
+    if dataset == "hcudb1":
+        limitations.append({
+            "id": "hcudb_dislike_to_disgust",
+            "approximate_mapping": True,
+            "implication": "嫌い → disgusted is a research mapping assumption.",
+        })
+    return {
+        "result_schema_version": OFFICIAL_RESULT_SCHEMA_VERSION,
+        "evaluation_method": OFFICIAL_EVALUATION_METHOD,
+        "decision_rule": "softmax_official9_then_argmax_official9",
+        "dataset": dataset,
+        "split": split,
+        "target_label_order": list(OFFICIAL_TARGET_ORDER),
+        "official_label_spec": label_spec.as_dict(),
+        "set_signature": dict(set_signature),
+        "limitations": limitations,
+        "metrics_target6": metrics,
+        "predictions": prediction_rows,
+    }
+
+
 def build_evaluation_result(
     utterance_ids: Sequence[str],
     y_true: Sequence[int],
@@ -160,8 +325,12 @@ def build_evaluation_result(
                 "implication": "Do not draw general disgust-performance conclusions from this external test.",
             }
         )
+    if dataset == "hcudb1":
+        limitations.append({"id": "hcudb_dislike_to_disgust", "approximate_mapping": True,
+                            "implication": "嫌い → disgust is a research mapping assumption."})
     return {
         "result_schema_version": RESULT_SCHEMA_VERSION,
+        "evaluation_method": PRIMARY_EVALUATION_METHOD,
         "dataset": dataset,
         "split": split,
         "label_order": list(LABEL_ORDER),
@@ -184,6 +353,9 @@ def evaluation_set_signature(manifest_path: str | Path, dataset: str, split: str
     if not rows:
         raise ValueError(f"evaluation manifest set is empty: {dataset}/{split}")
     ids = sorted(row["utterance_id"] for row in rows)
+    profiles = {label_profile_for_mapping_version(str(row["mapping_version"])) for row in rows}
+    if len(profiles) != 1:
+        raise ValueError("evaluation set mixes label profiles")
     ids_hash = hashlib.sha256(("\n".join(ids) + "\n").encode("utf-8")).hexdigest()
     return {
         "dataset": dataset,
@@ -196,6 +368,8 @@ def evaluation_set_signature(manifest_path: str | Path, dataset: str, split: str
         ),
         "utterance_id_sha256": ids_hash,
         "utterance_count": len(ids),
+        "label_profile": next(iter(profiles)),
+        "mapping_versions": sorted({str(row["mapping_version"]) for row in rows}),
     }
 
 
@@ -209,10 +383,39 @@ def assert_same_evaluation_sets(before: Mapping[str, Any], after: Mapping[str, A
         "duplicate_exclusion_contract",
         "utterance_id_sha256",
         "utterance_count",
+        "label_profile",
+        "mapping_versions",
     )
     for key in keys:
         if before.get(key) != after.get(key):
             raise ValueError(f"before/after evaluation set mismatch for {key}")
+
+
+def assert_comparable_results(before, after):
+    """Gate comparisons by exact cohorts, labels, and decision rule."""
+    assert_same_evaluation_sets(before["set_signature"], after["set_signature"])
+    if before.get("result_schema_version") == OFFICIAL_RESULT_SCHEMA_VERSION or after.get("result_schema_version") == OFFICIAL_RESULT_SCHEMA_VERSION:
+        if (before.get("result_schema_version") != OFFICIAL_RESULT_SCHEMA_VERSION
+                or after.get("result_schema_version") != OFFICIAL_RESULT_SCHEMA_VERSION
+                or before.get("target_label_order") != list(OFFICIAL_TARGET_ORDER)
+                or after.get("target_label_order") != list(OFFICIAL_TARGET_ORDER)
+                or before.get("official_label_spec") != after.get("official_label_spec")
+                or before.get("evaluation_method") != OFFICIAL_EVALUATION_METHOD
+                or after.get("evaluation_method") != OFFICIAL_EVALUATION_METHOD):
+            raise ValueError("comparison requires identical official9/target6 contracts")
+        left = {row["utterance_id"]: row["true_official_index"] for row in before["predictions"]}
+        right = {row["utterance_id"]: row["true_official_index"] for row in after["predictions"]}
+        if left != right or len(left) != len(before["predictions"]) or len(right) != len(after["predictions"]):
+            raise ValueError("comparison utterance IDs/official labels mismatch")
+        return
+    if (before.get("label_order") != list(LABEL_ORDER) or after.get("label_order") != list(LABEL_ORDER)
+            or before.get("evaluation_method") != PRIMARY_EVALUATION_METHOD
+            or after.get("evaluation_method") != PRIMARY_EVALUATION_METHOD):
+        raise ValueError("comparison requires identical labels and explicit four-way evaluation method")
+    left = {row["utterance_id"]: row["true_class_index"] for row in before["predictions"]}
+    right = {row["utterance_id"]: row["true_class_index"] for row in after["predictions"]}
+    if left != right or len(left) != len(before["predictions"]) or len(right) != len(after["predictions"]):
+        raise ValueError("comparison utterance IDs/labels mismatch")
 
 
 def evaluate_model(model, loader, device: str | torch.device, *, dataset: str, split: str, set_signature, timings=None):
@@ -221,26 +424,45 @@ def evaluate_model(model, loader, device: str | torch.device, *, dataset: str, s
     utterance_ids: list[str] = []
     truths: list[int] = []
     probabilities: list[np.ndarray] = []
+    official_logits: list[np.ndarray] = []
     with torch.no_grad():
         for batch in timed_batches(loader, timings):
             with measure(timings, "compute_seconds", torch_device):
                 features = batch["net_input"]["feats"].to(torch_device)
                 mask = batch["net_input"]["padding_mask"].to(torch_device)
                 logits = model(features, mask)
-                probs = torch.softmax(logits, dim=-1).cpu().numpy()
-                probabilities.append(probs)
+                label_spec = getattr(model, "label_spec", None)
+                if label_spec is not None:
+                    if logits.shape[1] != 9:
+                        raise ValueError("official model must return nine logits")
+                    official_logits.append(logits.cpu().numpy())
+                else:
+                    primary = select_primary_logits(logits, None)
+                    probabilities.append(torch.softmax(primary, dim=-1).cpu().numpy())
                 truths.extend(int(value) for value in batch["labels"].tolist())
                 utterance_ids.extend(str(value) for value in batch["utterance_ids"])
-    if not probabilities:
+    if not probabilities and not official_logits:
         raise ValueError("evaluation loader is empty")
     with measure(timings, "result_build_seconds"):
+        if official_logits:
+            dataset_object = getattr(loader, "dataset", None)
+            store = getattr(dataset_object, "store", None)
+            if store is None:
+                raise ValueError("official evaluation requires manifest source rows")
+            source_rows = {identifier: store.records[identifier] for identifier in utterance_ids}
+            return build_official_evaluation_result(
+                utterance_ids,
+                truths,
+                np.concatenate(official_logits, axis=0),
+                label_spec=model.label_spec,
+                dataset=dataset,
+                split=split,
+                set_signature=set_signature,
+                source_rows=source_rows,
+            )
         return build_evaluation_result(
-            utterance_ids,
-            truths,
-            np.concatenate(probabilities, axis=0),
-            dataset=dataset,
-            split=split,
-            set_signature=set_signature,
+            utterance_ids, truths, np.concatenate(probabilities, axis=0),
+            dataset=dataset, split=split, set_signature=set_signature,
         )
 
 
@@ -251,36 +473,50 @@ def save_evaluation_result(result: Mapping[str, Any], output_dir: str | Path) ->
     metrics_payload = {key: value for key, value in result.items() if key != "predictions"}
     metrics_path.write_text(json.dumps(metrics_payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
+    official = result.get("result_schema_version") == OFFICIAL_RESULT_SCHEMA_VERSION
     confusion_path = directory / "confusion_matrix.csv"
-    matrix = result["metrics_4class"]["confusion_matrix"]
+    metrics = result["metrics_target6"] if official else result["metrics_4class"]
+    matrix = metrics["confusion_matrix_6x9"] if official else metrics["confusion_matrix"]
     with confusion_path.open("w", encoding="utf-8", newline="") as destination:
         writer = csv.writer(destination)
-        writer.writerow(["true\\predicted", *LABEL_ORDER])
-        for label, row in zip(LABEL_ORDER, matrix):
+        predicted_labels = result["official_label_spec"]["labels"] if official else LABEL_ORDER
+        true_labels = OFFICIAL_TARGET_ORDER if official else LABEL_ORDER
+        writer.writerow(["true\\predicted", *predicted_labels])
+        for label, row in zip(true_labels, matrix):
             writer.writerow([label, *row])
 
     classes_path = directory / "class_metrics.csv"
     with classes_path.open("w", encoding="utf-8", newline="") as destination:
-        fields = ("class_index", "class_label", "precision", "recall", "f1", "support")
+        fields = (
+            ("target_index", "target_label", "official_index", "precision", "recall", "f1", "support")
+            if official else ("class_index", "class_label", "precision", "recall", "f1", "support")
+        )
         writer = csv.DictWriter(destination, fieldnames=fields)
         writer.writeheader()
-        writer.writerows(result["metrics_4class"]["class_metrics"])
+        writer.writerows(metrics["class_metrics"])
 
     predictions_path = directory / "predictions.csv"
-    fields = [
-        "utterance_id",
-        "true_class_index",
-        "true_label",
-        "predicted_class_index",
-        "predicted_label",
+    official_labels = result.get("official_label_spec", {}).get("labels", [])
+    fields = ([
+        "utterance_id", "true_target_index", "true_target_label", "true_official_index",
+        "true_official_label", "predicted_official_index", "predicted_official_label",
+        "correctness", "original_emotion",
+        *[f"logit9_{label}" for label in official_labels],
+        *[f"probability9_{label}" for label in official_labels],
+    ] if official else [
+        "utterance_id", "true_class_index", "true_label", "predicted_class_index", "predicted_label",
         *[f"probability_{label}" for label in LABEL_ORDER],
-    ]
+    ])
     with predictions_path.open("w", encoding="utf-8", newline="") as destination:
         writer = csv.DictWriter(destination, fieldnames=fields)
         writer.writeheader()
         for row in result["predictions"]:
-            flat = {key: value for key, value in row.items() if key != "probabilities"}
-            flat.update({f"probability_{label}": value for label, value in zip(LABEL_ORDER, row["probabilities"])})
+            flat = {key: value for key, value in row.items() if key not in {"probabilities", "logits9", "probabilities9"}}
+            if official:
+                for key, prefix in (("logits9", "logit9"), ("probabilities9", "probability9")):
+                    flat.update({f"{prefix}_{label}": value for label, value in zip(official_labels, row[key])})
+            else:
+                flat.update({f"probability_{label}": value for label, value in zip(LABEL_ORDER, row["probabilities"])})
             writer.writerow(flat)
     predictions_json_path = directory / "predictions.json"
     predictions_json_path.write_text(
@@ -297,11 +533,16 @@ def save_evaluation_result(result: Mapping[str, Any], output_dir: str | Path) ->
 
 
 __all__ = [
+    "assert_comparable_results",
     "assert_same_evaluation_sets",
     "build_evaluation_result",
+    "build_official_evaluation_result",
     "classification_metrics",
     "confusion_matrix",
     "evaluate_model",
     "evaluation_set_signature",
+    "official_classification_metrics",
+    "official_confusion_matrix",
     "save_evaluation_result",
+    "select_primary_logits",
 ]

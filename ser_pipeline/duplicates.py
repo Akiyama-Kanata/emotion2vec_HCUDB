@@ -13,11 +13,19 @@ from typing import Any, Iterable, Mapping, Sequence
 import numpy as np
 
 from .audio import inspect_audio
+from .contracts import OFFICIAL_TARGET_ORDER
 
 
 MSP_DUPLICATE_AUDIT_SCHEMA_VERSION = "msp_audio_duplicate_audit_v1"
 MSP_DUPLICATE_EXCLUSION_SCHEMA_VERSION = "msp_audio_duplicate_exclusions_v1"
 MSP_DUPLICATE_EXCLUSION_REASON = "msp_audio_duplicate_exclusion_approved_v1"
+MSP_OFFICIAL6_DUPLICATE_AUDIT_SCHEMA_VERSION = "msp_audio_duplicate_audit_official6_v1"
+MSP_OFFICIAL6_DUPLICATE_EXCLUSION_SCHEMA_VERSION = "msp_audio_duplicate_exclusions_official6_v1"
+MSP_OFFICIAL6_DUPLICATE_EXCLUSION_REASON = "msp_audio_duplicate_exclusion_approved_official6_v1"
+_MISSING_EXCLUSION_SCHEMA_BY_PROFILE = {
+    "ab4": "msp_missing_audio_exclusions_v1",
+    "official6": "msp_missing_audio_exclusions_official6_v1",
+}
 
 _SHA256_PATTERN = re.compile(r"[0-9a-f]{64}")
 _AUDIT_FIELDS = {
@@ -106,6 +114,40 @@ _CSV_FIELDS = (
     "speaker_mismatch",
     "label_mismatch",
 )
+
+
+def msp_duplicate_schemas(label_profile: str) -> tuple[str, str, str]:
+    if label_profile == "ab4":
+        return (
+            MSP_DUPLICATE_AUDIT_SCHEMA_VERSION,
+            MSP_DUPLICATE_EXCLUSION_SCHEMA_VERSION,
+            MSP_DUPLICATE_EXCLUSION_REASON,
+        )
+    if label_profile == "official6":
+        return (
+            MSP_OFFICIAL6_DUPLICATE_AUDIT_SCHEMA_VERSION,
+            MSP_OFFICIAL6_DUPLICATE_EXCLUSION_SCHEMA_VERSION,
+            MSP_OFFICIAL6_DUPLICATE_EXCLUSION_REASON,
+        )
+    raise ValueError(f"unsupported label profile: {label_profile!r}")
+
+
+def _audit_profile(payload: Mapping[str, Any]) -> str:
+    schema = payload.get("schema_version")
+    if schema == MSP_DUPLICATE_AUDIT_SCHEMA_VERSION:
+        return "ab4"
+    if schema == MSP_OFFICIAL6_DUPLICATE_AUDIT_SCHEMA_VERSION:
+        return "official6"
+    raise ValueError("MSP duplicate audit schema_version mismatch")
+
+
+def _duplicate_contract_profile(payload: Mapping[str, Any]) -> str:
+    schema = payload.get("schema_version")
+    if schema == MSP_DUPLICATE_EXCLUSION_SCHEMA_VERSION:
+        return "ab4"
+    if schema == MSP_OFFICIAL6_DUPLICATE_EXCLUSION_SCHEMA_VERSION:
+        return "official6"
+    raise ValueError("MSP duplicate exclusion contract schema_version mismatch")
 
 
 def _canonical_json(value: Mapping[str, Any]) -> str:
@@ -294,8 +336,12 @@ def build_msp_audio_duplicate_audit(
     *,
     missing_exclusion_contract_schema_version: str,
     missing_exclusion_contract_sha256: str,
+    label_profile: str = "ab4",
 ) -> dict[str, Any]:
     """Build a deterministic exact-duplicate audit without changing audio or manifests."""
+    expected_missing_schema = _MISSING_EXCLUSION_SCHEMA_BY_PROFILE.get(label_profile)
+    if missing_exclusion_contract_schema_version != expected_missing_schema:
+        raise ValueError("MSP duplicate audit missing-audio contract label profile mismatch")
     missing_sha256 = _require_sha256(
         missing_exclusion_contract_sha256,
         "missing-audio exclusion contract SHA-256",
@@ -358,8 +404,9 @@ def build_msp_audio_duplicate_audit(
             )
 
     groups = _duplicate_groups(records)
+    audit_schema, _contract_schema, _reason = msp_duplicate_schemas(label_profile)
     payload: dict[str, Any] = {
-        "schema_version": MSP_DUPLICATE_AUDIT_SCHEMA_VERSION,
+        "schema_version": audit_schema,
         "dataset": "msp_podcast",
         "dataset_release": "R1.10",
         "missing_audio_exclusion_contract": {
@@ -371,6 +418,8 @@ def build_msp_audio_duplicate_audit(
         "duplicate_groups": groups,
         "summary": _audit_summary(records, groups),
     }
+    if label_profile == "official6":
+        payload["label_profile"] = "official6"
     payload["normalized_sha256"] = normalized_duplicate_audit_sha256(payload)
     validate_msp_audio_duplicate_audit(payload)
     return payload
@@ -382,15 +431,19 @@ def validate_msp_audio_duplicate_audit(
     expected_sha256: str | None = None,
 ) -> dict[str, Any]:
     """Validate audit schema, deterministic grouping, summaries, and canonical SHA-256."""
-    if set(payload) != _AUDIT_FIELDS:
-        raise ValueError(f"MSP duplicate audit fields mismatch: {sorted(set(payload) ^ _AUDIT_FIELDS)}")
-    if payload.get("schema_version") != MSP_DUPLICATE_AUDIT_SCHEMA_VERSION:
-        raise ValueError("MSP duplicate audit schema_version mismatch")
+    profile = _audit_profile(payload)
+    expected_fields = _AUDIT_FIELDS | ({"label_profile"} if profile == "official6" else set())
+    if set(payload) != expected_fields:
+        raise ValueError(f"MSP duplicate audit fields mismatch: {sorted(set(payload) ^ expected_fields)}")
+    if profile == "official6" and payload.get("label_profile") != "official6":
+        raise ValueError("MSP duplicate audit label profile mismatch")
     if payload.get("dataset") != "msp_podcast" or payload.get("dataset_release") != "R1.10":
         raise ValueError("MSP duplicate audit dataset identity mismatch")
     missing_contract = payload.get("missing_audio_exclusion_contract")
     if not isinstance(missing_contract, dict) or set(missing_contract) != {"schema_version", "normalized_sha256"}:
         raise ValueError("MSP duplicate audit missing-audio contract reference is invalid")
+    if missing_contract.get("schema_version") != _MISSING_EXCLUSION_SCHEMA_BY_PROFILE[profile]:
+        raise ValueError("MSP duplicate audit missing-audio contract label profile mismatch")
     _require_sha256(missing_contract["normalized_sha256"], "missing-audio exclusion contract SHA-256")
 
     method = payload.get("method")
@@ -455,7 +508,7 @@ def validate_msp_audio_duplicate_audit(
     if expected_sha256 is not None and _require_sha256(expected_sha256, "approved audit SHA-256") != actual_sha256:
         raise ValueError("approved MSP duplicate audit SHA-256 mismatch")
     return {
-        "schema_version": MSP_DUPLICATE_AUDIT_SCHEMA_VERSION,
+        "schema_version": msp_duplicate_schemas(profile)[0],
         "normalized_sha256": actual_sha256,
         "target_count": len(records),
         "summary": dict(expected_summary),
@@ -543,6 +596,8 @@ def build_msp_audio_duplicate_exclusion_contract(
 ) -> dict[str, Any]:
     """Build a contract only from explicit IDs present in duplicate candidates."""
     audit_report = validate_msp_audio_duplicate_audit(audit_payload)
+    label_profile = _audit_profile(audit_payload)
+    audit_schema, contract_schema, exclusion_reason = msp_duplicate_schemas(label_profile)
     approved = [str(identifier).strip() for identifier in approved_utterance_ids]
     if any(not identifier for identifier in approved):
         raise ValueError("approved duplicate exclusion IDs must not be empty")
@@ -583,7 +638,7 @@ def build_msp_audio_duplicate_exclusion_contract(
                 "byte_sha256": audit_record["byte_sha256"],
                 "decoded_waveform_sha256": audit_record["decoded_waveform_sha256"],
                 "duplicate_group_id": group["group_id"],
-                "exclusion_reason": MSP_DUPLICATE_EXCLUSION_REASON,
+                "exclusion_reason": exclusion_reason,
             }
         )
     records.sort(key=_record_sort_key)
@@ -595,17 +650,19 @@ def build_msp_audio_duplicate_exclusion_contract(
         "split_counts": dict(sorted(Counter(str(record["split"]) for record in remaining).items())),
     }
     payload: dict[str, Any] = {
-        "schema_version": MSP_DUPLICATE_EXCLUSION_SCHEMA_VERSION,
+        "schema_version": contract_schema,
         "dataset": "msp_podcast",
         "dataset_release": "R1.10",
-        "audit_schema_version": MSP_DUPLICATE_AUDIT_SCHEMA_VERSION,
+        "audit_schema_version": audit_schema,
         "audit_normalized_sha256": audit_report["normalized_sha256"],
         "missing_audio_exclusion_contract": dict(audit_payload["missing_audio_exclusion_contract"]),
-        "exclusion_reason": MSP_DUPLICATE_EXCLUSION_REASON,
+        "exclusion_reason": exclusion_reason,
         "count": len(records),
         "post_exclusion_counts": post_counts,
         "records": records,
     }
+    if label_profile == "official6":
+        payload["label_profile"] = "official6"
     payload["normalized_sha256"] = normalized_duplicate_exclusion_contract_sha256(payload)
     validate_msp_audio_duplicate_exclusion_contract(payload, audit_payload)
     return payload
@@ -619,19 +676,24 @@ def validate_msp_audio_duplicate_exclusion_contract(
 ) -> dict[str, Any]:
     """Validate approved IDs, audit linkage, residual splits, counts, and SHA-256."""
     audit_report = validate_msp_audio_duplicate_audit(audit_payload)
-    if set(payload) != _CONTRACT_FIELDS:
-        raise ValueError(f"MSP duplicate exclusion contract fields mismatch: {sorted(set(payload) ^ _CONTRACT_FIELDS)}")
-    if payload.get("schema_version") != MSP_DUPLICATE_EXCLUSION_SCHEMA_VERSION:
-        raise ValueError("MSP duplicate exclusion contract schema_version mismatch")
+    profile = _duplicate_contract_profile(payload)
+    if profile != _audit_profile(audit_payload):
+        raise ValueError("MSP duplicate exclusion contract label profile differs from audit")
+    audit_schema, contract_schema, exclusion_reason = msp_duplicate_schemas(profile)
+    expected_fields = _CONTRACT_FIELDS | ({"label_profile"} if profile == "official6" else set())
+    if set(payload) != expected_fields:
+        raise ValueError(f"MSP duplicate exclusion contract fields mismatch: {sorted(set(payload) ^ expected_fields)}")
+    if profile == "official6" and payload.get("label_profile") != "official6":
+        raise ValueError("MSP duplicate exclusion contract label profile mismatch")
     if payload.get("dataset") != "msp_podcast" or payload.get("dataset_release") != "R1.10":
         raise ValueError("MSP duplicate exclusion contract dataset identity mismatch")
-    if payload.get("audit_schema_version") != MSP_DUPLICATE_AUDIT_SCHEMA_VERSION:
+    if payload.get("audit_schema_version") != audit_schema:
         raise ValueError("MSP duplicate exclusion contract audit schema mismatch")
     if payload.get("audit_normalized_sha256") != audit_report["normalized_sha256"]:
         raise ValueError("MSP duplicate exclusion contract audit SHA-256 mismatch")
     if payload.get("missing_audio_exclusion_contract") != audit_payload["missing_audio_exclusion_contract"]:
         raise ValueError("MSP duplicate exclusion contract missing-audio provenance mismatch")
-    if payload.get("exclusion_reason") != MSP_DUPLICATE_EXCLUSION_REASON:
+    if payload.get("exclusion_reason") != exclusion_reason:
         raise ValueError("MSP duplicate exclusion contract reason mismatch")
 
     records = payload.get("records")
@@ -661,7 +723,7 @@ def validate_msp_audio_duplicate_exclusion_contract(
             "byte_sha256": audit_record["byte_sha256"],
             "decoded_waveform_sha256": audit_record["decoded_waveform_sha256"],
             "duplicate_group_id": group_by_member[identifier]["group_id"],
-            "exclusion_reason": MSP_DUPLICATE_EXCLUSION_REASON,
+            "exclusion_reason": exclusion_reason,
         }
         if record != expected_record:
             raise ValueError(f"MSP duplicate exclusion record does not match audit: {identifier}")
@@ -703,7 +765,7 @@ def validate_msp_audio_duplicate_exclusion_contract(
         if approved_sha256 != actual_sha256:
             raise ValueError("approved MSP duplicate exclusion SHA-256 mismatch")
     return {
-        "schema_version": MSP_DUPLICATE_EXCLUSION_SCHEMA_VERSION,
+        "schema_version": contract_schema,
         "normalized_sha256": actual_sha256,
         "audit_normalized_sha256": audit_report["normalized_sha256"],
         "count": len(records),
@@ -832,9 +894,25 @@ def manifest_duplicate_provenance_signature(
     """Validate and summarize duplicate provenance embedded in MSP manifest rows."""
     rows = list(records)
     present = [row for row in rows if any(row.get(field) is not None for field in _MANIFEST_PROVENANCE_FIELDS)]
-    duplicate_excluded = [row for row in rows if MSP_DUPLICATE_EXCLUSION_REASON in row.get("exclusion_reasons", [])]
+    any_duplicate_excluded = [
+        row for row in rows
+        if any(reason in row.get("exclusion_reasons", []) for reason in (
+            MSP_DUPLICATE_EXCLUSION_REASON, MSP_OFFICIAL6_DUPLICATE_EXCLUSION_REASON
+        ))
+    ]
+    audit_schemas = {str(row.get("duplicate_audit_schema_version")) for row in rows if row.get("duplicate_audit_schema_version") is not None}
+    if not audit_schemas:
+        profile = "ab4"
+    elif audit_schemas == {MSP_DUPLICATE_AUDIT_SCHEMA_VERSION}:
+        profile = "ab4"
+    elif audit_schemas == {MSP_OFFICIAL6_DUPLICATE_AUDIT_SCHEMA_VERSION}:
+        profile = "official6"
+    else:
+        raise ValueError("manifest duplicate audit schema version mismatch")
+    audit_schema, contract_schema, exclusion_reason = msp_duplicate_schemas(profile)
+    duplicate_excluded = [row for row in rows if exclusion_reason in row.get("exclusion_reasons", [])]
     if not present:
-        if duplicate_excluded:
+        if any_duplicate_excluded:
             raise ValueError("manifest duplicate exclusions lack audit and contract provenance")
         return None
     if len(present) != len(rows):
@@ -844,10 +922,10 @@ def manifest_duplicate_provenance_signature(
     for field in _MANIFEST_PROVENANCE_FIELDS:
         if len({row.get(field) for row in rows}) != 1:
             raise ValueError(f"manifest duplicate provenance is inconsistent for {field}")
-    if {str(row["duplicate_audit_schema_version"]) for row in rows} != {MSP_DUPLICATE_AUDIT_SCHEMA_VERSION}:
+    if {str(row["duplicate_audit_schema_version"]) for row in rows} != {audit_schema}:
         raise ValueError("manifest duplicate audit schema version mismatch")
     if {str(row["duplicate_exclusion_contract_schema_version"]) for row in rows} != {
-        MSP_DUPLICATE_EXCLUSION_SCHEMA_VERSION
+        contract_schema
     }:
         raise ValueError("manifest duplicate exclusion contract schema version mismatch")
     audit_sha256 = _require_sha256(rows[0]["duplicate_audit_sha256"], "manifest duplicate audit SHA-256")
@@ -863,7 +941,10 @@ def manifest_duplicate_provenance_signature(
     for row in duplicate_excluded:
         if (
             row.get("speaker_id_status") != "known"
-            or row.get("mapped_emotion") not in {"anger", "happy", "sadness", "disgust"}
+            or row.get("mapped_emotion") not in (
+                {"anger", "happy", "sadness", "disgust"}
+                if profile == "ab4" else set(OFFICIAL_TARGET_ORDER)
+            )
             or row.get("split") not in {"train", "validation", "test"}
         ):
             raise ValueError("manifest duplicate exclusion target is outside the MSP research subset")
@@ -871,7 +952,7 @@ def manifest_duplicate_provenance_signature(
         row
         for row in rows
         if bool(row.get("included"))
-        or MSP_DUPLICATE_EXCLUSION_REASON in row.get("exclusion_reasons", [])
+        or exclusion_reason in row.get("exclusion_reasons", [])
     ]
     if len(pre_duplicate_eligible) != target_count:
         raise ValueError("manifest duplicate audit target count mismatch")
@@ -881,12 +962,12 @@ def manifest_duplicate_provenance_signature(
     split_counts = dict(sorted(Counter(str(row["split"]) for row in duplicate_excluded).items()))
     return {
         "audit": {
-            "schema_version": MSP_DUPLICATE_AUDIT_SCHEMA_VERSION,
+            "schema_version": audit_schema,
             "normalized_sha256": audit_sha256,
             "target_count": target_count,
         },
         "exclusion_contract": {
-            "schema_version": MSP_DUPLICATE_EXCLUSION_SCHEMA_VERSION,
+            "schema_version": contract_schema,
             "normalized_sha256": contract_sha256,
             "audit_normalized_sha256": audit_sha256,
             "count": len(duplicate_excluded),
@@ -900,6 +981,9 @@ __all__ = [
     "MSP_DUPLICATE_AUDIT_SCHEMA_VERSION",
     "MSP_DUPLICATE_EXCLUSION_REASON",
     "MSP_DUPLICATE_EXCLUSION_SCHEMA_VERSION",
+    "MSP_OFFICIAL6_DUPLICATE_AUDIT_SCHEMA_VERSION",
+    "MSP_OFFICIAL6_DUPLICATE_EXCLUSION_REASON",
+    "MSP_OFFICIAL6_DUPLICATE_EXCLUSION_SCHEMA_VERSION",
     "build_msp_audio_duplicate_audit",
     "build_msp_audio_duplicate_exclusion_contract",
     "generate_msp_audio_duplicate_exclusion_contract",

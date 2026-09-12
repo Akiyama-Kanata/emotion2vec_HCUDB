@@ -3,6 +3,7 @@
 import json
 import io
 import runpy
+import re
 import subprocess
 import sys
 import tempfile
@@ -21,6 +22,33 @@ def source_text(cell):
 
 
 class SerNotebookBoundaryTest(unittest.TestCase):
+    def test_official_notebook_defaults_paths_diagnostics_and_builder_match(self):
+        builder = runpy.run_path(str(ROOT / "scripts" / "build_ser_notebooks.py"))
+        cells = {cell["id"]: source_text(cell) for cell in builder["official_cells"]}
+        settings = cells["official-settings"]
+        run_flags = re.findall(r"^(RUN_[A-Z0-9_]+)\s*=\s*(True|False)$", settings, flags=re.MULTILINE)
+        self.assertTrue(run_flags)
+        self.assertTrue(all(value == "False" for _, value in run_flags))
+        self.assertIn("'msp_podcast': DATA_ROOT / 'MSP_PODCAST'", settings)
+        self.assertIn("'hcudb1': DATA_ROOT / 'HCUDB1'", settings)
+        self.assertIn("MSP_EXPECTED_MISSING_SHA256 = None", settings)
+        self.assertIn("MSP_APPROVED_DUPLICATE_EXCLUDE_IDS = []", settings)
+        self.assertIn("MSP_EXPECTED_DUPLICATE_EXCLUSION_SHA256 = None", settings)
+        self.assertIn("OfficialTrainingDiagnosticsConfig", settings)
+        self.assertIn("diagnostics_config=DIAGNOSTICS_CONFIG", cells["official-training"])
+        self.assertIn("resume後に再生成した診断", cells["official-resume"])
+        subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "scripts" / "build_ser_notebooks.py"),
+                "--notebook", "03_official_head_cd.ipynb", "--check",
+            ],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
     def test_comparison_settings_refresh_already_imported_modules(self):
         probe = """
 import json

@@ -1,10 +1,10 @@
 [CmdletBinding()]
 param(
     [ValidateRange(1, 1000000)]
-    [int]$StartBatch = 40,
+    [int]$StartBatch = 1,
 
     [ValidateRange(1, 1000000)]
-    [int]$EndBatch = 52,
+    [int]$EndBatch = 64,
 
     [ValidateRange(1, 10000)]
     [int]$BatchSize = 500,
@@ -21,7 +21,10 @@ param(
 
     [string]$DestinationRoot = (
         'C:\Users\RD004\Documents\lab\data\MSP_PODCAST\Audio'
-    )
+    ),
+
+    [ValidateSet('A', 'C', 'D', 'F', 'H', 'N', 'O', 'S', 'U', 'X')]
+    [string[]]$EmotionCodes = @('A', 'D', 'F', 'H', 'S', 'U')
 )
 
 Set-StrictMode -Version Latest
@@ -50,7 +53,8 @@ foreach ($batchNumber in $StartBatch..$EndBatch) {
         -BoxAudioDir $BoxAudioDir `
         -DestinationRoot $DestinationRoot `
         -BatchNumber $batchNumber `
-        -BatchSize $BatchSize
+        -BatchSize $BatchSize `
+        -EmotionCodes $EmotionCodes
 }
 
 Write-Output (

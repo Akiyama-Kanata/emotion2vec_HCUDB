@@ -19,6 +19,10 @@ from .duplicates import (
     write_msp_audio_duplicate_audit,
     write_msp_audio_duplicate_exclusion_contract,
 )
+from .diagnostics import (
+    OfficialTrainingDiagnosticsConfig,
+    aggregate_official_training_diagnostics,
+)
 from .exclusions import (
     load_msp_missing_audio_exclusion_contract,
     manifest_exclusion_contract_signature,
@@ -621,6 +625,134 @@ def run_msp_loss_comparison(
     return summary
 
 
+def run_official_study(
+    artifact, output_dir, official_head, parity_report, *, seeds=(42, 43, 44), config=None,
+    monitoring_config=None, diagnostics_config=None,
+):
+    """Train independent D seeds from one official head without evaluating test data."""
+    from .official import require_parity_report
+    from .training import train_official_decoder
+
+    if not seeds or len(set(seeds)) != len(seeds):
+        raise ValueError("D seeds must be nonempty and unique")
+    template = config or TrainingConfig(epochs=10, weight_decay=0)
+    diagnostics_config = diagnostics_config or OfficialTrainingDiagnosticsConfig()
+    output = Path(output_dir)
+    if output.exists() and any(output.iterdir()):
+        raise ValueError("official study output is not empty")
+    store = ShardedFeatureStore(artifact.cache_root, artifact.manifest_path)
+    require_parity_report(official_head, parity_report, store.meta)
+    summary = {"condition_C": {"baseline": True, "official_snapshot": official_head.provenance,
+                                "decision_rule": "softmax_official9_then_argmax_official9"},
+               "requested_seeds": list(seeds), "runs": [], "test_evaluated": False,
+               "selection_split": "hcudb1/validation", "summary_path": str(output / "official_study_summary.json"),
+               "diagnostics_config": asdict(diagnostics_config),
+               "diagnostics_aggregate": aggregate_official_training_diagnostics(
+                   [], requested_seed_count=len(seeds),
+               )}
+    for seed in seeds:
+        training = train_official_decoder(artifact.manifest_path, artifact.cache_root, output / f"seed-{seed}",
+                                         official_head, parity_report, config=replace(template, seed=seed),
+                                         monitoring_config=monitoring_config,
+                                         diagnostics_config=diagnostics_config, store=store)
+        diagnostic = training["diagnostics"]
+        summary["runs"].append({
+            "seed": seed,
+            "training": training,
+            "best": {"path": training["best_checkpoint"], "sha256": sha256_file(training["best_checkpoint"])},
+            "diagnostics": {
+                "path": diagnostic["artifacts"]["training_diagnostics_json"],
+                "judgement": diagnostic["judgement"],
+                "final_gap": diagnostic["gap_summary"]["final"],
+                "best_epoch_gap": diagnostic["gap_summary"]["best_epoch"],
+                "maximum_gap": diagnostic["gap_summary"]["maximum"],
+            },
+        })
+        summary["diagnostics_aggregate"] = aggregate_official_training_diagnostics(
+            [run["training"]["diagnostics"] for run in summary["runs"]],
+            requested_seed_count=len(seeds),
+        )
+        _atomic_json(summary, Path(summary["summary_path"]))
+    return summary
+
+
+def run_official_final_evaluations(artifacts, d_checkpoints, output_dir, official_head, parity_report, *, batch_size=8, device="auto"):
+    """Freeze all C/D identities before evaluating the same MSP Test1 and HCUDB test."""
+    from .checkpoints import load_official_checkpoint
+    from .official import require_parity_report, state_sha256
+    from .training import evaluate_official
+    from .evaluation import assert_comparable_results
+    from .model import OfficialHeadModel
+    import numpy as np
+
+    if set(artifacts) != {"msp_podcast", "hcudb1"} or not d_checkpoints:
+        raise ValueError("final C/D comparison requires MSP, HCUDB and fixed D checkpoints")
+    output = Path(output_dir)
+    if output.exists() and any(output.iterdir()):
+        raise ValueError("final evaluation output is not empty")
+    prepared = {}
+    sets = {}
+    for dataset, artifact in artifacts.items():
+        prepared[dataset] = ShardedFeatureStore(artifact.cache_root, artifact.manifest_path)
+        require_parity_report(official_head, parity_report, prepared[dataset].meta)
+        sets[dataset] = evaluation_set_signature(artifact.manifest_path, dataset, "test")
+    frozen = []
+    for seed, record in d_checkpoints.items():
+        if sha256_file(record["path"]) != record["sha256"]:
+            raise ValueError("final D checkpoint hash mismatch")
+        payload = load_official_checkpoint(record["path"], official_head)
+        if payload["selection"] != "best_validation" or payload["seed"] != int(seed):
+            raise ValueError("final D must be the selected validation best for its seed")
+        hcudb_meta = prepared["hcudb1"].meta
+        if (payload["signature"]["cache_id"] != hcudb_meta["cache_id"]
+                or payload["signature"]["cache_manifest_sha256"] != hcudb_meta["manifest_sha256"]):
+            raise ValueError("D training manifest/cache differs from final HCUDB artifacts")
+        frozen.append({"seed": int(seed), "path": str(record["path"]), "sha256": record["sha256"], "checkpoint_id": payload["checkpoint_id"]})
+    c_hash = state_sha256(OfficialHeadModel(official_head).state_dict())
+    plan = {"C": {"baseline": True, "head_sha256": c_hash, "snapshot": official_head.provenance},
+            "D": frozen, "sets": sets, "batch_size": batch_size, "device": str(resolve_device(device))}
+    _atomic_json(plan, output / "final_evaluation_plan.json")
+    summary = {"status": "running", "plan": plan, "evaluations": [], "comparisons": {}, "test_evaluated": False}
+    try:
+        for dataset, artifact in artifacts.items():
+            c = evaluate_official(artifact.manifest_path, artifact.cache_root, dataset, output / dataset / "C",
+                                  official_head, parity_report, device=device, batch_size=batch_size, store=prepared[dataset])
+            if c["result"]["head_sha256"] != c_hash:
+                raise ValueError("C head changed after freezing final plan")
+            assert_same_evaluation_sets(sets[dataset], c["result"]["set_signature"])
+            summary["evaluations"].append(c)
+            d_results = []
+            for record in frozen:
+                if sha256_file(record["path"]) != record["sha256"]:
+                    raise ValueError("D checkpoint changed after freezing final plan")
+                d = evaluate_official(artifact.manifest_path, artifact.cache_root, dataset, output / dataset / f"D-seed-{record['seed']}",
+                                      official_head, parity_report, checkpoint_path=record["path"], device=device,
+                                      batch_size=batch_size, store=prepared[dataset])
+                if sha256_file(record["path"]) != record["sha256"]:
+                    raise ValueError("D checkpoint changed during final evaluation")
+                assert_comparable_results(c["result"], d["result"])
+                d_results.append(d["result"])
+                summary["evaluations"].append(d)
+            comparisons = {}
+            for metric in ("uar", "macro_f1", "accuracy", "loss"):
+                baseline = c["result"]["metrics_target6"][metric]
+                values = [result["metrics_target6"][metric] for result in d_results]
+                comparisons[metric] = {"C": baseline, "D_by_seed": {str(r["seed"]): v for r, v in zip(d_results, values)},
+                                       "D_mean": float(np.mean(values)), "D_sample_std": float(np.std(values, ddof=1)) if len(values) > 1 else None,
+                                       "mean_delta_from_C": float(np.mean(values) - baseline),
+                                       "delta_by_seed": {str(r["seed"]): v - baseline for r, v in zip(d_results, values)}}
+            summary["comparisons"][dataset] = comparisons
+            summary["test_evaluated"] = True
+            _atomic_json(summary, output / "final_evaluation_summary.json")
+        summary["status"] = "complete"
+    except Exception as exc:
+        summary.update(status="failed", error=str(exc))
+        raise
+    finally:
+        _atomic_json(summary, output / "final_evaluation_summary.json")
+    return summary
+
+
 __all__ = [
     "DatasetArtifacts",
     "FinalEvaluationTarget",
@@ -636,4 +768,6 @@ __all__ = [
     "run_final_evaluations",
     "load_msp_comparison_baselines",
     "run_msp_loss_comparison",
+    "run_official_final_evaluations",
+    "run_official_study",
 ]

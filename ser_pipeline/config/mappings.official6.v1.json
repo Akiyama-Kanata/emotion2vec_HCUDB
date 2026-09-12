@@ -1,0 +1,36 @@
+{
+  "schema_version": "ser_mapping_config_official6_v1",
+  "label_profile": "official6",
+  "label_order": ["angry", "disgusted", "fearful", "happy", "sad", "surprised"],
+  "datasets": {
+    "msp_podcast": {
+      "dataset_release": "R1.10",
+      "mapping_version": "msp_podcast_r1_10_official6_v1",
+      "mappings": {
+        "A": "angry",
+        "D": "disgusted",
+        "F": "fearful",
+        "H": "happy",
+        "S": "sad",
+        "U": "surprised"
+      },
+      "excluded_labels": ["C", "N", "O", "X"],
+      "approximate_labels": []
+    },
+    "hcudb1": {
+      "dataset_release": "HCUDB1",
+      "mapping_version": "hcudb1_acted_emotion_official6_v1",
+      "mappings": {
+        "怒り": "angry",
+        "嫌い": "disgusted",
+        "恐れ": "fearful",
+        "狂喜・楽しい": "happy",
+        "余裕・嬉しい": "happy",
+        "憂鬱・悲しい": "sad",
+        "驚き": "surprised"
+      },
+      "excluded_labels": ["冷静", "軽蔑", "リラックス・気楽", "眠い・疲れた"],
+      "approximate_labels": ["嫌い"]
+    }
+  }
+}

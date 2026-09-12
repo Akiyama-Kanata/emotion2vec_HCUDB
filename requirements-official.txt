@@ -1,0 +1,11 @@
+# Independent WSL environment; CPU validation uses the PyTorch CPU wheel index.
+# Do not install into the fairseq research environment.
+torch==2.5.1
+torchaudio==2.5.1
+funasr==1.4.14
+scipy
+soundfile
+nbformat
+pytest
+ipykernel
+matplotlib

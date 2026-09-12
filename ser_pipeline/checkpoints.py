@@ -11,7 +11,8 @@ from typing import Any, Mapping
 import torch
 
 from .audio import sha256_file
-from .contracts import CHECKPOINT_SCHEMA_VERSION, FEATURE_LAYER, LABEL_ORDER
+from .contracts import CHECKPOINT_SCHEMA_VERSION, FEATURE_LAYER, LABEL_ORDER, OFFICIAL_TARGET_ORDER
+from .contracts import OFFICIAL_CHECKPOINT_SCHEMA_VERSION
 from .model import BaseModel
 
 
@@ -206,6 +207,131 @@ def new_run_id(training_stage: str, seed: int) -> str:
     return f"{training_stage}-seed{seed}-{uuid.uuid4().hex[:12]}"
 
 
+def capture_rng_state(generator):
+    """Serialize Python, NumPy, Torch and loader RNGs without arbitrary globals."""
+    import random
+    import numpy as np
+    numpy_state = np.random.get_state()
+    return {"python": random.getstate(), "numpy": [numpy_state[0], numpy_state[1].tolist(), *numpy_state[2:]],
+            "torch": torch.get_rng_state(), "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else [],
+            "loader": generator.get_state()}
+
+
+def restore_rng_state(state, generator):
+    import random
+    import numpy as np
+    random.setstate(state["python"])
+    numpy_state = state["numpy"]
+    np.random.set_state((numpy_state[0], np.asarray(numpy_state[1], dtype=np.uint32), *numpy_state[2:]))
+    torch.set_rng_state(state["torch"].cpu())
+    if state["cuda"]:
+        if len(state["cuda"]) != torch.cuda.device_count():
+            raise ValueError("D resume CUDA RNG device count mismatch")
+        torch.cuda.set_rng_state_all([value.cpu() for value in state["cuda"]])
+    generator.set_state(state["loader"].cpu())
+
+
+def _validate_official_payload(payload, official_head):
+    from .model import OfficialHeadModel
+    from .training import OfficialRowGuard, selection_key
+
+    required = {"checkpoint_id", "signature", "model_state_dict", "optimizer_state_dict", "rng_state", "config", "seed", "epoch",
+                "history", "run_id", "validation_metrics", "selection", "best_checkpoint", "best_epoch",
+                "best_model_state_dict", "best_validation_metrics", "loss_config", "train_monitoring", "monitoring_config"}
+    if not required <= payload.keys() or payload.get("checkpoint_schema_version") != OFFICIAL_CHECKPOINT_SCHEMA_VERSION:
+        raise ValueError("D checkpoint schema mismatch or missing fields")
+    if payload.get("training_stage") != "hcudb_official_continue":
+        raise ValueError("D checkpoint training stage mismatch")
+    if payload.get("selection") not in {"last", "best_validation"}:
+        raise ValueError("D checkpoint selection mismatch")
+    identity = f"{payload['run_id']}:{payload['epoch']}:{payload['selection']}"
+    if payload["checkpoint_id"] != hashlib.sha256(identity.encode()).hexdigest()[:20]:
+        raise ValueError("D checkpoint identity mismatch")
+    if payload.get("official_snapshot") != official_head.provenance or payload.get("label_spec") != official_head.label_spec.as_dict():
+        raise ValueError("D checkpoint official snapshot/labels mismatch")
+    if payload.get("protection") != OfficialRowGuard.method:
+        raise ValueError("D row protection metadata missing or invalid")
+    signature = payload["signature"]
+    if (signature.get("model_type") != "OfficialHeadModel" or signature.get("condition") != "D"
+            or signature.get("label_order") != list(OFFICIAL_TARGET_ORDER)
+            or signature.get("official_snapshot") != official_head.provenance
+            or signature.get("label_spec") != official_head.label_spec.as_dict()
+            or signature.get("protection") != OfficialRowGuard.method):
+        raise ValueError("D checkpoint signature mismatch")
+    config = payload["config"]
+    if (config.get("weight_decay") != 0 or config.get("class_weighting") != "none"
+            or config.get("patience") is not None or config.get("dropout") != 0 or config.get("seed") != payload["seed"]):
+        raise ValueError("D checkpoint training configuration mismatch")
+    loss_config = payload.get("loss_config")
+    if (not isinstance(loss_config, dict)
+            or loss_config.get("name") != "cross_entropy"
+            or loss_config.get("logit_space") != "official9"
+            or loss_config.get("class_weighting") != "none"
+            or loss_config.get("label_smoothing") != 0.0
+            or loss_config.get("target_names") != list(OFFICIAL_TARGET_ORDER)
+            or loss_config.get("target_indices") != list(official_head.label_spec.target_indices)
+            or loss_config.get("class_weights") is not None):
+        raise ValueError("D checkpoint must use unweighted official9 cross entropy")
+    model = OfficialHeadModel(official_head, condition="D").cpu()
+    guard = OfficialRowGuard(model, official_head)
+
+    def validate_epoch(record):
+        guard.validate_state(record["model_state_dict"])
+        model.load_state_dict(record["model_state_dict"], strict=True)
+        optimizer = torch.optim.AdamW([model.proj.weight, model.proj.bias], lr=config["learning_rate"], weight_decay=0)
+        expected_groups = optimizer.state_dict()["param_groups"]
+        if record["optimizer_state_dict"]["param_groups"] != expected_groups:
+            raise ValueError("D checkpoint optimizer configuration mismatch")
+        optimizer.load_state_dict(record["optimizer_state_dict"])
+        if len(optimizer.state) != 2:
+            raise ValueError("D checkpoint must contain both Adam parameter states")
+        guard.validate(optimizer)
+        if not {"python", "numpy", "torch", "cuda", "loader"} <= record["rng_state"].keys():
+            raise ValueError("D checkpoint RNG state incomplete")
+
+    validate_epoch(payload)
+    best = payload["best_checkpoint"]
+    validate_epoch(best)
+    guard.validate_state(payload["best_model_state_dict"])
+    if (best["epoch"] != payload["best_epoch"] or best["validation_metrics"] != payload["best_validation_metrics"]
+            or best["signature"] != signature or best["run_id"] != payload["run_id"]):
+        raise ValueError("D checkpoint best history mismatch")
+    if best.get("selection") != "best_validation" or best.get("config") != config:
+        raise ValueError("D checkpoint best selection/configuration mismatch")
+    if any(not torch.equal(value.cpu(), best["model_state_dict"][key].cpu()) for key, value in payload["best_model_state_dict"].items()):
+        raise ValueError("D checkpoint best state mismatch")
+    history_epochs = [row["epoch"] for row in payload["history"]]
+    if not history_epochs or history_epochs != list(range(1, history_epochs[-1] + 1)):
+        raise ValueError("D checkpoint epoch history is not contiguous")
+    if payload["epoch"] not in history_epochs:
+        raise ValueError("D checkpoint epoch is missing from history")
+    current = payload["history"][payload["epoch"] - 1]
+    if current["validation"] != payload["validation_metrics"]:
+        raise ValueError("D checkpoint current validation metrics mismatch")
+    selected = max(payload["history"], key=lambda row: selection_key(row["validation"]))
+    if selected["epoch"] != best["epoch"] or selected["validation"] != best["validation_metrics"]:
+        raise ValueError("D checkpoint best selection mismatch")
+
+
+def save_official_checkpoint(path, payload, official_head):
+    """Atomically persist a validated D artifact; C never uses this schema."""
+    payload = dict(payload, checkpoint_schema_version=OFFICIAL_CHECKPOINT_SCHEMA_VERSION)
+    identity = f"{payload['run_id']}:{payload['epoch']}:{payload['selection']}"
+    payload["checkpoint_id"] = hashlib.sha256(identity.encode()).hexdigest()[:20]
+    _validate_official_payload(payload, official_head)
+    output = Path(path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    partial = output.with_name(output.name + ".partial")
+    torch.save(payload, partial)
+    partial.replace(output)
+
+
+def load_official_checkpoint(path, official_head):
+    payload = _safe_torch_load(Path(path))
+    _validate_official_payload(payload, official_head)
+    return payload
+
+
 def restore_parent(
     model: BaseModel,
     parent_path: str | Path,
@@ -256,12 +382,16 @@ def restore_resume(
 
 __all__ = [
     "TRAINING_STAGES",
+    "capture_rng_state",
     "decoder_signature",
     "load_decoder_checkpoint",
+    "load_official_checkpoint",
     "new_run_id",
     "restore_parent",
     "restore_resume",
+    "restore_rng_state",
     "save_decoder_checkpoint",
+    "save_official_checkpoint",
     "update_decoder_checkpoint_results",
     "validate_signature",
 ]

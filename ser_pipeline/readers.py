@@ -36,15 +36,16 @@ def _base_record(
     original_emotion: str,
     extra_reasons: list[str] | None = None,
     source_metadata: dict[str, Any] | None = None,
+    label_profile: str = "ab4",
 ) -> dict[str, Any]:
-    decision = map_emotion(dataset, original_emotion)
+    decision = map_emotion(dataset, original_emotion, label_profile=label_profile)
     reasons = list(decision.exclusion_reasons)
     reasons.extend(extra_reasons or [])
     included = decision.included and not reasons and split is not None
     return {
         "manifest_schema_version": MANIFEST_SCHEMA_VERSION,
         "dataset": dataset,
-        "dataset_release": dataset_contract(dataset)["dataset_release"],
+        "dataset_release": dataset_contract(dataset, label_profile=label_profile)["dataset_release"],
         "utterance_id": utterance_id,
         "audio_relpath": audio_relpath,
         "audio_sha256": None,
@@ -78,7 +79,7 @@ def _resolve_existing(root: Path, candidates: list[Path], description: str) -> P
     raise FileNotFoundError(f"{description} not found under {root}")
 
 
-def read_msp_podcast(root: str | Path) -> Iterator[dict[str, Any]]:
+def read_msp_podcast(root: str | Path, *, label_profile: str = "ab4") -> Iterator[dict[str, Any]]:
     dataset_root = Path(root)
     csv_path = _resolve_existing(
         dataset_root,
@@ -139,6 +140,7 @@ def read_msp_podcast(root: str | Path) -> Iterator[dict[str, Any]]:
                 original_emotion=raw["EmoClass"].strip(),
                 extra_reasons=reasons,
                 source_metadata=dict(raw),
+                label_profile=label_profile,
             )
     if official_partitions is not None:
         if not official_partitions:
@@ -155,7 +157,7 @@ def _hcudb_dataset_root(root: Path) -> Path:
     return root
 
 
-def read_hcudb1(root: str | Path) -> Iterator[dict[str, Any]]:
+def read_hcudb1(root: str | Path, *, label_profile: str = "ab4") -> Iterator[dict[str, Any]]:
     supplied_root = Path(root)
     dataset_root = _hcudb_dataset_root(supplied_root)
     csv_path = _resolve_existing(
@@ -189,6 +191,7 @@ def read_hcudb1(root: str | Path) -> Iterator[dict[str, Any]]:
                 split_version=split_config["split_version"],
                 original_emotion=raw["演技感情"].strip(),
                 source_metadata=dict(raw),
+                label_profile=label_profile,
             )
 
 
@@ -199,7 +202,7 @@ def _iemocap_dataset_root(root: Path) -> Path:
     return candidates[0].parent if len(candidates) == 1 else root
 
 
-def read_iemocap(root: str | Path) -> Iterator[dict[str, Any]]:
+def read_iemocap(root: str | Path, *, label_profile: str = "ab4") -> Iterator[dict[str, Any]]:
     supplied_root = Path(root)
     dataset_root = _iemocap_dataset_root(supplied_root)
     csv_path = _resolve_existing(
@@ -240,6 +243,7 @@ def read_iemocap(root: str | Path) -> Iterator[dict[str, Any]]:
                 split_version=IEMOCAP_SPLIT_VERSION,
                 original_emotion=raw["emo"].strip(),
                 source_metadata=dict(raw),
+                label_profile=label_profile,
             )
 
 
@@ -250,13 +254,18 @@ READERS = {
 }
 
 
-def read_dataset(dataset: str, root: str | Path) -> Iterator[dict[str, Any]]:
+def read_dataset(
+    dataset: str,
+    root: str | Path,
+    *,
+    label_profile: str = "ab4",
+) -> Iterator[dict[str, Any]]:
     normalized = str(dataset).strip().lower()
     try:
         reader = READERS[normalized]
     except KeyError as exc:
         raise ValueError(f"unsupported dataset: {dataset!r}") from exc
-    yield from reader(root)
+    yield from reader(root, label_profile=label_profile)
 
 
 def resolved_dataset_root(dataset: str, root: str | Path) -> Path:

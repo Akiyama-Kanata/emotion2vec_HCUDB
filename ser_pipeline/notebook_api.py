@@ -23,6 +23,7 @@ from .contracts import (
     EXTRACTION_CODE_VERSION,
     FEATURE_LAYER,
     LABEL_ORDER,
+    OFFICIAL_TARGET_ORDER,
     MANIFEST_SCHEMA_VERSION,
     load_mapping_config,
 )
@@ -187,7 +188,7 @@ def _best_training_metrics_html(training):
     )
     class_rows = []
     for row in metrics.get("class_metrics") or []:
-        label = html.escape(str(row.get("class_label", "未記録")))
+        label = html.escape(str(row.get("class_label", row.get("target_label", "未記録"))))
         values = ''.join(f'<td>{_format_recorded(row.get(name))}</td>' for name in ("precision", "recall", "f1"))
         class_rows.append(f'<tr><td>{label}</td>{values}<td>{html.escape(str(row.get("support", "未記録")))}</td></tr>')
     class_table = (
@@ -206,7 +207,7 @@ def _best_validation_class_metrics_html(training):
     rows = []
     metrics = training.get("best_validation_metrics") or {}
     for row in metrics.get("class_metrics") or []:
-        label = html.escape(str(row.get("class_label", "未記録")))
+        label = html.escape(str(row.get("class_label", row.get("target_label", "未記録"))))
         values = ''.join(f'<td>{_format_recorded(row.get(name))}</td>' for name in ("precision", "recall", "f1"))
         rows.append(f'<tr><td>{label}</td>{values}<td>{html.escape(str(row.get("support", "未記録")))}</td></tr>')
     if not rows:
@@ -372,20 +373,34 @@ def one_item_feature_benchmark(feature_dim: int = 768, seconds: float = 1.0) -> 
     }
 
 
-def _record(dataset: str, split: str, class_index: int, serial: int) -> dict[str, Any]:
-    label = LABEL_ORDER[class_index]
+def _record(
+    dataset: str,
+    split: str,
+    class_index: int,
+    serial: int,
+    *,
+    label_profile: str = "ab4",
+) -> dict[str, Any]:
+    label_order = LABEL_ORDER if label_profile == "ab4" else OFFICIAL_TARGET_ORDER
+    label = label_order[class_index]
     utterance_id = f"{dataset}_{split}_{class_index}_{serial}"
     audio_hash = hashlib.sha256(utterance_id.encode("utf-8")).hexdigest()
-    mapping = {
+    mapping = ({
         "msp_podcast": ("R1.10", "msp_podcast_r1_10_primary_v1", MSP_SPLIT_VERSION),
         "hcudb1": ("HCUDB1", "hcudb1_acted_emotion_v1", "hcudb1_speaker_split_v1"),
         "iemocap": ("IEMOCAP_full_release", "iemocap_external_v1", IEMOCAP_SPLIT_VERSION),
-    }[dataset]
-    originals = {
+    } if label_profile == "ab4" else {
+        "msp_podcast": ("R1.10", "msp_podcast_r1_10_official6_v1", MSP_SPLIT_VERSION),
+        "hcudb1": ("HCUDB1", "hcudb1_acted_emotion_official6_v1", "hcudb1_speaker_split_v1"),
+    })[dataset]
+    originals = ({
         "msp_podcast": ("A", "H", "S", "D"),
         "hcudb1": ("怒り", "狂喜・楽しい", "憂鬱・悲しい", "嫌い"),
         "iemocap": ("ang", "hap", "sad", "dis"),
-    }[dataset]
+    } if label_profile == "ab4" else {
+        "msp_podcast": ("A", "D", "F", "H", "S", "U"),
+        "hcudb1": ("怒り", "嫌い", "恐れ", "狂喜・楽しい", "憂鬱・悲しい", "驚き"),
+    })[dataset]
     if dataset == "msp_podcast":
         source_split = {"train": "Train", "validation": "Development", "test": "Test1"}[split]
         speaker = f"msp_{split}_{serial}"
@@ -418,7 +433,7 @@ def _record(dataset: str, split: str, class_index: int, serial: int) -> dict[str
         "mapping_version": mapping[1],
         "included": True,
         "exclusion_reasons": [],
-        "approximate_mapping": dataset == "hcudb1" and class_index == 3,
+        "approximate_mapping": dataset == "hcudb1" and class_index == (3 if label_profile == "ab4" else 1),
         "audio_size_bytes": 100,
         "sample_rate_hz": 16000,
         "channels": 1,
@@ -427,14 +442,17 @@ def _record(dataset: str, split: str, class_index: int, serial: int) -> dict[str
     }
 
 
-def _demo_rows(dataset: str) -> list[dict[str, Any]]:
+def _demo_rows(dataset: str, *, label_profile: str = "ab4") -> list[dict[str, Any]]:
+    class_count = len(LABEL_ORDER if label_profile == "ab4" else OFFICIAL_TARGET_ORDER)
     if dataset == "iemocap":
-        return [_record(dataset, "test", class_index, serial) for serial in range(2) for class_index in range(4)]
+        if label_profile != "ab4":
+            raise ValueError("official6 demo artifacts do not support IEMOCAP")
+        return [_record(dataset, "test", class_index, serial) for serial in range(2) for class_index in range(class_count)]
     rows = []
     for split, repeats in (("train", 2), ("validation", 1), ("test", 1)):
         for serial in range(repeats):
-            for class_index in range(4):
-                rows.append(_record(dataset, split, class_index, serial))
+            for class_index in range(class_count):
+                rows.append(_record(dataset, split, class_index, serial, label_profile=label_profile))
     return rows
 
 
@@ -534,12 +552,13 @@ def make_demo_artifacts(
     feature_dim: int = 8,
     *,
     datasets: Sequence[str] = ("msp_podcast", "hcudb1", "iemocap"),
+    label_profile: str = "ab4",
 ) -> dict[str, DatasetArtifacts]:
     destination = Path(root)
     destination.mkdir(parents=True, exist_ok=True)
     artifacts = {}
     for dataset in datasets:
-        rows = _demo_rows(dataset)
+        rows = _demo_rows(dataset, label_profile=label_profile)
         manifest_path = destination / dataset / "manifest.jsonl"
         write_manifest(rows, manifest_path)
         cache_root = destination / dataset / "cache"

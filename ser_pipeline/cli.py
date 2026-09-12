@@ -6,7 +6,7 @@ import argparse
 import json
 from pathlib import Path
 
-from .contracts import SUPPORTED_DATASETS
+from .contracts import LABEL_PROFILES, SUPPORTED_DATASETS
 from .duplicates import generate_msp_audio_duplicate_exclusion_contract
 from .manifest import (
     audit_dataset,
@@ -24,6 +24,7 @@ def build_parser() -> argparse.ArgumentParser:
     audit = subparsers.add_parser("audit-data", help="Audit metadata, labels, splits, and audio availability")
     audit.add_argument("--dataset", choices=SUPPORTED_DATASETS, required=True)
     audit.add_argument("--root", type=Path, required=True)
+    audit.add_argument("--label-profile", choices=LABEL_PROFILES, default="ab4")
 
     exclusions = subparsers.add_parser(
         "generate-msp-exclusion-contract",
@@ -31,6 +32,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     exclusions.add_argument("--root", type=Path, required=True)
     exclusions.add_argument("--output", type=Path, required=True)
+    exclusions.add_argument("--label-profile", choices=LABEL_PROFILES, default="ab4")
 
     duplicate_audit = subparsers.add_parser(
         "audit-msp-audio-duplicates",
@@ -41,6 +43,7 @@ def build_parser() -> argparse.ArgumentParser:
     duplicate_audit.add_argument("--candidates-csv-output", type=Path, required=True)
     duplicate_audit.add_argument("--approved-missing-exclusion-contract", type=Path, required=True)
     duplicate_audit.add_argument("--expected-missing-exclusion-sha256", required=True)
+    duplicate_audit.add_argument("--label-profile", choices=LABEL_PROFILES, default="ab4")
 
     duplicate_exclusions = subparsers.add_parser(
         "generate-msp-duplicate-exclusion-contract",
@@ -56,6 +59,7 @@ def build_parser() -> argparse.ArgumentParser:
     build.add_argument("--output", type=Path, required=True)
     build.add_argument("--allow-missing-audio", action="store_true")
     build.add_argument("--skip-excluded-audio-inspection", action="store_true")
+    build.add_argument("--label-profile", choices=LABEL_PROFILES, default="ab4")
     build.add_argument(
         "--approved-exclusion-contract",
         type=Path,
@@ -123,15 +127,107 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark.add_argument("--checkpoint", type=Path, required=True)
     benchmark.add_argument("--output", type=Path, required=True)
     benchmark.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+    verify = subparsers.add_parser("verify-official", help="Verify official logits/scores and benchmark one waveform")
+    verify.add_argument("--snapshot", type=Path, required=True)
+    verify.add_argument("--audio", type=Path, required=True)
+    verify.add_argument("--output", type=Path, required=True)
+    verify.add_argument("--device", choices=("auto", "cpu", "cuda"), default="cpu")
+
+    large = subparsers.add_parser("extract-large", help="Extract shared B/C/D Large features after parity verification")
+    large.add_argument("--snapshot", type=Path, required=True)
+    large.add_argument("--parity-report", type=Path, required=True)
+    large.add_argument("--manifest", type=Path, required=True)
+    large.add_argument("--audio-root", type=Path, required=True)
+    large.add_argument("--cache-root", type=Path, required=True)
+    large.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+    large.add_argument("--max-shard-frames", type=int, default=65536)
+
+    official_eval = subparsers.add_parser("evaluate-official", help="Evaluate frozen C or a saved D head")
+    for name in ("snapshot", "parity-report", "manifest", "cache-root", "output-dir"):
+        official_eval.add_argument(f"--{name}", type=Path, required=True)
+    official_eval.add_argument("--checkpoint", type=Path)
+    official_eval.add_argument("--dataset", choices=("msp_podcast", "hcudb1"), required=True)
+    official_eval.add_argument("--split", choices=("train", "validation", "test"), default="validation")
+    official_eval.add_argument("--batch-size", type=int, default=8)
+    official_eval.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+    for command in ("train-official", "study-official"):
+        trainer = subparsers.add_parser(command, help="Train D on HCUDB train/validation only")
+        for name in ("snapshot", "parity-report", "manifest", "cache-root", "output-dir"):
+            trainer.add_argument(f"--{name}", type=Path, required=True)
+        trainer.add_argument("--epochs", type=int, default=10)
+        trainer.add_argument("--batch-size", type=int, default=8)
+        trainer.add_argument("--learning-rate", type=float, default=0.001)
+        trainer.add_argument("--weight-decay", type=float, default=0)
+        trainer.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
+        if command == "train-official":
+            trainer.add_argument("--seed", type=int, default=42)
+            trainer.add_argument("--resume-checkpoint", type=Path)
+        else:
+            trainer.add_argument("--seeds", type=int, nargs="+", default=[42, 43, 44])
+    final = subparsers.add_parser("compare-official", help="Run separate final C/D test comparison from frozen D hashes")
+    for name in ("snapshot", "parity-report", "output-dir", "study-summary", "msp-manifest", "msp-cache-root", "hcudb-manifest", "hcudb-cache-root"):
+        final.add_argument(f"--{name}", type=Path, required=True)
+    final.add_argument("--batch-size", type=int, default=8)
+    final.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    if args.command == "audit-data":
-        result = audit_dataset(args.dataset, args.root)
+    if args.command == "verify-official":
+        from .audio import load_audio_16k_mono
+        from .cache import _atomic_json
+        from .official import OfficialEmotion2vecEncoder
+        encoder = OfficialEmotion2vecEncoder(args.snapshot, device=args.device)
+        waveform = load_audio_16k_mono(args.audio)
+        result = encoder.verify_parity(waveform)
+        _atomic_json(result, args.output)
+    elif args.command == "extract-large":
+        from .official import OfficialEmotion2vecEncoder, require_parity_report
+        from .features import extract_feature_cache
+        encoder = OfficialEmotion2vecEncoder(args.snapshot, device=args.device)
+        report = require_parity_report(encoder.head, args.parity_report)
+        if report["extraction"] != encoder.provenance or report["device"] != str(encoder.device):
+            raise ValueError("re-run parity for the current extraction environment/device")
+        result = extract_feature_cache(args.manifest, args.audio_root, args.cache_root, encoder,
+                                      expected_dim=1024, max_shard_frames=args.max_shard_frames)
+    elif args.command == "evaluate-official":
+        from .official import load_official_head
+        from .training import evaluate_official
+        result = evaluate_official(args.manifest, args.cache_root, args.dataset, args.output_dir,
+                                   load_official_head(args.snapshot), args.parity_report,
+                                   checkpoint_path=args.checkpoint, split=args.split,
+                                   batch_size=args.batch_size, device=args.device)
+    elif args.command in {"train-official", "study-official"}:
+        from .official import load_official_head
+        from .training import TrainingConfig, train_official_decoder
+        from .study import DatasetArtifacts, run_official_study
+        head = load_official_head(args.snapshot)
+        config = TrainingConfig(epochs=args.epochs, batch_size=args.batch_size, learning_rate=args.learning_rate,
+                                weight_decay=args.weight_decay, device=args.device, seed=getattr(args, "seed", 42))
+        if args.command == "train-official":
+            result = train_official_decoder(args.manifest, args.cache_root, args.output_dir, head, args.parity_report,
+                                           config=config, resume_checkpoint=args.resume_checkpoint)
+        else:
+            result = run_official_study(DatasetArtifacts(args.manifest, args.cache_root), args.output_dir,
+                                        head, args.parity_report, seeds=args.seeds, config=config)
+    elif args.command == "compare-official":
+        from .official import load_official_head
+        from .study import DatasetArtifacts, run_official_final_evaluations
+        summary = json.loads(args.study_summary.read_text(encoding="utf-8"))
+        if len(summary["runs"]) != len(summary["requested_seeds"]) or {r["seed"] for r in summary["runs"]} != set(summary["requested_seeds"]):
+            raise ValueError("all requested D seeds must finish before final comparison")
+        artifacts = {"msp_podcast": DatasetArtifacts(args.msp_manifest, args.msp_cache_root),
+                     "hcudb1": DatasetArtifacts(args.hcudb_manifest, args.hcudb_cache_root)}
+        result = run_official_final_evaluations(artifacts, {r["seed"]: r["best"] for r in summary["runs"]},
+                                               args.output_dir, load_official_head(args.snapshot), args.parity_report,
+                                               batch_size=args.batch_size, device=args.device)
+    elif args.command == "audit-data":
+        result = audit_dataset(args.dataset, args.root, label_profile=args.label_profile)
     elif args.command == "generate-msp-exclusion-contract":
-        result = generate_msp_missing_audio_exclusion_contract(args.root, args.output)
+        result = generate_msp_missing_audio_exclusion_contract(
+            args.root, args.output, label_profile=args.label_profile
+        )
     elif args.command == "audit-msp-audio-duplicates":
         result = generate_msp_audio_duplicate_audit(
             args.root,
@@ -139,6 +235,7 @@ def main(argv: list[str] | None = None) -> int:
             args.candidates_csv_output,
             approved_missing_audio_exclusion_contract=args.approved_missing_exclusion_contract,
             expected_missing_audio_exclusion_sha256=args.expected_missing_exclusion_sha256,
+            label_profile=args.label_profile,
         )
     elif args.command == "generate-msp-duplicate-exclusion-contract":
         result = generate_msp_audio_duplicate_exclusion_contract(
@@ -158,6 +255,7 @@ def main(argv: list[str] | None = None) -> int:
             duplicate_audit=args.duplicate_audit,
             approved_duplicate_exclusion_contract=args.approved_duplicate_exclusion_contract,
             expected_duplicate_exclusion_sha256=args.expected_duplicate_exclusion_sha256,
+            label_profile=args.label_profile,
         )
     elif args.command == "validate-manifest":
         result = validate_manifest(args.manifest, audio_root=args.root)

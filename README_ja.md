@@ -23,6 +23,8 @@
   <a href="README.md">English</a> | <a href="README_ja.md">日本語</a>
 </p>
 
+研究室内で公開版emotion2vec+ largeを導入して1音声を推論する場合は、[emotion2vec+ large 導入・利用ガイド](docs/guides/emotion2vec-plus-large-setup-ja.md)を参照してください。
+
 # ニュース
 - [2024年10月] 🔧 FunASR インターフェースの使い方を更新し、ソース選択に対応しました。中国本土のユーザーは `"ms"` または `"modelscope"`、その他の海外ユーザーは `"hf"` または `"huggingface"` を指定してください。**スムーズに利用を始めるには FunASR インターフェースの利用を推奨します。**
 - [2024年6月] 🔧 emotion2vec+ のバグを修正しました。最新コードを再度取得してください。

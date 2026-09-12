@@ -17,6 +17,9 @@ from ser_pipeline.duplicates import (
     MSP_DUPLICATE_AUDIT_SCHEMA_VERSION,
     MSP_DUPLICATE_EXCLUSION_REASON,
     MSP_DUPLICATE_EXCLUSION_SCHEMA_VERSION,
+    MSP_OFFICIAL6_DUPLICATE_AUDIT_SCHEMA_VERSION,
+    MSP_OFFICIAL6_DUPLICATE_EXCLUSION_REASON,
+    MSP_OFFICIAL6_DUPLICATE_EXCLUSION_SCHEMA_VERSION,
     build_msp_audio_duplicate_audit,
     build_msp_audio_duplicate_exclusion_contract,
     load_msp_audio_duplicate_audit,
@@ -198,6 +201,47 @@ class MspAudioDuplicateAuditTest(unittest.TestCase):
                 "label_mismatch",
             },
         )
+
+    def test_official6_duplicate_artifacts_use_separate_schemas(self):
+        target_names = {
+            "anger": ("angry", 0),
+            "disgust": ("disgusted", 1),
+            "happy": ("happy", 3),
+            "sadness": ("sad", 4),
+        }
+        official_rows = []
+        for row in self.rows:
+            mapped, class_index = target_names[row["mapped_emotion"]]
+            official_rows.append(
+                dict(
+                    row,
+                    mapped_emotion=mapped,
+                    class_index=class_index,
+                    mapping_version="msp_podcast_r1_10_official6_v1",
+                )
+            )
+        audit = build_msp_audio_duplicate_audit(
+            official_rows,
+            self.paths,
+            missing_exclusion_contract_schema_version="msp_missing_audio_exclusions_official6_v1",
+            missing_exclusion_contract_sha256=MISSING_CONTRACT_SHA256,
+            label_profile="official6",
+        )
+        self.assertEqual(audit["schema_version"], MSP_OFFICIAL6_DUPLICATE_AUDIT_SCHEMA_VERSION)
+        self.assertEqual(audit["label_profile"], "official6")
+        contract = build_msp_audio_duplicate_exclusion_contract(audit, ["cross_validation"])
+        self.assertEqual(contract["schema_version"], MSP_OFFICIAL6_DUPLICATE_EXCLUSION_SCHEMA_VERSION)
+        self.assertEqual(contract["exclusion_reason"], MSP_OFFICIAL6_DUPLICATE_EXCLUSION_REASON)
+        self.assertEqual(contract["label_profile"], "official6")
+
+        with self.assertRaisesRegex(ValueError, "label profile"):
+            build_msp_audio_duplicate_audit(
+                official_rows,
+                self.paths,
+                missing_exclusion_contract_schema_version="msp_missing_audio_exclusions_v1",
+                missing_exclusion_contract_sha256=MISSING_CONTRACT_SHA256,
+                label_profile="official6",
+            )
 
     def test_contract_rejects_unreviewed_ids_and_unresolved_cross_split_groups(self):
         with self.assertRaisesRegex(ValueError, "not an audit candidate"):

@@ -16,7 +16,10 @@ param(
     [int]$BatchSize = 500,
 
     [ValidateRange(1, 3600)]
-    [int]$VerificationTimeoutSeconds = 120
+    [int]$VerificationTimeoutSeconds = 120,
+
+    [ValidateSet('A', 'C', 'D', 'F', 'H', 'N', 'O', 'S', 'U', 'X')]
+    [string[]]$EmotionCodes = @('A', 'H', 'S', 'D')
 )
 
 Set-StrictMode -Version Latest
@@ -29,6 +32,11 @@ if (-not (Test-Path -LiteralPath $MetadataCsv -PathType Leaf)) {
 
 if (-not (Test-Path -LiteralPath $BoxAudioDir -PathType Container)) {
     throw 'The Box Drive audio directory was not found.'
+}
+
+$normalizedEmotionCodes = @($EmotionCodes | ForEach-Object { $_.Trim().ToUpperInvariant() } | Select-Object -Unique)
+if ($normalizedEmotionCodes.Count -eq 0) {
+    throw 'At least one emotion code is required.'
 }
 
 New-Item -ItemType Directory -Force -Path $DestinationRoot | Out-Null
@@ -71,7 +79,7 @@ $allTargets = @(
             )
 
             $isWav -and
-            $emotion -in @('A', 'H', 'S', 'D') -and
+            $emotion.Trim().ToUpperInvariant() -in $normalizedEmotionCodes -and
             $speaker.Trim().ToLowerInvariant() -ne 'unknown' -and
             $split -in @('Train', 'Development', 'Test1')
         } |
@@ -86,6 +94,24 @@ if ($batch.Count -eq 0) {
     throw 'The requested batch has no target WAV files.'
 }
 
+# Batches are defined after emotion filtering, so the same utterance can move to
+# another batch when EmotionCodes changes. Index the entire destination tree by
+# basename to keep resumptions idempotent across those changes.
+$existingAudioByName = [System.Collections.Generic.Dictionary[string, string]]::new(
+    [System.StringComparer]::OrdinalIgnoreCase
+)
+Get-ChildItem -LiteralPath $DestinationRoot -Recurse -Filter '*.wav' -File |
+    ForEach-Object {
+        if ($existingAudioByName.ContainsKey($_.Name)) {
+            throw (
+                "Duplicate destination WAV basename detected: {0}; {1}" -f
+                $existingAudioByName[$_.Name],
+                $_.FullName
+            )
+        }
+        $existingAudioByName.Add($_.Name, $_.FullName)
+    }
+
 $completed = 0
 $missing = 0
 $copied = 0
@@ -97,7 +123,12 @@ $processed = 0
 foreach ($item in $batch) {
     $fileName = [string]$item.FileName
     $sourceFile = Join-Path $BoxAudioDir $fileName
-    $destinationFile = Join-Path $batchDestinationDir $fileName
+    $destinationFile = if ($existingAudioByName.ContainsKey($fileName)) {
+        $existingAudioByName[$fileName]
+    }
+    else {
+        Join-Path $batchDestinationDir $fileName
+    }
 
     if (-not (Test-Path -LiteralPath $sourceFile -PathType Leaf)) {
         $missing++
@@ -133,11 +164,21 @@ foreach ($item in $batch) {
             Write-Progress @progress
             continue
         }
+        if ($destinationSize -gt 0) {
+            # Never overwrite a non-empty local file whose size disagrees with
+            # the source. Treat it as a data-integrity failure for review.
+            $failed++
+            $processed++
+            continue
+        }
     }
+
+    $destinationDirectory = Split-Path -Parent $destinationFile
+    New-Item -ItemType Directory -Force -Path $destinationDirectory | Out-Null
 
     $robocopyArguments = @(
         $BoxAudioDir
-        $batchDestinationDir
+        $destinationDirectory
         $fileName
         '/J'
         '/R:3'
@@ -180,6 +221,9 @@ foreach ($item in $batch) {
     $completed++
     $copied++
     $processed++
+    if (-not $existingAudioByName.ContainsKey($fileName)) {
+        $existingAudioByName.Add($fileName, $destinationFile)
+    }
     $progress = @{
         Activity = 'WAV download'
         Status = "$processed / $($batch.Count)"
@@ -200,6 +244,7 @@ $summary = [pscustomobject]@{
     Missing = $missing
     Failed = $failed
     ZeroLengthSource = $zeroLengthSource
+    EmotionCodes = ($normalizedEmotionCodes -join ',')
 }
 
 $progressLog = Join-Path $PSScriptRoot 'msp_download_progress.csv'

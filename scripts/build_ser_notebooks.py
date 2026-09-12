@@ -1666,7 +1666,377 @@ else:
 ]
 
 
+official_cells = [
+    markdown("""
+# 条件C/D：公式9クラスheadの評価と日本語適応
+
+Cは公式headを固定し、Dは同じheadの対象6行だけをHCUDBで更新します。真値は
+angry/disgusted/fearful/happy/sad/surprisedの6クラス、損失と予測は公式9 logits全体を使います。
+neutral/other/unknownが最大ならそのまま誤分類として保存します。嫌い→disgustedは研究上の近似です。
+固定3行のparameter保持は、その予測率や英語性能の保持を意味しません。
+
+独立したWSL環境に `requirements-official.txt` を導入し、そのkernelを選択してください。
+検証 → 容量見積もり → 全量抽出 → D学習 → 固定済みC/Dの最終評価は、別々のセルで実行します。
+全実行フラグは初期値Falseです。Bの学習はこのNotebookに含みません。
+    """, "official-intro"),
+    code("""
+from pathlib import Path
+import os, sys, json, subprocess
+from collections import Counter
+
+ROOT = Path.cwd().resolve()
+if not (ROOT / 'ser_pipeline').is_dir():
+    ROOT = ROOT.parent
+if not (ROOT / 'ser_pipeline').is_dir():
+    raise RuntimeError('リポジトリまたはnotebooksディレクトリから実行してください。')
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from ser_pipeline.cli import main
+from ser_pipeline.study import DatasetArtifacts, run_official_study, run_official_final_evaluations
+from ser_pipeline.training import TrainingConfig, train_official_decoder
+from ser_pipeline.diagnostics import OfficialTrainingDiagnosticsConfig
+from ser_pipeline.official import load_official_head, OfficialEmotion2vecEncoder, require_parity_report
+from ser_pipeline.features import extract_feature_cache
+from ser_pipeline.manifest import (
+    audit_dataset, build_manifest, generate_msp_audio_duplicate_audit,
+    generate_msp_missing_audio_exclusion_contract, load_manifest, validate_manifest,
+)
+from ser_pipeline.duplicates import generate_msp_audio_duplicate_exclusion_contract
+from ser_pipeline.cache import validate_cache, _atomic_json
+from ser_pipeline.contracts import label_profile_for_mapping_version
+from ser_pipeline.preflight import estimate_full_extraction, disk_capacity_gate
+
+REVISION = '6c303ba987b86b93193de93e34bb2b077a6bedc4'
+HF_HOME = Path('/mnt/c/Users/RD004/.cache/huggingface/hub') if sys.platform != 'win32' else Path.home() / '.cache/huggingface/hub'
+SNAPSHOT = Path(os.environ.get('SER_OFFICIAL_SNAPSHOT', str(HF_HOME / 'models--emotion2vec--emotion2vec_plus_large' / 'snapshots' / REVISION)))
+OUTPUT = ROOT / 'runs' / 'official_cd'
+PARITY_REPORT = OUTPUT / 'parity.json'
+DEVICE = 'cpu'
+SEEDS = (42, 43, 44)
+CONFIG = TrainingConfig(epochs=10, batch_size=8, learning_rate=0.001, weight_decay=0, device=DEVICE)
+DIAGNOSTICS_CONFIG = OfficialTrainingDiagnosticsConfig(
+    tail_epochs=3,
+    min_score_delta=0.02,
+    min_loss_delta=0.03,
+    low_train_score_threshold=0.50,
+)
+
+# `build-manifest --label-profile official6` で作る承認済みmanifestと音声rootです。
+# ここでは文字列を設定するだけで、各実行フラグをTrueにするまでデータは参照しません。
+DATA_ROOT = (
+    Path('/mnt/c/Users/RD004/Documents/lab/data')
+    if sys.platform != 'win32'
+    else Path(r'C:\\Users\\RD004\\Documents\\lab\\data')
+)
+MANIFEST_DIR = ROOT / 'runs' / 'ser_manifests'
+MANIFESTS = {
+    'msp_podcast': MANIFEST_DIR / 'msp_podcast_official6_v1.jsonl',
+    'hcudb1': MANIFEST_DIR / 'hcudb1_official6_v1.jsonl',
+}
+AUDIO_ROOTS = {
+    'msp_podcast': DATA_ROOT / 'MSP_PODCAST',
+    'hcudb1': DATA_ROOT / 'HCUDB1',
+}
+MSP_MISSING_CONTRACT = MANIFEST_DIR / 'msp_missing_audio_exclusions_official6_v1.json'
+MSP_DUPLICATE_AUDIT = MANIFEST_DIR / 'msp_audio_duplicate_audit_official6_v1.json'
+MSP_DUPLICATE_CANDIDATES = MANIFEST_DIR / 'msp_audio_duplicate_candidates_official6_v1.csv'
+MSP_DUPLICATE_EXCLUSION_CONTRACT = MANIFEST_DIR / 'msp_audio_duplicate_exclusions_official6_v1.json'
+
+# 生成結果を確認してから、表示されたSHA-256と除外対象IDを手作業で転記します。
+MSP_EXPECTED_MISSING_SHA256 = None
+MSP_APPROVED_DUPLICATE_EXCLUDE_IDS = []
+MSP_EXPECTED_DUPLICATE_EXCLUSION_SHA256 = None
+
+CACHES = {dataset: OUTPUT / 'cache' / dataset for dataset in MANIFESTS}
+STUDY_OUTPUT = OUTPUT / 'study'
+STUDY_SUMMARY = STUDY_OUTPUT / 'official_study_summary.json'
+FINAL_OUTPUT = OUTPUT / 'final'
+RESUME_CHECKPOINT = None
+RESUME_OUTPUT = OUTPUT / 'resumed'
+RESUME_SEED = 42
+
+RUN_MSP_DOWNLOAD = False
+MSP_DOWNLOAD_EMOTION_CODES = ('F', 'U')
+MSP_DOWNLOAD_START_BATCH = 1
+MSP_DOWNLOAD_END_BATCH = 12  # F=1,885件、U=4,095件を500件単位で取得
+RUN_SOURCE_AUDIT = False
+RUN_GENERATE_MSP_MISSING_CONTRACT = False
+RUN_GENERATE_MSP_DUPLICATE_AUDIT = False
+RUN_GENERATE_MSP_DUPLICATE_EXCLUSION_CONTRACT = False
+RUN_BUILD_HCUDB_MANIFEST = False
+RUN_BUILD_MSP_MANIFEST = False
+RUN_AUDIT = False
+RUN_PARITY = False
+RUN_CAPACITY_ESTIMATE = False
+RUN_FULL_EXTRACTION = False
+RUN_D_TRAINING = False
+RUN_D_RESUME = False
+RUN_FINAL_EVALUATION = False
+
+def artifacts():
+    resolved = {dataset: DatasetArtifacts(Path(path), CACHES[dataset]) for dataset, path in MANIFESTS.items()}
+    missing = [str(artifact.manifest_path) for artifact in resolved.values() if not artifact.manifest_path.is_file()]
+    if missing:
+        raise FileNotFoundError('official6 manifestが未生成です。先にmanifest生成セルを実行してください: ' + ', '.join(missing))
+    return resolved
+
+def require_approval_sha(value, label):
+    normalized = str(value or '').strip().lower()
+    if len(normalized) != 64 or any(character not in '0123456789abcdef' for character in normalized):
+        raise ValueError(f'{label}へ、直前の生成結果を確認して表示された64桁SHA-256を設定してください。')
+    return normalized
+    """, "official-settings"),
+    markdown("""
+## 1. データ準備とofficial6 manifest生成
+
+以下のセルは上から順番に実行します。設定セルのフラグは一度に1つだけTrueにしてください。
+
+1. A/Bで未取得だったMSPのF/U音声を取得する。
+2. `RUN_SOURCE_AUDIT`で取得状況を確認する。F/Uが全件欠損の状態では先へ進めない。
+3. MSP欠損契約を生成し、内容確認後に表示SHA-256を設定セルへ転記する。
+4. MSP重複監査を生成し、候補CSVを人手で確認する。
+5. 除外対象IDを設定して重複除外契約を生成し、表示SHA-256を転記する。
+6. HCUDBとMSPのofficial6 manifestを生成する。
+7. `RUN_AUDIT`で完成したmanifestを検証する。
+
+生成物が既に存在する場合は上書きしません。再生成する場合は、古い承認済みartifactを別途整理してから新しい出力先を指定してください。
+    """, "official-manifest-heading"),
+    code("""
+path_status = {
+    'audio_roots': {dataset: {'path': str(path), 'exists': path.is_dir()} for dataset, path in AUDIO_ROOTS.items()},
+    'manifests': {dataset: {'path': str(path), 'exists': path.is_file()} for dataset, path in MANIFESTS.items()},
+    'msp_contracts': {
+        'missing': {'path': str(MSP_MISSING_CONTRACT), 'exists': MSP_MISSING_CONTRACT.is_file()},
+        'duplicate_audit': {'path': str(MSP_DUPLICATE_AUDIT), 'exists': MSP_DUPLICATE_AUDIT.is_file()},
+        'duplicate_candidates': {'path': str(MSP_DUPLICATE_CANDIDATES), 'exists': MSP_DUPLICATE_CANDIDATES.is_file()},
+        'duplicate_exclusions': {'path': str(MSP_DUPLICATE_EXCLUSION_CONTRACT), 'exists': MSP_DUPLICATE_EXCLUSION_CONTRACT.is_file()},
+    },
+}
+print(json.dumps(path_status, ensure_ascii=False, indent=2))
+    """, "official-path-status"),
+    code("""
+if RUN_MSP_DOWNLOAD:
+    script = ROOT / 'run_msp_batches.ps1'
+    if not script.is_file():
+        raise FileNotFoundError(script)
+    if sys.platform == 'win32':
+        windows_script = str(script)
+    else:
+        windows_script = subprocess.check_output(['wslpath', '-w', str(script)], text=True).strip()
+    quoted_script = windows_script.replace("'", "''")
+    quoted_codes = "','".join(MSP_DOWNLOAD_EMOTION_CODES)
+    powershell_command = (
+        f"& '{quoted_script}' "
+        f"-StartBatch {MSP_DOWNLOAD_START_BATCH} "
+        f"-EndBatch {MSP_DOWNLOAD_END_BATCH} "
+        f"-EmotionCodes @('{quoted_codes}')"
+    )
+    print('MSP追加取得:', MSP_DOWNLOAD_EMOTION_CODES,
+          f'batch {MSP_DOWNLOAD_START_BATCH}..{MSP_DOWNLOAD_END_BATCH}')
+    subprocess.run([
+        'powershell.exe', '-NoProfile', '-ExecutionPolicy', 'Bypass',
+        '-Command', powershell_command,
+    ], check=True)
+else:
+    print('MSP F/U音声取得は未実行です。実行する場合だけRUN_MSP_DOWNLOAD=Trueにします。')
+    """, "official-msp-download"),
+    code("""
+if RUN_SOURCE_AUDIT:
+    OUTPUT.mkdir(parents=True, exist_ok=True)
+    for dataset, root in AUDIO_ROOTS.items():
+        report = audit_dataset(dataset, root, label_profile='official6')
+        _atomic_json(report, OUTPUT / f'{dataset}_official6_source_audit.json')
+        print(dataset, json.dumps(report, ensure_ascii=False, indent=2))
+else:
+    print('official6元データ監査は未実行です。')
+    """, "official-source-audit"),
+    code("""
+if RUN_GENERATE_MSP_MISSING_CONTRACT:
+    if MSP_MISSING_CONTRACT.exists():
+        raise FileExistsError(f'既存契約を上書きしません: {MSP_MISSING_CONTRACT}')
+    report = generate_msp_missing_audio_exclusion_contract(
+        AUDIO_ROOTS['msp_podcast'], MSP_MISSING_CONTRACT, label_profile='official6',
+    )
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+    print('内容を確認後、normalized_sha256をMSP_EXPECTED_MISSING_SHA256へ転記してください。')
+else:
+    print('MSP official6欠損契約は未生成です。')
+    """, "official-missing-contract"),
+    code("""
+if RUN_GENERATE_MSP_DUPLICATE_AUDIT:
+    approved_missing_sha = require_approval_sha(MSP_EXPECTED_MISSING_SHA256, 'MSP_EXPECTED_MISSING_SHA256')
+    if MSP_DUPLICATE_AUDIT.exists() or MSP_DUPLICATE_CANDIDATES.exists():
+        raise FileExistsError('既存のofficial6重複監査artifactを上書きしません。')
+    report = generate_msp_audio_duplicate_audit(
+        AUDIO_ROOTS['msp_podcast'],
+        MSP_DUPLICATE_AUDIT,
+        MSP_DUPLICATE_CANDIDATES,
+        approved_missing_audio_exclusion_contract=MSP_MISSING_CONTRACT,
+        expected_missing_audio_exclusion_sha256=approved_missing_sha,
+        label_profile='official6',
+    )
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+    print('候補CSVを確認してください:', MSP_DUPLICATE_CANDIDATES)
+else:
+    print('MSP official6重複監査は未実行です。')
+    """, "official-duplicate-audit"),
+    code("""
+if RUN_GENERATE_MSP_DUPLICATE_EXCLUSION_CONTRACT:
+    if MSP_DUPLICATE_EXCLUSION_CONTRACT.exists():
+        raise FileExistsError(f'既存契約を上書きしません: {MSP_DUPLICATE_EXCLUSION_CONTRACT}')
+    report = generate_msp_audio_duplicate_exclusion_contract(
+        MSP_DUPLICATE_AUDIT,
+        MSP_APPROVED_DUPLICATE_EXCLUDE_IDS,
+        MSP_DUPLICATE_EXCLUSION_CONTRACT,
+    )
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+    print('内容を確認後、normalized_sha256をMSP_EXPECTED_DUPLICATE_EXCLUSION_SHA256へ転記してください。')
+else:
+    print('MSP official6重複除外契約は未生成です。候補CSV確認後に実行します。')
+    """, "official-duplicate-contract"),
+    code("""
+if RUN_BUILD_HCUDB_MANIFEST:
+    output = MANIFESTS['hcudb1']
+    if output.exists():
+        raise FileExistsError(f'既存manifestを上書きしません: {output}')
+    report = build_manifest(
+        'hcudb1', AUDIO_ROOTS['hcudb1'], output,
+        strict=True, inspect_excluded_audio=False, label_profile='official6',
+    )
+    _atomic_json(report, OUTPUT / 'hcudb1_official6_manifest_build.json')
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+else:
+    print('HCUDB official6 manifestは未生成です。')
+    """, "official-hcudb-manifest"),
+    code("""
+if RUN_BUILD_MSP_MANIFEST:
+    approved_missing_sha = require_approval_sha(MSP_EXPECTED_MISSING_SHA256, 'MSP_EXPECTED_MISSING_SHA256')
+    approved_duplicate_sha = require_approval_sha(
+        MSP_EXPECTED_DUPLICATE_EXCLUSION_SHA256,
+        'MSP_EXPECTED_DUPLICATE_EXCLUSION_SHA256',
+    )
+    output = MANIFESTS['msp_podcast']
+    if output.exists():
+        raise FileExistsError(f'既存manifestを上書きしません: {output}')
+    report = build_manifest(
+        'msp_podcast', AUDIO_ROOTS['msp_podcast'], output,
+        strict=True,
+        inspect_excluded_audio=False,
+        approved_exclusion_contract=MSP_MISSING_CONTRACT,
+        expected_exclusion_sha256=approved_missing_sha,
+        duplicate_audit=MSP_DUPLICATE_AUDIT,
+        approved_duplicate_exclusion_contract=MSP_DUPLICATE_EXCLUSION_CONTRACT,
+        expected_duplicate_exclusion_sha256=approved_duplicate_sha,
+        label_profile='official6',
+    )
+    _atomic_json(report, OUTPUT / 'msp_podcast_official6_manifest_build.json')
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+else:
+    print('MSP official6 manifestは未生成です。')
+    """, "official-msp-manifest"),
+    code("""
+if RUN_AUDIT:
+    for dataset, artifact in artifacts().items():
+        if AUDIO_ROOTS[dataset] is None:
+            raise ValueError('AUDIO_ROOTSを設定してください。')
+        report = validate_manifest(artifact.manifest_path, audio_root=Path(AUDIO_ROOTS[dataset]))
+        rows = load_manifest(artifact.manifest_path)
+        profiles = {label_profile_for_mapping_version(r['mapping_version']) for r in rows}
+        if profiles != {'official6'}:
+            raise ValueError(f'{dataset} manifestはofficial6ラベル契約ではありません。')
+        counts = Counter((r['split'], r['original_emotion'], r['mapped_emotion'], r['approximate_mapping']) for r in rows if r['included'])
+        print(dataset, '元感情・統合先・近似フラグ別の件数:', counts)
+        print('除外:', Counter(reason for r in rows if not r['included'] for reason in r['exclusion_reasons']))
+        _atomic_json(report, OUTPUT / f'{dataset}_manifest_validation.json')
+else:
+    print('データ監査は未実行です。')
+    """, "official-audit"),
+    code("""
+if RUN_PARITY:
+    main(['verify-official', '--snapshot', str(SNAPSHOT), '--audio', str(SNAPSHOT / 'example/test.wav'),
+          '--output', str(PARITY_REPORT), '--device', DEVICE])
+else:
+    print('1音声での公式一致・時間・メモリ・保存量の検証は未実行です。')
+    """, "official-parity"),
+    code("""
+if RUN_CAPACITY_ESTIMATE:
+    benchmark = json.loads(PARITY_REPORT.read_text())
+    estimates = {}
+    for dataset, artifact in artifacts().items():
+        validate_manifest(artifact.manifest_path)
+        duration = sum(r['duration_seconds'] for r in load_manifest(artifact.manifest_path) if r['included'])
+        estimates[dataset] = estimate_full_extraction(duration, benchmark)
+    required = sum(item['required_bytes_with_margin'] for item in estimates.values())
+    OUTPUT.mkdir(parents=True, exist_ok=True)
+    capacity = disk_capacity_gate(OUTPUT, required)
+    _atomic_json({'estimates': estimates, 'capacity': capacity}, OUTPUT / 'capacity.json')
+    print(estimates, capacity)
+    if not capacity['passes']:
+        raise ValueError('Large cache用の空き容量が不足しています。')
+    """, "official-capacity"),
+    code("""
+if RUN_FULL_EXTRACTION:
+    capacity = json.loads((OUTPUT / 'capacity.json').read_text())['capacity']
+    if not disk_capacity_gate(OUTPUT, capacity['required_bytes_with_margin'])['passes']:
+        raise ValueError('Large cache用の空き容量が不足しています。')
+    encoder = OfficialEmotion2vecEncoder(SNAPSHOT, device=DEVICE)
+    report = require_parity_report(encoder.head, PARITY_REPORT)
+    if report['extraction'] != encoder.provenance or report['device'] != str(encoder.device):
+        raise ValueError('現在の環境で公式一致検証を再実行してください。')
+    for dataset, artifact in artifacts().items():
+        if AUDIO_ROOTS[dataset] is None:
+            raise ValueError('AUDIO_ROOTSを設定してください。')
+        validate_manifest(artifact.manifest_path, audio_root=Path(AUDIO_ROOTS[dataset]))
+        extract_feature_cache(artifact.manifest_path, Path(AUDIO_ROOTS[dataset]), artifact.cache_root, encoder, expected_dim=1024)
+        print(validate_cache(artifact.cache_root, artifact.manifest_path))
+    del encoder
+else:
+    print('全量抽出は未実行です。C/D専用official6 manifestに結び付くLarge cacheを使用します。')
+    """, "official-extraction"),
+    code("""
+if RUN_D_TRAINING:
+    summary = run_official_study(artifacts()['hcudb1'], STUDY_OUTPUT, load_official_head(SNAPSHOT), PARITY_REPORT,
+                                 seeds=SEEDS, config=CONFIG, diagnostics_config=DIAGNOSTICS_CONFIG)
+    print('Dの学習完了。test評価は未実行:', summary['summary_path'])
+    print('診断集計（判定は助言専用）:')
+    print(json.dumps(summary['diagnostics_aggregate'], ensure_ascii=False, indent=2))
+    for run in summary['runs']:
+        print(f"seed={run['seed']} 診断:", run['diagnostics']['path'])
+        print(json.dumps(run['diagnostics']['judgement'], ensure_ascii=False, indent=2))
+else:
+    print('Dの3 seed学習は未実行です。best選択にはHCUDB validationだけを使います。')
+    """, "official-training"),
+    code("""
+if RUN_D_RESUME:
+    from dataclasses import replace
+    if RESUME_CHECKPOINT is None:
+        raise ValueError('RESUME_CHECKPOINTを設定してください。')
+    artifact = artifacts()['hcudb1']
+    resumed = train_official_decoder(artifact.manifest_path, artifact.cache_root, RESUME_OUTPUT,
+        load_official_head(SNAPSHOT), PARITY_REPORT, config=replace(CONFIG, seed=RESUME_SEED),
+        resume_checkpoint=RESUME_CHECKPOINT, diagnostics_config=DIAGNOSTICS_CONFIG)
+    # train_official_decoderはresume後の全履歴から同じrunの診断artifactを再生成する。
+    print('resume後に再生成した診断:', resumed['diagnostics']['artifacts']['training_diagnostics_json'])
+    print(json.dumps(resumed['diagnostics']['judgement'], ensure_ascii=False, indent=2))
+    # 再開結果のbestを最終評価に使う場合は、study summaryの該当seedとhashを明示的に確定する。
+    """, "official-resume"),
+    code("""
+if RUN_FINAL_EVALUATION:
+    saved = json.loads(STUDY_SUMMARY.read_text())
+    if len(saved['runs']) != len(SEEDS) or {r['seed'] for r in saved['runs']} != set(SEEDS):
+        raise ValueError('全seedのD bestが揃ってから最終評価してください。')
+    final = run_official_final_evaluations(artifacts(), {run['seed']: run['best'] for run in saved['runs']},
+        FINAL_OUTPUT, load_official_head(SNAPSHOT), PARITY_REPORT, batch_size=CONFIG.batch_size, device=DEVICE)
+    print(json.dumps(final['comparisons'], ensure_ascii=False, indent=2))
+else:
+    print('MSP Test1 / HCUDB Testの最終評価は未実行です。Cは各集合1回、Dはseed別・平均・標本標準偏差を報告します。')
+    """, "official-final-evaluation"),
+]
+
+
 NOTEBOOKS = {
+    "03_official_head_cd.ipynb": official_cells,
     "01_extract_emotion2vec_features.ipynb": feature_cells,
     "02_train_and_evaluate_decoder.ipynb": decoder_cells,
     "msp_unavailable_label_audit.ipynb": unavailable_label_audit_cells,
@@ -1679,6 +2049,7 @@ DEFAULT_NOTEBOOKS = (
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--overwrite", action="store_true", help="explicitly replace existing notebooks, including settings/outputs")
     parser.add_argument(
         "--check",
         action="store_true",
@@ -1704,6 +2075,9 @@ def main() -> None:
     selected = tuple(args.notebook) if args.notebook else DEFAULT_NOTEBOOKS
     target_dir = args.output_dir.resolve()
     generated = {name: notebook(NOTEBOOKS[name]) for name in selected}
+    if "03_official_head_cd.ipynb" in generated:
+        generated["03_official_head_cd.ipynb"]["metadata"]["kernelspec"].update(
+            display_name="emotion2vec-official", name="emotion2vec-official")
     if args.check:
         mismatches = []
         for name, expected in generated.items():
@@ -1723,6 +2097,9 @@ def main() -> None:
     target_dir.mkdir(parents=True, exist_ok=True)
     for name, payload in generated.items():
         output = target_dir / name
+        if output.exists() and not args.overwrite:
+            print(f"Preserved existing notebook: {output} (use --overwrite explicitly to replace)")
+            continue
         output.write_text(json.dumps(payload, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
         print(output)
 

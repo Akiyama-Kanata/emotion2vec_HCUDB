@@ -145,6 +145,35 @@ def validate_success(split_dir: str | Path) -> dict[str, Any]:
     return {"success": success, "entries": entries}
 
 
+def validate_official_cache(meta, snapshot=None):
+    """Reject Base caches and incomplete or mismatched Large provenance."""
+    if meta.get("encoder_name") != "emotion2vec_plus_large" or meta.get("feature_dim") != 1024:
+        raise ValueError("official head requires a Large 1024-dimensional cache")
+    if meta.get("dtype") != "float32" or meta.get("feature_layer") != FEATURE_LAYER:
+        raise ValueError("official cache feature contract mismatch")
+    provenance = meta.get("official_provenance") or {}
+    identity = provenance.get("snapshot") or {}
+    required = {"revision", "checkpoint_sha256", "config_sha256", "tokens_sha256", "head_sha256", "label_spec", "normalize", "mask", "remove_extra_tokens"}
+    if not required <= identity.keys() or not identity["revision"]:
+        raise ValueError("official cache snapshot provenance is incomplete")
+    for key in ("checkpoint_sha256", "config_sha256", "tokens_sha256", "head_sha256"):
+        value = identity[key]
+        if not isinstance(value, str) or len(value) != 64 or any(c not in "0123456789abcdef" for c in value):
+            raise ValueError(f"invalid official cache {key}")
+    if identity["mask"] is not False or identity["remove_extra_tokens"] is not True or type(identity["normalize"]) is not bool:
+        raise ValueError("official extraction settings mismatch")
+    if (provenance.get("extraction_code_version") != "ser_official_features_v1"
+            or meta.get("extraction_code_version") != "ser_official_features_v1"
+            or not provenance.get("dependencies") or not provenance.get("implementation_sha256")
+            or set(provenance.get("implementation_files_sha256", {})) != {"audio.py", "features.py", "model.py", "official.py"}):
+        raise ValueError("official extraction implementation provenance is incomplete")
+    if meta.get("encoder_checkpoint_sha256") != identity["checkpoint_sha256"]:
+        raise ValueError("official cache checkpoint hash mismatch")
+    if snapshot is not None and identity != snapshot:
+        raise ValueError("official cache snapshot mismatch")
+    return provenance
+
+
 def cache_signature(meta: Mapping[str, Any]) -> dict[str, Any]:
     fields = (
         "cache_schema_version",
@@ -162,6 +191,7 @@ def cache_signature(meta: Mapping[str, Any]) -> dict[str, Any]:
         "split_versions",
         "audio_preprocessing",
         "shard_policy",
+        "official_provenance",
     )
     return {field: meta.get(field) for field in fields}
 
@@ -188,6 +218,8 @@ def _validate_cache(
         raise ValueError("feature layer mismatch")
     if meta.get("dtype") != "float32":
         raise ValueError("cache dtype mismatch")
+    if meta.get("encoder_name") == "emotion2vec_plus_large" or "official_provenance" in meta:
+        validate_official_cache(meta)
     actual_manifest_hash = manifest_sha256(manifest_path)
     if meta.get("manifest_sha256") != actual_manifest_hash:
         raise ValueError("cache manifest hash mismatch")
@@ -382,6 +414,7 @@ __all__ = [
     "cache_signature",
     "completed_shards",
     "load_index",
+    "validate_official_cache",
     "validate_cache",
     "validate_success",
     "_atomic_json",

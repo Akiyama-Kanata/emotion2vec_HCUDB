@@ -10,7 +10,15 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any, Iterable, Mapping
 
 from .audio import inspect_audio
-from .contracts import LABEL_ORDER, MANIFEST_FIELDS, MANIFEST_SCHEMA_VERSION, dataset_contract, map_emotion
+from .contracts import (
+    LABEL_ORDER,
+    MANIFEST_FIELDS,
+    MANIFEST_SCHEMA_VERSION,
+    dataset_contract,
+    label_order_for_profile,
+    label_profile_for_mapping_version,
+    map_emotion,
+)
 from .duplicates import (
     MSP_DUPLICATE_AUDIT_SCHEMA_VERSION,
     MSP_DUPLICATE_EXCLUSION_REASON,
@@ -22,6 +30,7 @@ from .duplicates import (
     verify_msp_audio_duplicate_audit_freshness,
     write_msp_audio_duplicate_audit,
     write_msp_audio_duplicate_candidates_csv,
+    msp_duplicate_schemas,
 )
 from .exclusions import (
     MSP_EXCLUSION_REASON,
@@ -31,6 +40,8 @@ from .exclusions import (
     manifest_exclusion_contract_signature,
     reconcile_msp_exclusion_contract,
     write_msp_missing_audio_exclusion_contract,
+    msp_exclusion_reason,
+    msp_exclusion_schema_version,
 )
 from .readers import read_dataset, resolved_dataset_root
 from .splits import validate_split_integrity
@@ -139,10 +150,12 @@ def _resolve_inventory_audio(
 def generate_msp_missing_audio_exclusion_contract(
     root: str | Path,
     output: str | Path,
+    *,
+    label_profile: str = "ab4",
 ) -> dict[str, Any]:
     """Generate the fixed v1 contract from eligible MSP rows missing at this moment."""
     dataset_root = resolved_dataset_root("msp_podcast", root)
-    rows = list(read_dataset("msp_podcast", dataset_root))
+    rows = list(read_dataset("msp_podcast", dataset_root, label_profile=label_profile))
     ids = [str(row["utterance_id"]) for row in rows]
     duplicates = sorted(identifier for identifier, count in Counter(ids).items() if count > 1)
     if duplicates:
@@ -161,7 +174,11 @@ def generate_msp_missing_audio_exclusion_contract(
         )
         is None
     ]
-    payload = build_msp_missing_audio_exclusion_contract(missing_rows)
+    payload = build_msp_missing_audio_exclusion_contract(
+        missing_rows,
+        eligible_metadata_count=sum(bool(row["included"]) for row in rows),
+        label_profile=label_profile,
+    )
     destination = write_msp_missing_audio_exclusion_contract(payload, output)
     return {
         "dataset": "msp_podcast",
@@ -203,10 +220,11 @@ def generate_msp_audio_duplicate_audit(
     *,
     approved_missing_audio_exclusion_contract: str | Path,
     expected_missing_audio_exclusion_sha256: str,
+    label_profile: str = "ab4",
 ) -> dict[str, Any]:
     """Audit exact duplicates in the approved available MSP research subset."""
     dataset_root = resolved_dataset_root("msp_podcast", root)
-    rows = list(read_dataset("msp_podcast", dataset_root))
+    rows = list(read_dataset("msp_podcast", dataset_root, label_profile=label_profile))
     identifiers = [str(row["utterance_id"]) for row in rows]
     duplicates = sorted(identifier for identifier, count in Counter(identifiers).items() if count > 1)
     if duplicates:
@@ -225,6 +243,7 @@ def generate_msp_audio_duplicate_audit(
     missing_payload, missing_report = load_msp_missing_audio_exclusion_contract(
         approved_missing_audio_exclusion_contract,
         expected_sha256=expected_missing_audio_exclusion_sha256,
+        label_profile=label_profile,
     )
     missing_ids = {str(record["utterance_id"]) for record in missing_payload["records"]}
     currently_missing = {
@@ -239,6 +258,7 @@ def generate_msp_audio_duplicate_audit(
         target_paths,
         missing_exclusion_contract_schema_version=missing_payload["schema_version"],
         missing_exclusion_contract_sha256=missing_report["normalized_sha256"],
+        label_profile=label_profile,
     )
     audit_path = write_msp_audio_duplicate_audit(payload, audit_output)
     csv_path = write_msp_audio_duplicate_candidates_csv(payload, candidates_csv_output)
@@ -265,6 +285,7 @@ def build_manifest(
     duplicate_audit: str | Path | None = None,
     approved_duplicate_exclusion_contract: str | Path | None = None,
     expected_duplicate_exclusion_sha256: str | None = None,
+    label_profile: str = "ab4",
 ) -> dict[str, Any]:
     normalized = str(dataset).strip().lower()
     if approved_exclusion_contract is not None and normalized != "msp_podcast":
@@ -290,8 +311,9 @@ def build_manifest(
         raise ValueError("approved MSP duplicate exclusions require strict=True")
     if approved_exclusion_contract is not None and not all(value is not None for value in duplicate_inputs):
         raise ValueError("strict MSP missing-audio exclusions require duplicate audit and approval inputs")
+    label_order_for_profile(label_profile)
     dataset_root = resolved_dataset_root(normalized, root)
-    rows = list(read_dataset(normalized, dataset_root))
+    rows = list(read_dataset(normalized, dataset_root, label_profile=label_profile))
     available_audio, _appledouble, _zero_byte = _audio_inventory(dataset_root)
     basename_index = _audio_basename_index(available_audio)
     ids = [row["utterance_id"] for row in rows]
@@ -315,6 +337,7 @@ def build_manifest(
         contract_payload, contract_report = load_msp_missing_audio_exclusion_contract(
             approved_exclusion_contract,
             expected_sha256=expected_exclusion_sha256,
+            label_profile=label_profile,
         )
         missing_eligible_ids = {
             str(row["utterance_id"])
@@ -325,7 +348,7 @@ def build_manifest(
         contract_report = {**contract_report, **reconciliation, "path": str(Path(approved_exclusion_contract))}
         contract_ids = {str(record["utterance_id"]) for record in contract_payload["records"]}
         for row in rows:
-            row["exclusion_contract_schema_version"] = MSP_EXCLUSION_SCHEMA_VERSION
+            row["exclusion_contract_schema_version"] = contract_payload["schema_version"]
             row["exclusion_contract_sha256"] = contract_report["normalized_sha256"]
 
     duplicate_audit_payload: dict[str, Any] | None = None
@@ -338,7 +361,7 @@ def build_manifest(
         duplicate_audit_payload, duplicate_audit_report = load_msp_audio_duplicate_audit(duplicate_audit)
         missing_reference = duplicate_audit_payload["missing_audio_exclusion_contract"]
         if missing_reference != {
-            "schema_version": MSP_EXCLUSION_SCHEMA_VERSION,
+            "schema_version": contract_payload["schema_version"],
             "normalized_sha256": contract_report["normalized_sha256"],
         }:
             raise ValueError("MSP duplicate audit missing-audio exclusion contract provenance mismatch")
@@ -367,10 +390,14 @@ def build_manifest(
         if duplicate_audit_report["target_count"] != contract_report["expected_included_count"]:
             raise ValueError("MSP duplicate audit target count does not equal the missing-audio contract count")
         for row in rows:
-            row["duplicate_audit_schema_version"] = MSP_DUPLICATE_AUDIT_SCHEMA_VERSION
+            row["duplicate_audit_schema_version"] = duplicate_audit_payload.get(
+                "schema_version", duplicate_audit_report["schema_version"]
+            )
             row["duplicate_audit_sha256"] = duplicate_audit_report["normalized_sha256"]
             row["duplicate_audit_target_count"] = duplicate_audit_report["target_count"]
-            row["duplicate_exclusion_contract_schema_version"] = MSP_DUPLICATE_EXCLUSION_SCHEMA_VERSION
+            row["duplicate_exclusion_contract_schema_version"] = duplicate_contract_payload.get(
+                "schema_version", duplicate_contract_report["schema_version"]
+            )
             row["duplicate_exclusion_contract_sha256"] = duplicate_contract_report["normalized_sha256"]
 
     missing_included: list[str] = []
@@ -379,12 +406,14 @@ def build_manifest(
         resolved = resolved_audio[identifier]
         if identifier in contract_ids:
             row["included"] = False
-            if MSP_EXCLUSION_REASON not in row["exclusion_reasons"]:
-                row["exclusion_reasons"].append(MSP_EXCLUSION_REASON)
+            exclusion_reason = msp_exclusion_reason(label_profile)
+            if exclusion_reason not in row["exclusion_reasons"]:
+                row["exclusion_reasons"].append(exclusion_reason)
         if identifier in duplicate_contract_ids:
             row["included"] = False
-            if MSP_DUPLICATE_EXCLUSION_REASON not in row["exclusion_reasons"]:
-                row["exclusion_reasons"].append(MSP_DUPLICATE_EXCLUSION_REASON)
+            duplicate_reason = msp_duplicate_schemas(label_profile)[2]
+            if duplicate_reason not in row["exclusion_reasons"]:
+                row["exclusion_reasons"].append(duplicate_reason)
         eligible = bool(row["included"])
         if resolved is None:
             if eligible:
@@ -409,6 +438,7 @@ def build_manifest(
     write_manifest(rows, output)
     report = {
         "dataset": normalized,
+        "label_profile": label_profile,
         "output": str(Path(output)),
         "total": len(rows),
         "included": sum(bool(row["included"]) for row in rows),
@@ -429,7 +459,7 @@ def build_manifest(
     return report
 
 
-def audit_dataset(dataset: str, root: str | Path) -> dict[str, Any]:
+def audit_dataset(dataset: str, root: str | Path, *, label_profile: str = "ab4") -> dict[str, Any]:
     normalized = str(dataset).strip().lower()
     dataset_root = resolved_dataset_root(normalized, root)
     available_audio, appledouble, zero_byte_audio = _audio_inventory(dataset_root)
@@ -453,7 +483,7 @@ def audit_dataset(dataset: str, root: str | Path) -> dict[str, Any]:
     missing_eligible_source_splits: Counter[str] = Counter()
     missing_eligible_kinds: Counter[str] = Counter()
     missing_eligible_original_by_source_split: dict[str, Counter[str]] = defaultdict(Counter)
-    for row in read_dataset(normalized, dataset_root):
+    for row in read_dataset(normalized, dataset_root, label_profile=label_profile):
         total += 1
         resolved = _resolve_inventory_audio(
             normalized,
@@ -498,6 +528,7 @@ def audit_dataset(dataset: str, root: str | Path) -> dict[str, Any]:
                 available_eligible_mapped_labels[mapped_label] += 1
     return {
         "dataset": normalized,
+        "label_profile": label_profile,
         "total_metadata_rows": total,
         "eligible_primary_rows": eligible_count,
         "known_speakers": len(speakers),
@@ -544,10 +575,11 @@ def validate_manifest_records(
         if row["manifest_schema_version"] != MANIFEST_SCHEMA_VERSION:
             raise ValueError("manifest_schema_version mismatch")
         dataset = str(row["dataset"])
-        contract = dataset_contract(dataset)
+        profile = label_profile_for_mapping_version(str(row["mapping_version"]))
+        contract = dataset_contract(dataset, label_profile=profile)
         if row["dataset_release"] != contract["dataset_release"]:
             raise ValueError(f"dataset_release mismatch: {row.get('utterance_id')}")
-        decision = map_emotion(dataset, str(row["original_emotion"]))
+        decision = map_emotion(dataset, str(row["original_emotion"]), label_profile=profile)
         if row["mapping_version"] != decision.mapping_version:
             raise ValueError(f"mapping_version mismatch: {row.get('utterance_id')}")
         if row["mapped_emotion"] != decision.mapped_emotion or row["class_index"] != decision.class_index:
@@ -571,9 +603,10 @@ def validate_manifest_records(
                 raise ValueError(f"included row has exclusion reasons: {utterance_id}")
             if row["speaker_id_status"] == "unknown":
                 raise ValueError(f"included Unknown speaker: {utterance_id}")
-            if row["mapped_emotion"] not in LABEL_ORDER:
+            label_order = label_order_for_profile(profile)
+            if row["mapped_emotion"] not in label_order:
                 raise ValueError(f"included row has invalid mapped emotion: {utterance_id}")
-            expected_index = LABEL_ORDER.index(row["mapped_emotion"])
+            expected_index = label_order.index(row["mapped_emotion"])
             if row["class_index"] != expected_index:
                 raise ValueError(f"class_index mismatch: {utterance_id}")
             sha = row["audio_sha256"]
@@ -590,11 +623,19 @@ def validate_manifest_records(
     exclusion_contracts: dict[str, Any] = {}
     duplicate_provenance: dict[str, Any] = {}
     for dataset, subset in dataset_rows.items():
+        profiles = {label_profile_for_mapping_version(str(row["mapping_version"])) for row in subset}
+        if len(profiles) != 1:
+            raise ValueError(f"manifest mixes label profiles for {dataset}")
+        profile = next(iter(profiles))
         signature = manifest_exclusion_contract_signature(subset)
         if signature is not None:
+            if signature["schema_version"] != msp_exclusion_schema_version(profile):
+                raise ValueError("manifest exclusion contract label profile mismatch")
             exclusion_contracts[dataset] = signature
         duplicate_signature = manifest_duplicate_provenance_signature(subset)
         if duplicate_signature is not None:
+            if duplicate_signature["audit"]["schema_version"] != msp_duplicate_schemas(profile)[0]:
+                raise ValueError("manifest duplicate provenance label profile mismatch")
             duplicate_provenance[dataset] = duplicate_signature
     split_reports = {}
     if validate_splits:

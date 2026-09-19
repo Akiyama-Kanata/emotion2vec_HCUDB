@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from time import perf_counter
@@ -95,7 +96,10 @@ def _validate_shard_meta(split_dir: Path, meta: Mapping[str, Any]) -> list[Cache
         raise ValueError(f"cache shard hash mismatch: {shard_path}")
     if sha256_file(index_path) != meta.get("index_sha256"):
         raise ValueError(f"cache index hash mismatch: {index_path}")
-    array = np.load(shard_path, mmap_mode="r", allow_pickle=False)
+    try:
+        array = np.load(shard_path, mmap_mode="r", allow_pickle=False)
+    except (OSError, ValueError) as exc:
+        raise ValueError(f"invalid cache shard array: {shard_path}") from exc
     if array.ndim != 2 or array.shape[0] <= 0 or array.shape[1] <= 0:
         raise ValueError(f"cache shard must be a non-empty 2D array: {shard_path}")
     if array.dtype != np.float32:
@@ -114,6 +118,14 @@ def _validate_shard_meta(split_dir: Path, meta: Mapping[str, Any]) -> list[Cache
         expected_offset += entry.num_frames
     if expected_offset != array.shape[0]:
         raise ValueError(f"cache index frame total mismatch: {index_path}")
+    if int(meta.get("frames", -1)) != int(array.shape[0]):
+        raise ValueError(f"cache shard metadata frame count mismatch: {shard_path}")
+    if int(meta.get("utterances", -1)) != len(entries):
+        raise ValueError(f"cache shard metadata utterance count mismatch: {shard_path}")
+    if int(meta.get("feature_dim", -1)) != int(array.shape[1]):
+        raise ValueError(f"cache shard metadata feature dimension mismatch: {shard_path}")
+    if meta.get("dtype") != "float32":
+        raise ValueError(f"cache shard metadata dtype mismatch: {shard_path}")
     return entries
 
 
@@ -121,8 +133,14 @@ def completed_shards(split_dir: str | Path) -> tuple[list[dict[str, Any]], list[
     directory = Path(split_dir)
     metas: list[dict[str, Any]] = []
     entries: list[CacheIndexEntry] = []
-    for meta_path in sorted(directory.glob("shard-*.meta.json")):
+    meta_paths = sorted(directory.glob("shard-*.meta.json"))
+    for shard_number, meta_path in enumerate(meta_paths):
+        expected_stem = f"shard-{shard_number:05d}"
+        if meta_path.name != f"{expected_stem}.meta.json":
+            raise ValueError(f"cache shard numbers must be contiguous from zero: {meta_path}")
         meta = _load_json(meta_path)
+        if meta.get("shard") != f"{expected_stem}.npy" or meta.get("index") != f"{expected_stem}.index.jsonl":
+            raise ValueError(f"cache shard metadata names do not match commit marker: {meta_path}")
         shard_entries = _validate_shard_meta(directory, meta)
         metas.append(meta)
         entries.extend(shard_entries)
@@ -295,6 +313,178 @@ def validate_cache(
     return _validate_cache(cache_root, manifest_path, expected_signature=expected_signature).report
 
 
+def _uncommitted_fragments(root: Path) -> list[Path]:
+    """Return only files that are safe to discard because no shard meta commits them."""
+    if not root.exists():
+        return []
+    partials = [path for path in root.rglob("*") if path.is_file() and path.name.endswith(".partial")]
+    orphaned: list[Path] = []
+    for pattern, suffix in (("shard-*.npy", ".npy"), ("shard-*.index.jsonl", ".index.jsonl")):
+        for path in root.rglob(pattern):
+            stem = path.name[: -len(suffix)]
+            if not re.fullmatch(r"shard-\d{5}", stem):
+                continue
+            if not (path.parent / f"{stem}.meta.json").is_file():
+                orphaned.append(path)
+    return sorted(set(partials + orphaned), key=lambda path: str(path))
+
+
+def inspect_cache_resume(
+    cache_root: str | Path,
+    manifest_path: str | Path,
+    *,
+    expected_signature: Mapping[str, Any] | None = None,
+    expected_dim: int = 1024,
+    max_shard_frames: int = 65536,
+) -> dict[str, Any]:
+    """Read-only audit of committed shards and safe-to-remove uncommitted files."""
+    root = Path(cache_root)
+    all_rows = load_manifest(manifest_path)
+    validation = validate_manifest_records(all_rows)
+    included = [row for row in all_rows if bool(row["included"])]
+    if not included:
+        raise ValueError("manifest has no included rows")
+    actual_manifest_hash = manifest_sha256(manifest_path)
+    expected_splits = {
+        (str(row["dataset"]), str(row["split"]))
+        for row in included
+    }
+    fragments = _uncommitted_fragments(root)
+    meta_path = root / "cache_meta.json"
+    committed = 0
+    split_reports: dict[str, Any] = {}
+
+    if not meta_path.is_file():
+        committed_meta = list(root.glob("*/*/shard-*.meta.json")) if root.exists() else []
+        success_files = list(root.glob("*/*/_SUCCESS")) if root.exists() else []
+        if committed_meta or success_files:
+            raise ValueError("cannot resume committed cache shards without cache_meta.json")
+        return {
+            "status": "new",
+            "cache_root": str(root.resolve()),
+            "manifest_sha256": actual_manifest_hash,
+            "complete": False,
+            "committed_utterances": 0,
+            "pending_utterances": len(included),
+            "recoverable_fragments": [str(path.resolve()) for path in fragments],
+            "splits": {},
+        }
+
+    meta = _load_json(meta_path)
+    if meta.get("cache_schema_version") != CACHE_SCHEMA_VERSION:
+        raise ValueError("cache_schema_version mismatch")
+    if meta.get("manifest_sha256") != actual_manifest_hash:
+        raise ValueError("cache manifest hash mismatch")
+    if meta.get("feature_layer") != FEATURE_LAYER or meta.get("dtype") != "float32":
+        raise ValueError("cache feature contract mismatch")
+    if int(meta.get("feature_dim", -1)) != int(expected_dim):
+        raise ValueError("cache feature dimension mismatch")
+    if meta.get("shard_policy") != {"max_frames_approximately": int(max_shard_frames)}:
+        raise ValueError("cache shard policy mismatch")
+    if meta.get("encoder_name") == "emotion2vec_plus_large" or "official_provenance" in meta:
+        validate_official_cache(meta)
+    if expected_signature is not None:
+        actual_signature = cache_signature(meta)
+        for key, value in expected_signature.items():
+            if actual_signature.get(key) != value:
+                raise ValueError(f"cache metadata mismatch for {key}")
+    for key in ("exclusion_contract", "duplicate_audit", "duplicate_exclusion_contract"):
+        if meta.get(key) != validation[key]:
+            raise ValueError(f"cache {key} provenance mismatch")
+
+    observed_ids: set[str] = set()
+    actual_committed_splits = {
+        (path.parent.parent.name, path.parent.name)
+        for path in root.glob("*/*/shard-*.meta.json")
+    }
+    actual_success_splits = {
+        (path.parent.parent.name, path.parent.name)
+        for path in root.glob("*/*/_SUCCESS")
+    }
+    unexpected = sorted((actual_committed_splits | actual_success_splits) - expected_splits)
+    if unexpected:
+        raise ValueError(f"cache contains unexpected dataset/split directories: {unexpected}")
+
+    for dataset, split in sorted(expected_splits):
+        split_rows = [
+            row for row in included
+            if str(row["dataset"]) == dataset and str(row["split"]) == split
+        ]
+        directory = root / dataset / split
+        metas, entries = completed_shards(directory)
+        expected_prefix = [str(row["utterance_id"]) for row in split_rows[: len(entries)]]
+        observed = [entry.utterance_id for entry in entries]
+        if observed != expected_prefix:
+            raise ValueError(f"resume cache utterance prefix mismatch: {dataset}/{split}")
+        for entry, row in zip(entries, split_rows):
+            if (entry.dataset, entry.split) != (dataset, split):
+                raise ValueError(f"cached dataset/split directory mismatch: {directory}")
+            if entry.utterance_id in observed_ids:
+                raise ValueError(f"duplicate cached utterance_id: {entry.utterance_id}")
+            if entry.class_index != int(row["class_index"]):
+                raise ValueError(f"cached class_index mismatch: {entry.utterance_id}")
+            if entry.feature_dim != int(expected_dim):
+                raise ValueError(f"cached feature dimension mismatch: {entry.utterance_id}")
+            observed_ids.add(entry.utterance_id)
+        success_path = directory / "_SUCCESS"
+        split_complete = success_path.is_file()
+        if split_complete:
+            success = validate_success(directory)
+            if len(entries) != len(split_rows):
+                raise ValueError(f"completed cache utterance order mismatch: {dataset}/{split}")
+            if success["entries"] != entries:
+                raise ValueError(f"completed cache index changed during inspection: {dataset}/{split}")
+        committed += len(entries)
+        split_reports[f"{dataset}/{split}"] = {
+            "complete": split_complete,
+            "committed_utterances": len(entries),
+            "pending_utterances": len(split_rows) - len(entries),
+            "shards": len(metas),
+        }
+
+    pending = len(included) - committed
+    complete = bool(meta.get("complete"))
+    all_splits_complete = all(item["complete"] for item in split_reports.values())
+    if complete and not (all_splits_complete and pending == 0):
+        raise ValueError("cache complete flag is inconsistent with committed splits")
+    return {
+        "status": "complete" if complete else "resumable",
+        "cache_root": str(root.resolve()),
+        "manifest_sha256": actual_manifest_hash,
+        "cache_id": meta.get("cache_id"),
+        "complete": complete,
+        "committed_utterances": committed,
+        "pending_utterances": pending,
+        "recoverable_fragments": [str(path.resolve()) for path in fragments],
+        "splits": split_reports,
+    }
+
+
+def cleanup_uncommitted_cache_fragments(
+    cache_root: str | Path,
+    fragments: Iterable[str | Path],
+) -> list[str]:
+    """Delete only fragment paths previously returned by :func:`inspect_cache_resume`."""
+    root = Path(cache_root).resolve()
+    removed: list[str] = []
+    for value in fragments:
+        path = Path(value).resolve()
+        try:
+            path.relative_to(root)
+        except ValueError as exc:
+            raise ValueError(f"cache fragment is outside cache root: {path}") from exc
+        name = path.name
+        safe = name.endswith(".partial") or bool(
+            re.fullmatch(r"shard-\d{5}(?:\.npy|\.index\.jsonl)", name)
+        )
+        if not safe:
+            raise ValueError(f"refusing to remove non-fragment cache file: {path}")
+        if path.is_file():
+            path.unlink()
+            removed.append(str(path))
+    return removed
+
+
 class ShardedFeatureStore:
     """Process-local validated index and lazy, read-only mmap feature lookup.
 
@@ -412,7 +602,9 @@ __all__ = [
     "FeatureCache",
     "ShardedFeatureStore",
     "cache_signature",
+    "cleanup_uncommitted_cache_fragments",
     "completed_shards",
+    "inspect_cache_resume",
     "load_index",
     "validate_official_cache",
     "validate_cache",

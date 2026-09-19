@@ -4,6 +4,7 @@ import json
 import copy
 import io
 import os
+import runpy
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -29,7 +30,12 @@ from ser_pipeline.training import (
 )
 from ser_pipeline.diagnostics import OfficialTrainingDiagnosticsConfig
 from ser_pipeline.checkpoints import load_official_checkpoint
-from ser_pipeline.study import run_official_study, run_official_final_evaluations
+from ser_pipeline.study import (
+    run_official_c_evaluations,
+    run_official_d_evaluations,
+    run_official_final_evaluations,
+    run_official_study,
+)
 
 
 class OfficialSyntheticIntegrationTest(unittest.TestCase):
@@ -198,6 +204,38 @@ class OfficialSyntheticIntegrationTest(unittest.TestCase):
         self.assertEqual(study["diagnostics_aggregate"]["completed_seed_count"], 3)
         self.assertTrue(all(run["diagnostics"]["path"] for run in study["runs"]))
         frozen = {run["seed"]: run["best"] for run in study["runs"]}
+
+        with patch("ser_pipeline.training.evaluate_official", wraps=evaluate_official) as c_evaluate:
+            c_summary = run_official_c_evaluations(
+                self.artifacts, self.root / "c-evaluation", self.head, self.report, device="cpu",
+            )
+        self.assertEqual(c_summary["status"], "complete")
+        self.assertEqual(len(c_summary["evaluations"]), 2)
+        self.assertTrue(all(item["result"]["condition"] == "C" for item in c_summary["evaluations"]))
+        self.assertTrue(all("class_metrics" in item["result"]["metrics_target6"] for item in c_summary["evaluations"]))
+        self.assertEqual(c_evaluate.call_count, 2)
+        self.assertTrue(all(call.kwargs.get("checkpoint_path") is None for call in c_evaluate.call_args_list))
+
+        with patch("ser_pipeline.training.evaluate_official", wraps=evaluate_official) as d_evaluate:
+            d_summary = run_official_d_evaluations(
+                self.artifacts, frozen, self.root / "d-evaluation", self.head, self.report,
+                c_summary["summary_path"], device="cpu",
+            )
+        self.assertEqual(d_summary["status"], "complete")
+        self.assertEqual(len(d_summary["evaluations"]), 6)
+        self.assertTrue(all(item["result"]["condition"] == "D" for item in d_summary["evaluations"]))
+        self.assertEqual(d_evaluate.call_count, 6)
+        self.assertTrue(all(call.kwargs.get("checkpoint_path") is not None for call in d_evaluate.call_args_list))
+        for dataset in self.artifacts:
+            for metric in ("uar", "macro_f1", "accuracy", "loss"):
+                comparison = d_summary["comparisons"][dataset][metric]
+                values = list(comparison["D_by_seed"].values())
+                self.assertAlmostEqual(comparison["D_mean"], float(np.mean(values)))
+                self.assertAlmostEqual(comparison["D_sample_std"], float(np.std(values, ddof=1)))
+                self.assertAlmostEqual(comparison["mean_delta_from_C"], comparison["D_mean"] - comparison["C"])
+                for seed, value in comparison["D_by_seed"].items():
+                    self.assertAlmostEqual(comparison["delta_by_seed"][seed], value - comparison["C"])
+
         final = run_official_final_evaluations(self.artifacts, frozen, self.root / "final", self.head, self.report, device="cpu")
         self.assertEqual(final["status"], "complete")
         self.assertEqual(len(final["evaluations"]), 8)
@@ -205,33 +243,62 @@ class OfficialSyntheticIntegrationTest(unittest.TestCase):
         for dataset in self.artifacts:
             values = list(final["comparisons"][dataset]["uar"]["D_by_seed"].values())
             self.assertAlmostEqual(final["comparisons"][dataset]["uar"]["D_sample_std"], float(np.std(values, ddof=1)))
+            self.assertEqual(final["comparisons"][dataset], d_summary["comparisons"][dataset])
         wrong = copy.deepcopy(frozen)
         wrong[42]["sha256"] = "0" * 64
         with patch("ser_pipeline.training.evaluate_official", side_effect=AssertionError("evaluation before all identities fixed")):
             with self.assertRaises(ValueError):
                 run_official_final_evaluations(self.artifacts, wrong, self.root / "badfinal", self.head, self.report, device="cpu")
 
+        original_c = json.loads(Path(c_summary["summary_path"]).read_text(encoding="utf-8"))
+        mutations = {
+            "head": lambda payload: payload["signature"]["head"].update(sha256="0" * 64),
+            "cache": lambda payload: payload["signature"]["datasets"]["msp_podcast"].update(cache_id="other"),
+            "test": lambda payload: payload["signature"]["datasets"]["hcudb1"]["test_set"].update(utterance_id_sha256="0" * 64),
+        }
+        for name, mutate in mutations.items():
+            changed = copy.deepcopy(original_c)
+            mutate(changed)
+            changed_path = self.root / f"c-{name}-mismatch.json"
+            changed_path.write_text(json.dumps(changed), encoding="utf-8")
+            with patch("ser_pipeline.training.evaluate_official", side_effect=AssertionError("D evaluation before C signature validation")):
+                with self.assertRaises(ValueError):
+                    run_official_d_evaluations(
+                        self.artifacts, frozen, self.root / f"d-{name}-mismatch", self.head, self.report,
+                        changed_path, device="cpu",
+                    )
+
     def test_notebook_defaults_and_cli_stages(self):
         from ser_pipeline.cli import build_parser
         root = Path(__file__).resolve().parents[1]
-        notebook = json.loads((root / "notebooks/03_official_head_cd.ipynb").read_text())
         import nbformat
-        nbformat.validate(nbformat.from_dict(notebook))
-        namespace = {}
-        with patch("ser_pipeline.study.run_official_study", side_effect=AssertionError("default training")), patch("ser_pipeline.study.run_official_final_evaluations", side_effect=AssertionError("default test evaluation")):
-            for cell in notebook["cells"]:
-                if cell["cell_type"] == "code":
-                    exec(compile(cell["source"], cell["id"], "exec"), namespace)
-        self.assertTrue([key for key in namespace if key.startswith("RUN_")])
-        self.assertTrue(all(not value for key, value in namespace.items() if key.startswith("RUN_")))
-        self.assertEqual(namespace["CONFIG"].weight_decay, 0)
-        self.assertEqual(namespace["CONFIG"].epochs, 10)
-        self.assertEqual(namespace["DIAGNOSTICS_CONFIG"], OfficialTrainingDiagnosticsConfig())
-        self.assertEqual(namespace["AUDIO_ROOTS"]["msp_podcast"].name, "MSP_PODCAST")
-        self.assertEqual(namespace["AUDIO_ROOTS"]["hcudb1"].name, "HCUDB1")
-        self.assertIsNone(namespace["MSP_EXPECTED_MISSING_SHA256"])
-        self.assertEqual(namespace["MSP_APPROVED_DUPLICATE_EXCLUDE_IDS"], [])
-        self.assertIsNone(namespace["MSP_EXPECTED_DUPLICATE_EXCLUSION_SHA256"])
+        builder = runpy.run_path(str(root / "scripts" / "build_ser_notebooks.py"))
+        feature_notebook = builder["notebook"](builder["official_feature_cells"])
+        training_notebook = builder["notebook"](builder["official_training_cells"])
+        feature_namespace = {}
+        training_namespace = {}
+        with redirect_stdout(io.StringIO()):
+            for notebook, namespace in (
+                (feature_notebook, feature_namespace),
+                (training_notebook, training_namespace),
+            ):
+                nbformat.validate(nbformat.from_dict(notebook))
+                with patch("ser_pipeline.study.run_official_study", side_effect=AssertionError("default training")), patch("ser_pipeline.study.run_official_c_evaluations", side_effect=AssertionError("default C evaluation")), patch("ser_pipeline.study.run_official_d_evaluations", side_effect=AssertionError("default D evaluation")):
+                    for cell in notebook["cells"]:
+                        if cell["cell_type"] == "code":
+                            exec(compile(cell["source"], cell["id"], "exec"), namespace)
+        for namespace in (feature_namespace, training_namespace):
+            self.assertTrue([key for key in namespace if key.startswith("RUN_")])
+            self.assertTrue(all(not value for key, value in namespace.items() if key.startswith("RUN_")))
+        self.assertEqual(training_namespace["CONFIG"].weight_decay, 0)
+        self.assertEqual(training_namespace["CONFIG"].epochs, 10)
+        self.assertEqual(training_namespace["DIAGNOSTICS_CONFIG"], OfficialTrainingDiagnosticsConfig())
+        self.assertEqual(feature_namespace["AUDIO_ROOTS"]["msp_podcast"].name, "MSP_PODCAST")
+        self.assertEqual(feature_namespace["AUDIO_ROOTS"]["hcudb1"].name, "HCUDB1")
+        self.assertIsNone(feature_namespace["MSP_EXPECTED_MISSING_SHA256"])
+        self.assertEqual(len(feature_namespace["MSP_NEW_OFFICIAL6_DUPLICATE_EXCLUDE_IDS"]), 21)
+        self.assertIsNone(feature_namespace["MSP_EXPECTED_DUPLICATE_EXCLUSION_SHA256"])
+        self.assertEqual(feature_namespace["OFFICIAL_ARTIFACT_CONTRACT"], training_namespace["OFFICIAL_ARTIFACT_CONTRACT"])
         args = build_parser().parse_args(["study-official", "--snapshot", "s", "--parity-report", "p", "--manifest", "m", "--cache-root", "c", "--output-dir", "o"])
         self.assertEqual(args.seeds, [42, 43, 44])
         self.assertEqual(args.epochs, 10)

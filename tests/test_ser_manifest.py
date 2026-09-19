@@ -16,6 +16,7 @@ from ser_pipeline.manifest import (
     manifest_sha256,
     records_sha256,
     validate_manifest,
+    validate_manifest_records,
 )
 
 
@@ -142,7 +143,7 @@ class SerManifestTest(unittest.TestCase):
         valid.write_bytes(train.read_bytes())
         manifest = self.root / "manifest.jsonl"
 
-        with self.assertRaisesRegex(ValueError, "audio hash leakage"):
+        with self.assertRaisesRegex(ValueError, "duplicate included audio_sha256"):
             build_manifest("msp_podcast", self.root, manifest, strict=True)
 
         self.assertFalse(manifest.exists())
@@ -160,6 +161,38 @@ class SerManifestTest(unittest.TestCase):
         manifest.write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows), encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "relative"):
             validate_manifest(manifest)
+
+    def test_manifest_rejects_traversal_stem_mismatch_and_duplicate_audio_identity(self):
+        self._write_msp()
+        manifest = self.root / "manifest.jsonl"
+        build_manifest("msp_podcast", self.root, manifest, inspect_excluded_audio=False)
+        rows = load_manifest(manifest)
+        included = [index for index, row in enumerate(rows) if row["included"]]
+
+        traversal = [dict(row) for row in rows]
+        traversal[included[0]]["audio_relpath"] = "Audio/../train.wav"
+        with self.assertRaisesRegex(ValueError, "path traversal"):
+            validate_manifest_records(traversal)
+
+        stem = [dict(row) for row in rows]
+        stem[included[0]]["audio_relpath"] = "Audio/not-the-id.wav"
+        with self.assertRaisesRegex(ValueError, "must match audio_relpath stem"):
+            validate_manifest_records(stem)
+
+        duplicate_path = [dict(row) for row in rows]
+        duplicate_path[included[1]]["audio_relpath"] = duplicate_path[included[0]]["audio_relpath"]
+        with self.assertRaisesRegex(ValueError, "duplicate included audio_relpath"):
+            validate_manifest_records(duplicate_path)
+
+        duplicate_hash = [dict(row) for row in rows]
+        duplicate_hash[included[1]]["audio_sha256"] = duplicate_hash[included[0]]["audio_sha256"]
+        with self.assertRaisesRegex(ValueError, "duplicate included audio_sha256"):
+            validate_manifest_records(duplicate_hash)
+
+        invalid_hash = [dict(row) for row in rows]
+        invalid_hash[included[0]]["audio_sha256"] = "z" * 64
+        with self.assertRaisesRegex(ValueError, "audio_sha256"):
+            validate_manifest_records(invalid_hash)
 
     def test_official6_manifest_includes_fear_and_surprise_without_changing_ab4_default(self):
         self._write_msp(official6=True)

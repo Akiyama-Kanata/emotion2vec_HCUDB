@@ -212,3 +212,14 @@ happyへの予測割合は平均47.65%から32.94%へ減少。sadnessとdisgust�
 | クラス番号ラベルの重み付きCrossEntropyLossのmeanは対象ラベルの重み総和で正規化 | 確認済み | [PyTorch CrossEntropyLoss](https://docs.pytorch.org/docs/2.14/generated/torch.nn.CrossEntropyLoss.html) | バッチ内の重み付き損失和 / 正解クラス重みの総和 |
 
 確認済み2件。epoch内のバッチlossの単純平均はこのリポジトリの既存集約方法であり、split全発話の重みなし平均とは別の記録として表示する。今回のテスト環境はPyTorch 2.12.1+cu130。ユーザーが提示した2.14の公式資料を定義確認に用い、実装の数値はローカルの合成データテストで確認した。実データの学習・モデル評価は行っていない。
+
+## 2026-09-17 — emotion2vec+large C条件ベースライン信頼性調査
+
+**質問/文脈**: 保存済みC条件について、評価集計、cacheからのlogit再生、checkpoint・実装provenance、音声条件、HCUDBのリサンプリング差を監査した。Ma et al. (2024) とHCUDB公式資料は既存書誌の再引用につき重複登録を省略した。論文PDF本文の新規読解は行わず、ACL Anthology掲載ページと検索で取得できた表情報のみを補助的に参照した。
+
+| 資料 | 著者・提供元 | 年 | エビデンス強度 | DOI/URL | 使用した主張 |
+|------|--------------|----|----------------|---------|--------------|
+| emotion2vec_plus_large model card | emotion2vec team | n.d. | [低: 公式モデルカード・Web本文確認] | https://huggingface.co/emotion2vec/emotion2vec_plus_large | 公式9クラス順、16 kHz入力、モデル規模と公開推論例 |
+| FunASR v1.4.15 emotion2vec implementation | ModelScope/FunASR | 2026 | [低: 公式ソース・タグ固定] | https://github.com/modelscope/FunASR/blob/v1.4.15/funasr/models/emotion2vec/model.py | waveform正規化、frame特徴の時間平均、分類projection、softmaxの順序 |
+| FunASR v1.4.15 audio loader | ModelScope/FunASR | 2026 | [低: 公式ソース・タグ固定] | https://github.com/modelscope/FunASR/blob/v1.4.15/funasr/utils/load_utils.py | ファイル入力のTorchaudio/SoundFile decode fallbackとTorchaudio resampling |
+| MSP-Podcast corpus | MSP Laboratory | n.d. | [低: 公式コーパスページ・Web本文確認] | https://lab-msp.com/MSP/MSP-Podcast.html | Podcast由来の自然発話、知覚アノテーション、カテゴリ感情ラベル |

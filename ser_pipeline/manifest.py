@@ -567,6 +567,8 @@ def validate_manifest_records(
     if not rows:
         raise ValueError("manifest is empty")
     ids: set[str] = set()
+    included_paths: dict[str, str] = {}
+    included_hashes: dict[str, str] = {}
     dataset_rows: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
     for line_number, row in enumerate(rows, 1):
         missing = [field for field in MANIFEST_FIELDS if field not in row]
@@ -593,7 +595,17 @@ def validate_manifest_records(
             raise ValueError(f"duplicate or empty utterance_id: {utterance_id!r}")
         ids.add(utterance_id)
         relpath = str(row["audio_relpath"])
-        if PurePosixPath(relpath).is_absolute() or PureWindowsPath(relpath).is_absolute():
+        posix_path = PurePosixPath(relpath)
+        windows_path = PureWindowsPath(relpath)
+        if any(part == ".." for part in relpath.replace("\\", "/").split("/")):
+            raise ValueError(f"audio_relpath contains path traversal: {utterance_id}")
+        if (
+            not relpath
+            or "\x00" in relpath
+            or posix_path.is_absolute()
+            or windows_path.is_absolute()
+            or bool(windows_path.drive)
+        ):
             raise ValueError(f"audio_relpath must be relative: {utterance_id}")
         reasons = row["exclusion_reasons"]
         if not isinstance(reasons, list):
@@ -610,8 +622,28 @@ def validate_manifest_records(
             if row["class_index"] != expected_index:
                 raise ValueError(f"class_index mismatch: {utterance_id}")
             sha = row["audio_sha256"]
-            if not isinstance(sha, str) or len(sha) != 64:
+            if (
+                not isinstance(sha, str)
+                or len(sha) != 64
+                or any(character not in "0123456789abcdef" for character in sha)
+            ):
                 raise ValueError(f"included row requires audio_sha256: {utterance_id}")
+            if relpath in included_paths:
+                raise ValueError(
+                    f"duplicate included audio_relpath: {relpath!r} "
+                    f"({included_paths[relpath]!r}, {utterance_id!r})"
+                )
+            included_paths[relpath] = utterance_id
+            if sha in included_hashes:
+                raise ValueError(
+                    f"duplicate included audio_sha256: {sha} "
+                    f"({included_hashes[sha]!r}, {utterance_id!r})"
+                )
+            included_hashes[sha] = utterance_id
+            if utterance_id != posix_path.stem:
+                raise ValueError(
+                    f"utterance_id must match audio_relpath stem: {utterance_id!r} != {posix_path.stem!r}"
+                )
             numeric = ("audio_size_bytes", "sample_rate_hz", "channels", "num_samples", "duration_seconds")
             if any(row[field] is None or float(row[field]) <= 0 for field in numeric):
                 raise ValueError(f"included row has invalid audio metadata: {utterance_id}")
@@ -659,7 +691,12 @@ def validate_manifest_records(
     }
 
 
-def validate_manifest_audio(records: Iterable[Mapping[str, Any]], root: str | Path) -> dict[str, Any]:
+def validate_manifest_audio(
+    records: Iterable[Mapping[str, Any]],
+    root: str | Path,
+    *,
+    audio_root_resolved: bool = False,
+) -> dict[str, Any]:
     rows = [row for row in records if row["included"]]
     if not rows:
         raise ValueError("manifest has no included rows to verify")
@@ -667,7 +704,7 @@ def validate_manifest_audio(records: Iterable[Mapping[str, Any]], root: str | Pa
     if len(datasets) != 1:
         raise ValueError("one audio root can verify only a single-dataset manifest")
     dataset = next(iter(datasets))
-    dataset_root = resolved_dataset_root(dataset, root)
+    dataset_root = Path(root) if audio_root_resolved else resolved_dataset_root(dataset, root)
     for row in rows:
         path = _audio_path(dataset_root, str(row["audio_relpath"]))
         if not path.is_file():
@@ -691,9 +728,18 @@ def np_isclose(left: float, right: float, tolerance: float = 1e-9) -> bool:
     return abs(left - right) <= tolerance * max(1.0, abs(left), abs(right))
 
 
-def validate_manifest(path: str | Path, *, audio_root: str | Path | None = None) -> dict[str, Any]:
+def validate_manifest(
+    path: str | Path,
+    *,
+    audio_root: str | Path | None = None,
+    audio_root_resolved: bool = False,
+) -> dict[str, Any]:
     rows = load_manifest(path)
     result = validate_manifest_records(rows)
     if audio_root is not None:
-        result["audio"] = validate_manifest_audio(rows, audio_root)
+        result["audio"] = validate_manifest_audio(
+            rows,
+            audio_root,
+            audio_root_resolved=audio_root_resolved,
+        )
     return result

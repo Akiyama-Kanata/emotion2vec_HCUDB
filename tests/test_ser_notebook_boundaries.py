@@ -1,5 +1,6 @@
 """生成した SER ノートブック間で処理責務が混在していないことを検証する。"""
 
+import ast
 import json
 import io
 import runpy
@@ -22,32 +23,118 @@ def source_text(cell):
 
 
 class SerNotebookBoundaryTest(unittest.TestCase):
-    def test_official_notebook_defaults_paths_diagnostics_and_builder_match(self):
+    def test_official_notebooks_are_split_with_matching_contracts_and_builder_output(self):
         builder = runpy.run_path(str(ROOT / "scripts" / "build_ser_notebooks.py"))
-        cells = {cell["id"]: source_text(cell) for cell in builder["official_cells"]}
-        settings = cells["official-settings"]
-        run_flags = re.findall(r"^(RUN_[A-Z0-9_]+)\s*=\s*(True|False)$", settings, flags=re.MULTILINE)
-        self.assertTrue(run_flags)
-        self.assertTrue(all(value == "False" for _, value in run_flags))
-        self.assertIn("'msp_podcast': DATA_ROOT / 'MSP_PODCAST'", settings)
-        self.assertIn("'hcudb1': DATA_ROOT / 'HCUDB1'", settings)
-        self.assertIn("MSP_EXPECTED_MISSING_SHA256 = None", settings)
-        self.assertIn("MSP_APPROVED_DUPLICATE_EXCLUDE_IDS = []", settings)
-        self.assertIn("MSP_EXPECTED_DUPLICATE_EXCLUSION_SHA256 = None", settings)
-        self.assertIn("OfficialTrainingDiagnosticsConfig", settings)
-        self.assertIn("diagnostics_config=DIAGNOSTICS_CONFIG", cells["official-training"])
-        self.assertIn("resume後に再生成した診断", cells["official-resume"])
-        subprocess.run(
-            [
-                sys.executable,
-                str(ROOT / "scripts" / "build_ser_notebooks.py"),
-                "--notebook", "03_official_head_cd.ipynb", "--check",
-            ],
-            cwd=ROOT,
-            check=True,
-            capture_output=True,
-            text=True,
+        feature_cells = {cell["id"]: source_text(cell) for cell in builder["official_feature_cells"]}
+        training_cells = {cell["id"]: source_text(cell) for cell in builder["official_training_cells"]}
+        feature_settings = feature_cells["official-feature-settings"]
+        training_settings = training_cells["official-training-settings"]
+
+        for settings in (feature_settings, training_settings):
+            run_flags = re.findall(r"^(RUN_[A-Z0-9_]+)\s*=\s*(True|False)$", settings, flags=re.MULTILINE)
+            self.assertTrue(run_flags)
+            self.assertTrue(all(value == "False" for _, value in run_flags))
+            self.assertIn("'msp_podcast': MANIFEST_DIR / 'msp_podcast_official6_v1.jsonl'", settings)
+            self.assertIn("'hcudb1': MANIFEST_DIR / 'hcudb1_official6_v1.jsonl'", settings)
+            self.assertIn("CACHES = {dataset: OUTPUT / 'cache' / dataset", settings)
+            self.assertIn("PARITY_REPORT = OUTPUT / 'parity.json'", settings)
+            self.assertIn("OFFICIAL_ARTIFACT_CONTRACT", settings)
+
+        self.assertIn("'msp_podcast': DATA_ROOT / 'MSP_PODCAST'", feature_settings)
+        self.assertIn("'hcudb1': DATA_ROOT / 'HCUDB1'", feature_settings)
+        self.assertIn("MSP_EXPECTED_MISSING_SHA256 = None", feature_settings)
+        self.assertIn("MSP_PRIOR_DUPLICATE_EXCLUSION_SHA256 = 'cc1be85082eb75d4e2068551454988fe41e3b58b8a22ade3bd4fc86a2e33f888'", feature_settings)
+        self.assertIn("def approved_official6_duplicate_exclude_ids():", feature_settings)
+        assignments = {
+            target.id: ast.literal_eval(node.value)
+            for node in ast.parse(feature_settings).body
+            if isinstance(node, ast.Assign)
+            for target in node.targets
+            if isinstance(target, ast.Name) and target.id == "MSP_NEW_OFFICIAL6_DUPLICATE_EXCLUDE_IDS"
+        }
+        self.assertEqual(len(assignments["MSP_NEW_OFFICIAL6_DUPLICATE_EXCLUDE_IDS"]), 21)
+        self.assertIn("MSP_EXPECTED_DUPLICATE_EXCLUSION_SHA256 = None", feature_settings)
+        self.assertIn("RUN_PREFLIGHT = False", feature_settings)
+        self.assertIn("RUN_FULL_EXTRACTION = False", feature_settings)
+        self.assertNotIn("RUN_FULL_EXTRACTION = True", feature_settings)
+        self.assertIn(
+            "approved_duplicate_ids = approved_official6_duplicate_exclude_ids()",
+            feature_cells["official-feature-duplicate-contract"],
         )
+        self.assertIn("OfficialTrainingDiagnosticsConfig", training_settings)
+        self.assertIn("ShardedFeatureStore", training_settings)
+        self.assertIn("require_parity_report", training_settings)
+        self.assertIn("profiles != {'official6'}", training_settings)
+        self.assertIn("RUN_C_EVALUATION = False", training_settings)
+        self.assertIn("RUN_D_EVALUATION = False", training_settings)
+        self.assertNotIn("RUN_FINAL_EVALUATION", training_settings)
+        self.assertIn("C_EVALUATION_OUTPUT = OUTPUT / 'evaluation_c'", training_settings)
+        self.assertIn("D_EVALUATION_OUTPUT = OUTPUT / 'evaluation_d'", training_settings)
+        self.assertNotEqual(
+            re.search(r"^C_EVALUATION_OUTPUT\s*=\s*(.+)$", training_settings, re.MULTILINE).group(1),
+            re.search(r"^D_EVALUATION_OUTPUT\s*=\s*(.+)$", training_settings, re.MULTILINE).group(1),
+        )
+        self.assertIn("require_official_inputs()", training_cells["official-c-evaluation"])
+        self.assertIn("require_official_inputs()", training_cells["official-training"])
+        self.assertIn("require_official_inputs()", training_cells["official-resume"])
+        self.assertIn("require_official_inputs()", training_cells["official-d-evaluation"])
+        self.assertIn("run_official_c_evaluations(", training_cells["official-c-evaluation"])
+        self.assertNotIn("STUDY_SUMMARY", training_cells["official-c-evaluation"])
+        self.assertIn("run_official_d_evaluations(", training_cells["official-d-evaluation"])
+        self.assertIn("C_SUMMARY", training_cells["official-d-evaluation"])
+        self.assertIn("diagnostics_config=DIAGNOSTICS_CONFIG", training_cells["official-training"])
+        self.assertIn("resume後に再生成した診断", training_cells["official-resume"])
+
+        ordered_ids = [cell["id"] for cell in builder["official_training_cells"]]
+        self.assertLess(ordered_ids.index("official-training-input-check"), ordered_ids.index("official-c-evaluation"))
+        self.assertLess(ordered_ids.index("official-c-evaluation"), ordered_ids.index("official-c-review"))
+        self.assertLess(ordered_ids.index("official-c-review"), ordered_ids.index("official-training"))
+        self.assertLess(ordered_ids.index("official-training"), ordered_ids.index("official-d-evaluation"))
+
+        feature_code = "\n".join(
+            source_text(cell) for cell in builder["official_feature_cells"] if cell["cell_type"] == "code"
+        )
+        training_code = "\n".join(
+            source_text(cell) for cell in builder["official_training_cells"] if cell["cell_type"] == "code"
+        )
+        extraction = feature_cells["official-feature-extraction"]
+        self.assertLess(extraction.index("preflight_feature_extraction("), extraction.index("[SMOKE]"))
+        self.assertLess(extraction.rindex("[SMOKE]"), extraction.index("cleanup_uncommitted_cache_fragments("))
+        self.assertLess(extraction.index("cleanup_uncommitted_cache_fragments("), extraction.index("[EXTRACT]"))
+        self.assertIn("resolved_audio_roots[dataset]", extraction)
+        self.assertIn("'action': 'validated/skip'", extraction)
+        self.assertNotIn("validate_cache(", extraction)
+        for forbidden in (
+            "TrainingConfig", "OfficialTrainingDiagnosticsConfig", "train_official_decoder",
+            "run_official_study", "run_official_c_evaluations", "run_official_d_evaluations", "RUN_D_TRAINING",
+            "RUN_MSP_DOWNLOAD", "run_msp_batches.ps1", "subprocess",
+        ):
+            self.assertNotIn(forbidden, feature_code)
+        for forbidden in (
+            "AUDIO_ROOTS", "build_manifest", "extract_feature_cache", "OfficialEmotion2vecEncoder",
+            "RUN_MSP_DOWNLOAD", "RUN_FULL_EXTRACTION", "subprocess",
+        ):
+            self.assertNotIn(forbidden, training_code)
+
+        names = (
+            "03_extract_official_head_cd_features.ipynb",
+            "04_train_and_evaluate_official_head_cd.ipynb",
+        )
+        self.assertNotIn("03_official_head_cd.ipynb", builder["NOTEBOOKS"])
+        self.assertFalse((ROOT / "notebooks" / "03_official_head_cd.ipynb").exists())
+        with tempfile.TemporaryDirectory() as directory:
+            command = [sys.executable, str(ROOT / "scripts" / "build_ser_notebooks.py")]
+            selected = [item for name in names for item in ("--notebook", name)]
+            subprocess.run(
+                command + selected + ["--output-dir", directory], cwd=ROOT, check=True, capture_output=True, text=True,
+            )
+            subprocess.run(
+                command + selected + ["--output-dir", directory, "--check"],
+                cwd=ROOT, check=True, capture_output=True, text=True,
+            )
+            for name in names:
+                payload = json.loads((Path(directory) / name).read_text(encoding="utf-8"))
+                self.assertEqual(payload["metadata"]["kernelspec"]["name"], "emotion2vec-official")
 
     def test_comparison_settings_refresh_already_imported_modules(self):
         probe = """

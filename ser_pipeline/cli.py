@@ -14,7 +14,9 @@ from .manifest import (
     generate_msp_audio_duplicate_audit,
     generate_msp_missing_audio_exclusion_contract,
     validate_manifest,
+    load_manifest,
 )
+from .readers import resolved_dataset_root
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -141,6 +143,8 @@ def build_parser() -> argparse.ArgumentParser:
     large.add_argument("--cache-root", type=Path, required=True)
     large.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
     large.add_argument("--max-shard-frames", type=int, default=65536)
+    large.add_argument("--preflight-report", type=Path)
+    large.add_argument("--smoke-report", type=Path)
 
     official_eval = subparsers.add_parser("evaluate-official", help="Evaluate frozen C or a saved D head")
     for name in ("snapshot", "parity-report", "manifest", "cache-root", "output-dir"):
@@ -183,14 +187,78 @@ def main(argv: list[str] | None = None) -> int:
         result = encoder.verify_parity(waveform)
         _atomic_json(result, args.output)
     elif args.command == "extract-large":
+        from .cache import _atomic_json, cleanup_uncommitted_cache_fragments
         from .official import OfficialEmotion2vecEncoder, require_parity_report
         from .features import extract_feature_cache
+        from .preflight import preflight_feature_extraction, smoke_test_feature_extraction
+
+        rows = load_manifest(args.manifest)
+        datasets = {str(row["dataset"]) for row in rows}
+        if len(datasets) != 1:
+            raise ValueError("extract-large requires a single-dataset manifest")
+        dataset = next(iter(datasets))
+        preflight_path = args.preflight_report or args.cache_root.parent / f"{args.cache_root.name}_preflight.json"
+        print(f"[PRECHECK] {dataset} start")
+        preflight = preflight_feature_extraction(
+            args.manifest,
+            args.audio_root,
+            args.cache_root,
+            args.parity_report,
+            dataset=dataset,
+            expected_dim=1024,
+            max_shard_frames=args.max_shard_frames,
+            capacity_path=args.cache_root,
+            report_path=preflight_path,
+        )
+        dataset_preflight = preflight["datasets"][dataset]
+        resolved_audio_root = Path(dataset_preflight["resolved_audio_root"])
+        print(f"[PRECHECK] {dataset} complete")
         encoder = OfficialEmotion2vecEncoder(args.snapshot, device=args.device)
         report = require_parity_report(encoder.head, args.parity_report)
         if report["extraction"] != encoder.provenance or report["device"] != str(encoder.device):
             raise ValueError("re-run parity for the current extraction environment/device")
-        result = extract_feature_cache(args.manifest, args.audio_root, args.cache_root, encoder,
-                                      expected_dim=1024, max_shard_frames=args.max_shard_frames)
+        print(f"[SMOKE] {dataset} start")
+        smoke = smoke_test_feature_extraction(
+            args.manifest,
+            resolved_audio_root,
+            args.cache_root,
+            encoder,
+            dataset=dataset,
+            expected_dim=1024,
+            max_shard_frames=args.max_shard_frames,
+        )
+        if args.smoke_report is not None:
+            _atomic_json(smoke, args.smoke_report)
+        print(f"[SMOKE] {dataset} complete")
+        removed = cleanup_uncommitted_cache_fragments(
+            args.cache_root,
+            dataset_preflight["resume"]["recoverable_fragments"],
+        )
+        print(f"[RESUME] {dataset} committed={dataset_preflight['resume']['committed_utterances']} "
+              f"pending={dataset_preflight['resume']['pending_utterances']} recovered={len(removed)}")
+        if dataset_preflight["resume"]["complete"]:
+            extraction = dataset_preflight["resume"]
+            extraction["action"] = "validated/skip"
+            print(f"[EXTRACT] {dataset} validated/skip")
+        else:
+            print(f"[EXTRACT] {dataset} start")
+            extraction = extract_feature_cache(
+                args.manifest,
+                resolved_audio_root,
+                args.cache_root,
+                encoder,
+                expected_dim=1024,
+                max_shard_frames=args.max_shard_frames,
+            )
+            print(f"[EXTRACT] {dataset} complete")
+        result = {
+            "status": "ok",
+            "dataset": dataset,
+            "preflight": preflight,
+            "smoke": smoke,
+            "recovered_fragments": removed,
+            "extraction": extraction,
+        }
     elif args.command == "evaluate-official":
         from .official import load_official_head
         from .training import evaluate_official
@@ -262,6 +330,13 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "extract-features":
         from .features import Emotion2vecEncoder, extract_feature_cache
 
+        rows = load_manifest(args.manifest)
+        datasets = {str(row["dataset"]) for row in rows}
+        if len(datasets) != 1:
+            raise ValueError("extract-features requires a single-dataset manifest")
+        dataset = next(iter(datasets))
+        audio_root = resolved_dataset_root(dataset, args.audio_root).resolve()
+        validate_manifest(args.manifest, audio_root=audio_root, audio_root_resolved=True)
         encoder = Emotion2vecEncoder(
             args.user_dir,
             args.checkpoint,
@@ -270,7 +345,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         result = extract_feature_cache(
             args.manifest,
-            args.audio_root,
+            audio_root,
             args.cache_root,
             encoder,
             layer=args.layer,

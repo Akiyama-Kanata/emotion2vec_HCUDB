@@ -193,4 +193,33 @@ FFmpegなどで16 kHz・モノラルへ変換してから再実行します。
 
 C/Dの推論は9 logits全体をsoftmaxし、9クラス全体でargmaxします。neutral、other、unknownが最大になった場合も6クラスへ再分類せず、対象6クラス指標では誤分類として扱います。manifestは `python -m ser_pipeline build-manifest --label-profile official6 ...` で作成してください。既存A/B用4クラスmanifest、cache、checkpointはそのまま維持されます。
 
-条件C/Dの実行方法は `notebooks/03_official_head_cd.ipynb` にまとめています。通常の音声感情推定だけが目的なら、このNotebookを実行する必要はありません。
+条件C/Dの実行は2冊に分かれます。まず `notebooks/03_extract_official_head_cd_features.ipynb` でofficial6 manifest、Large特徴cache、`runs/official_cd/parity.json` を生成・検証します。次に `notebooks/04_train_and_evaluate_official_head_cd.ipynb` で、入力artifact確認、条件C評価、C結果の確認と基準決定、条件Dの学習・再開、条件D評価と保存済みCとの比較、の順にセルを実行します。通常の音声感情推定だけが目的なら、この2冊を実行する必要はありません。
+
+04 NotebookではCとDの評価出力をそれぞれ `runs/official_cd/evaluation_c` と `runs/official_cd/evaluation_d` に保存します。C評価はDのstudy summaryやcheckpointを必要とせず、MSP-Podcast Test1とHCUDB Testを各1回評価します。D評価はCを再推論せず、保存済みC summaryのhead、cache、test集合の署名が現在の入力と一致する場合だけ、3 seedのDを評価してCとの差、seed平均、標本標準偏差を計算します。確認済みフラグや数値による自動合否判定はなく、C結果確認セルとD学習セルの分離で運用します。
+
+### 全量特徴抽出を安全に開始・再開する
+
+初回だけ `RUN_PARITY = True` で `parity.json` を作成し、結果を確認した後はFalseへ戻します。本番は `RUN_FULL_EXTRACTION = True` の1セルで実行します。このセルは次の順序を崩しません。
+
+1. MSP-PodcastとHCUDB1のmanifestおよびincluded音声全件を検証する。
+2. 既存cacheの確定済みshard、manifest prefix、`_SUCCESS`、残件数を読み取り専用で監査し、残件分だけの容量を判定する。
+3. encoderを生成して既存parity reportとの一致を確認する。
+4. 各datasetのmanifest順先頭10件を一時cacheへ保存し、hash/index/offsetとmmap再読込を確認する。
+5. 全datasetが成功した場合だけ、`.partial`とmeta未作成の孤立npy/indexを削除する。
+6. 完成済みdatasetは`validated/skip`とし、未完datasetだけ確定済みprefixの次から抽出する。
+
+HCUDB1は、外側の配布ディレクトリ（例: `.../HCUDB1`）を指定しても、実データを持つ内側の`HCUDB1`を一度解決し、検証・smoke・本番抽出のすべてへ同じパスを渡します。実行ログはdatasetごとに`[PRECHECK]`、`[SMOKE]`、`[RESUME]`、`[EXTRACT]`を表示します。`runs/official_cd/feature_preflight.json`にはresolved root、manifest SHA-256、検証件数、確定済み件数、残件数、回収候補、残容量が保存されます。
+
+単一datasetをCLIから実行する場合も同じ順序です。
+
+```powershell
+python -m ser_pipeline extract-large `
+  --snapshot C:\path\to\snapshot `
+  --parity-report runs\official_cd\parity.json `
+  --manifest runs\ser_manifests\hcudb1_official6_v1.jsonl `
+  --audio-root C:\path\to\HCUDB1 `
+  --cache-root runs\official_cd\cache\hcudb1 `
+  --device cpu
+```
+
+metaまで確定したshardが再利用単位です。確定済みshardの欠損・hash不一致・破損は自動修復せず停止します。

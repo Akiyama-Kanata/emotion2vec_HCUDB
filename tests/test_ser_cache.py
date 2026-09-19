@@ -9,11 +9,22 @@ import numpy as np
 import soundfile as sf
 
 from ser_pipeline.audio import inspect_audio, load_audio_16k_mono
-from ser_pipeline.cache import ShardedFeatureStore, validate_cache
-from ser_pipeline.contracts import MANIFEST_SCHEMA_VERSION
+from ser_pipeline.cache import (
+    ShardedFeatureStore,
+    cleanup_uncommitted_cache_fragments,
+    inspect_cache_resume,
+    validate_cache,
+)
+from ser_pipeline.contracts import MANIFEST_SCHEMA_VERSION, map_emotion
 from ser_pipeline.features import EncoderInfo, extract_feature_cache
 from ser_pipeline.manifest import write_manifest
-from ser_pipeline.preflight import disk_capacity_gate, estimate_full_extraction
+from ser_pipeline.preflight import (
+    FeatureExtractionPreflightError,
+    disk_capacity_gate,
+    estimate_full_extraction,
+    preflight_feature_extraction,
+    smoke_test_feature_extraction,
+)
 from ser_pipeline.splits import MSP_SPLIT_VERSION
 
 
@@ -160,6 +171,188 @@ class SerCacheTest(unittest.TestCase):
                 FakeEncoder(),
                 max_shard_frames=7,
             )
+
+    def test_resume_inspector_finds_only_uncommitted_fragments(self):
+        extract_feature_cache(self.manifest, self.audio_root, self.cache, FakeEncoder(), max_shard_frames=7)
+        split = self.cache / "msp_podcast" / "train"
+        partial = split / "write.partial"
+        orphan_npy = split / "shard-99998.npy"
+        orphan_index = split / "shard-99998.index.jsonl"
+        partial.write_text("partial", encoding="utf-8")
+        orphan_npy.write_bytes(b"orphan")
+        orphan_index.write_text("orphan\n", encoding="utf-8")
+
+        report = inspect_cache_resume(
+            self.cache, self.manifest, expected_dim=4, max_shard_frames=7,
+        )
+        self.assertTrue(report["complete"])
+        self.assertEqual(report["committed_utterances"], 6)
+        self.assertEqual(report["pending_utterances"], 0)
+        self.assertEqual(
+            set(report["recoverable_fragments"]),
+            {str(path.resolve()) for path in (partial, orphan_npy, orphan_index)},
+        )
+        removed = cleanup_uncommitted_cache_fragments(
+            self.cache, report["recoverable_fragments"],
+        )
+        self.assertEqual(set(removed), set(report["recoverable_fragments"]))
+        self.assertTrue(next(split.glob("shard-*.meta.json")).is_file())
+
+    def test_resume_skips_committed_prefix_after_interruption(self):
+        class InterruptingEncoder(FakeEncoder):
+            def __init__(self, fail_after=None):
+                self.fail_after = fail_after
+                self.calls = 0
+
+            def extract(self, waveform):
+                self.calls += 1
+                if self.fail_after is not None and self.calls > self.fail_after:
+                    raise RuntimeError("injected interruption")
+                return super().extract(waveform)
+
+        interrupted = InterruptingEncoder(fail_after=2)
+        with self.assertRaisesRegex(RuntimeError, "injected interruption"):
+            extract_feature_cache(
+                self.manifest, self.audio_root, self.cache, interrupted, max_shard_frames=7,
+            )
+        audit = inspect_cache_resume(
+            self.cache, self.manifest, expected_dim=4, max_shard_frames=7,
+        )
+        self.assertGreaterEqual(audit["committed_utterances"], 1)
+        resumed = InterruptingEncoder()
+        result = extract_feature_cache(
+            self.manifest, self.audio_root, self.cache, resumed, max_shard_frames=7,
+        )
+        self.assertEqual(resumed.calls, audit["pending_utterances"])
+        self.assertEqual(result["skipped"], audit["committed_utterances"])
+
+    def test_preflight_is_read_only_and_smoke_round_trips_without_artifacts(self):
+        snapshot = {"checkpoint_sha256": "a" * 64}
+        parity = {
+            "passed": True,
+            "rtol": 1e-5,
+            "atol": 1e-6,
+            "snapshot": snapshot,
+            "extraction": {
+                "snapshot": snapshot,
+                "extraction_code_version": "test_official_features_v1",
+            },
+            "extraction_realtime_factor": 0.5,
+            "feature_bytes_per_audio_second": 1000.0,
+        }
+        report = preflight_feature_extraction(
+            self.manifest,
+            self.audio_root,
+            self.cache,
+            parity,
+            dataset="msp_podcast",
+            expected_dim=4,
+            max_shard_frames=7,
+            expected_label_profile=None,
+        )
+        self.assertEqual(report["status"], "ok")
+        self.assertEqual(report["datasets"]["msp_podcast"]["verified_audio"], 6)
+        self.assertEqual(report["datasets"]["msp_podcast"]["resume"]["pending_utterances"], 6)
+        self.assertFalse(self.cache.exists())
+
+        smoke = smoke_test_feature_extraction(
+            self.manifest,
+            self.audio_root,
+            self.cache,
+            FakeEncoder(),
+            dataset="msp_podcast",
+            sample_size=10,
+            expected_dim=4,
+            max_shard_frames=7,
+        )
+        self.assertEqual(smoke["sample_count"], 6)
+        self.assertEqual(smoke["sample_utterance_ids"], [
+            "train_0", "train_1", "validation_0", "validation_1", "test_0", "test_1",
+        ])
+        self.assertTrue(smoke["temporary_cache_removed"])
+        self.assertFalse(self.cache.exists())
+        self.assertEqual(list(self.root.glob(".cache-smoke-*")), [])
+
+    def test_resume_inspector_never_removes_a_committed_corrupt_shard(self):
+        extract_feature_cache(self.manifest, self.audio_root, self.cache, FakeEncoder(), max_shard_frames=7)
+        shard = next(self.cache.glob("msp_podcast/train/shard-*.npy"))
+        with shard.open("ab") as destination:
+            destination.write(b"corrupt")
+        with self.assertRaisesRegex(ValueError, "hash mismatch"):
+            inspect_cache_resume(self.cache, self.manifest, expected_dim=4, max_shard_frames=7)
+        self.assertTrue(shard.is_file())
+
+    def test_all_dataset_preflight_aggregates_late_missing_audio_without_cache_writes(self):
+        outer = self.root / "outer_hcudb"
+        inner = outer / "HCUDB1"
+        hcudb_manifest = self.root / "hcudb.jsonl"
+        hcudb_rows = []
+        for index, (speaker, split) in enumerate((
+            ("FA", "train"), ("FF", "validation"), ("FG", "test"),
+        )):
+            utterance = f"{speaker}-01-01-1"
+            relpath = f"wav/{speaker}/{utterance}.wav"
+            path = inner / relpath
+            path.parent.mkdir(parents=True, exist_ok=True)
+            sf.write(path, np.full(1600, 0.02 + index / 100, dtype=np.float32), 16000)
+            audio = inspect_audio(path)
+            decision = map_emotion("hcudb1", "怒り", label_profile="official6")
+            hcudb_rows.append({
+                "manifest_schema_version": MANIFEST_SCHEMA_VERSION,
+                "dataset": "hcudb1",
+                "dataset_release": "HCUDB1",
+                "utterance_id": utterance,
+                "audio_relpath": relpath,
+                "speaker_id": speaker,
+                "speaker_id_status": "known",
+                "group_id": speaker,
+                "session_id": "",
+                "source_split": "all",
+                "split": split,
+                "split_version": "hcudb1_speaker_split_v1",
+                "original_emotion": "怒り",
+                "mapped_emotion": decision.mapped_emotion,
+                "class_index": decision.class_index,
+                "mapping_version": decision.mapping_version,
+                "included": True,
+                "exclusion_reasons": [],
+                "approximate_mapping": decision.approximate_mapping,
+                "source_metadata": {},
+                **audio,
+            })
+        write_manifest(hcudb_rows, hcudb_manifest)
+        (inner / hcudb_rows[-1]["audio_relpath"]).unlink()
+
+        snapshot = {"checkpoint_sha256": "a" * 64}
+        parity = {
+            "passed": True, "rtol": 1e-5, "atol": 1e-6,
+            "snapshot": snapshot,
+            "extraction": {"snapshot": snapshot, "extraction_code_version": "test_v1"},
+            "extraction_realtime_factor": 0.5,
+            "feature_bytes_per_audio_second": 1000.0,
+        }
+        caches = {
+            "msp_podcast": self.root / "msp_cache",
+            "hcudb1": self.root / "hcudb_cache",
+        }
+        with self.assertRaises(FeatureExtractionPreflightError) as raised:
+            preflight_feature_extraction(
+                {"msp_podcast": self.manifest, "hcudb1": hcudb_manifest},
+                {"msp_podcast": self.audio_root, "hcudb1": outer},
+                caches,
+                parity,
+                expected_dim=4,
+                max_shard_frames=7,
+                expected_label_profile=None,
+            )
+        report = raised.exception.report
+        self.assertEqual(report["datasets"]["msp_podcast"]["status"], "ok")
+        self.assertEqual(report["datasets"]["hcudb1"]["status"], "error")
+        self.assertIn("included audio is missing", report["datasets"]["hcudb1"]["error"])
+        self.assertEqual(
+            Path(report["datasets"]["hcudb1"]["resolved_audio_root"]), inner.resolve(),
+        )
+        self.assertTrue(all(not path.exists() for path in caches.values()))
 
 
 if __name__ == "__main__":

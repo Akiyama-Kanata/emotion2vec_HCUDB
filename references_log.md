@@ -223,3 +223,80 @@ happyへの予測割合は平均47.65%から32.94%へ減少。sadnessとdisgust�
 | FunASR v1.4.15 emotion2vec implementation | ModelScope/FunASR | 2026 | [低: 公式ソース・タグ固定] | https://github.com/modelscope/FunASR/blob/v1.4.15/funasr/models/emotion2vec/model.py | waveform正規化、frame特徴の時間平均、分類projection、softmaxの順序 |
 | FunASR v1.4.15 audio loader | ModelScope/FunASR | 2026 | [低: 公式ソース・タグ固定] | https://github.com/modelscope/FunASR/blob/v1.4.15/funasr/utils/load_utils.py | ファイル入力のTorchaudio/SoundFile decode fallbackとTorchaudio resampling |
 | MSP-Podcast corpus | MSP Laboratory | n.d. | [低: 公式コーパスページ・Web本文確認] | https://lab-msp.com/MSP/MSP-Podcast.html | Podcast由来の自然発話、知覚アノテーション、カテゴリ感情ラベル |
+
+## 2026-09-19 — emotion2vec+ largeの公式出力クラス数
+
+**質問/文脈**: emotion2vec+ largeに、5クラスを直接出力する公式公開モデルが存在するかを確認した。既存登録済みの論文・公式モデルカードを再引用した。
+
+| 資料 | 著者・提供元 | 年 | エビデンス強度 | DOI/URL | 使用した主張 |
+|------|--------------|----|----------------|---------|--------------|
+| emotion2vec_plus_large model card（再引用） | emotion2vec team | n.d. | [低: 公式モデルカード・履歴確認] | https://huggingface.co/emotion2vec/emotion2vec_plus_large | 2024-05-15の初期READMEはangry/happy/neutral/sad/unknownの5カテゴリを記載し、9行のtokens中4行を`unuse_*`としていた。2024-06-24に9感情ラベルへ更新された。別の5出力checkpointが併存した証拠はなく、`model.pt`は単一のアップロード履歴である |
+| emotion2vec: Self-Supervised Pre-Training for Speech Emotion Representation（再引用） | Ma et al. | 2024 | [高: 査読済み論文・Web索引確認] | https://doi.org/10.18653/v1/2024.findings-acl.931 | emotion2vec本体は感情表現を抽出し、データセットごとの分類は下流分類器で行う |
+
+## 2026-09-19 — 出力クラスとデータセットクラスが不一致な場合のargmax
+
+**質問/文脈**: 固定済み分類モデルの出力ラベル集合と、評価データセットのラベル集合が一致しない場合に、先行研究がargmaxと評価対象をどう扱うかを調査した。Luo & Han (2019) は既存書誌行の再引用につき重複登録を省略した。論文中の細かな実装条件については公開HTMLの要旨とWeb索引スニペットを用いており、スニペット由来の内容は要確認とした。
+
+| 資料 | 著者 | 年 | エビデンス強度 | DOI/URL | 使用した主張 |
+|------|------|----|----------------|---------|--------------|
+| No Sample Left Behind: Towards a Comprehensive Evaluation of Speech Emotion Recognition Systems | Riera, Ferrer, Gravano, & Gauder | 2019 | [中: 査読会議・公式HTML要旨確認] | https://doi.org/10.21437/SMM.2019-3 | 関心対象外の感情を持つ標本を除外する一般的評価慣行と、その不完全性への批判 |
+| Speech Emotion Recognition using Self-Supervised Features | Morais, Hoory, Zhu, Gat, Damasceno, & Aronowitz | 2022 | [中: 査読会議・arXiv要旨確認] | https://doi.org/10.1109/ICASSP43922.2022.9747870 | 自己教師あり上流表現に、対象タスク用の下流分類器を組み合わせる構成 |
+| Towards Open Set Deep Networks | Bendale & Boult | 2016 | [中: 査読会議・公式HTML要旨確認] | https://doi.org/10.1109/CVPR.2016.173 | 通常のclosed-set分類器は既知クラスのいずれかを強制選択し、OpenMaxはunknown拒否を導入する |
+| SELM: Enhancing Speech Emotion Recognition for Out-of-Domain Scenarios | Bukhari, Deshmukh, Dhamyal, Raj, & Singh | 2024 | [低〜中: 査読会議・公式HTML要旨確認、詳細はWeb索引スニペット] | https://doi.org/10.21437/Interspeech.2024-2257 | OOD SERで要求ラベル集合へ出力を対応付ける方法。具体的な意味類似度による写像はWebスニペットのみのため要確認 |
+
+## 2026-09-19 — 実験Cの結果・方法・評価妥当性
+
+**質問/文脈**: Condition Cの保存結果、実験方法、評価計算が誤っていないことを支える証拠を発表用に整理した。公式headと保存済みcacheからMSP-Podcast Test1 7,136件、HCUDB Test 420件を全件再評価し、保存済み予測・指標と完全一致した。予測JSONからAccuracy、UAR、Macro-F1、9-way loss、6×9混同行列を独立再計算して絶対誤差0.0を確認した。対象6クラス限定argmaxは主結果を変更しない感度分析として分離した。
+
+| 論文・資料 | 著者 | 年 | エビデンス強度 | DOI/URL | 使用した主張 |
+|---|---|---:|---|---|---|
+| emotion2vec: Self-Supervised Pre-Training for Speech Emotion Representation（再引用） | Ma et al. | 2024 | [高・PDF確認済み] | https://doi.org/10.18653/v1/2024.findings-acl.931 | emotion2vecの下流利用、SER評価指標、事前学習にMSP-Podcast v1.8を含むこと |
+| 感情ラベルと演技方法の違いを考慮した演技感情音声データベースHCUDBの構築 | Mera et al. | 2025 | [高・査読済み・要確認: Web要旨のみ] | https://doi.org/10.3156/jsoft.37.4_725 | HCUDB1が演技感情と他者評価感情の両方を持つこと、演技感情を真値にする場合の解釈上の留意点 |
+| The MSP-Podcast Corpus | Busso et al. | 2025 | [中・プレプリント・要確認: Web要旨のみ] | https://arxiv.org/abs/2509.09791 | MSP-PodcastがPodcast由来の自然発話と知覚アノテーションを持つこと、話者情報と分割の背景 |
+
+**再引用・公式source確認**: FunASR v1.4.15 source、NII HCUDB公式ページ、MSP Laboratory公式ページは既存ログまたは公式資料として再確認した。release固有の件数と除外はWeb上の現行ページではなく、ローカルR1.10 manifest・contract・cache metadataを一次証拠にした。
+
+## 2026-09-19 — 単一WAVの出力一致とモデル同一性
+
+**質問/文脈**: 特定の1つのWAVに対してリポジトリ実装と公式モデルの出力が完全一致した場合、それを同一モデルと呼べるかを検討した。単一入力での一致、全入力での機能的同値性、重み・構成・前処理を含む実装同一性を区別した。論文PDFの直接参照は行わず、arXiv公開HTMLおよびUSENIX公式掲載ページを確認した。
+
+| 論文 | 著者 | 年 | エビデンス強度 | DOI/URL | 使用した主張 |
+|------|------|----|--------------|---------|-------------|
+| Equivalent and Approximate Transformations of Deep Neural Networks | Kumar, Serra, & Ramalingam | 2019 | [中・プレプリント・要確認: Web本文のみ] | https://arxiv.org/abs/1905.11428 | ニューラルネットワークの機能的同値性は、すべての入力で同じ出力を返すこととして定義され、単一入力での一致とは区別される |
+| Stealing Machine Learning Models via Prediction APIs | Tramèr, Zhang, Juels, Reiter, & Ristenpart | 2016 | [高・査読会議・要確認: Web要旨のみ] | https://www.usenix.org/conference/usenixsecurity16/technical-sessions/presentation/tramer | 元モデルのパラメータや学習データを知らない別モデルでも、高い出力一致率を持ち得るため、出力一致はモデル実体の同一性を意味しない |
+
+## 2026-09-19 — MSP-Podcastにおける低スコアの解釈
+
+**質問/文脈**: 英語音声を含むMSP-Podcastでemotion2vec+ largeの評価値が低くなった理由を、言語差・コーパス差・出力ラベル集合の不一致に分けて検討した。emotion2vec論文、公式モデルカード、MSP-Podcast公式ページは既存登録済みのため再引用とし、重複行は追加しない。
+
+| 論文 | 著者 | 年 | エビデンス強度 | DOI/URL | 使用した主張 |
+|------|------|----|--------------|---------|-------------|
+| A Preliminary Study of Cross-Lingual Emotion Recognition from Speech: Automatic Classification versus Human Perception | Jeon, Le, Xia, & Liu | 2013 | [高・査読会議・要確認: Web要旨のみ] | https://doi.org/10.21437/Interspeech.2013-246 | SERでは言語だけでなくコーパスや収録様式の差が性能低下要因となり、同一コーパス内評価よりクロスコーパス評価が難しくなること |
+
+**ローカル一次証拠**: MSP-Podcast Test1の保存済み9クラス確率を再集計すると、対象外3クラス（neutral・other・unknown）への予測が4,227/7,136件（59.23%）。同一確率のargmaxを対象6クラスに限定した感度分析では、Accuracy 30.72%→54.62%、UAR 16.57%→35.01%、Macro-F1 22.52%→31.50%となった。
+
+## 2026-09-19 — MSP事前学習利用と自然発話説明の再検討
+
+**質問/文脈**: emotion2vecの上流事前学習にMSP-Podcastが含まれ、emotion2vec+ largeの大規模疑似ラベルデータにも自然発話が含まれる可能性を排除できないため、「未経験の自然発話ドメイン」を低性能の主因とする説明を再検討した。
+
+**再引用**: Ma et al. (2024) のPDF確認済みTable 1、emotion2vec+ large公式モデルカード、MSP-Podcast公式ページを再確認した。同一DOI/URLは登録済みのため重複行は追加しない。確認できたのは、emotion2vecの自己教師あり事前学習にMSP-Podcast v1.8（113.5時間）が含まれること、plus-largeが42,526時間のフィルタ済み疑似ラベルデータでfine-tuningされたこと、ならびにその詳細なデータ構成が未公開であること。したがって、自然発話への未曝露は根拠にできず、上流のラベルなし曝露と、公開9クラスheadによるMSP公式ラベルの教師あり学習は区別する必要がある。
+## 2026-09-23 — RAVDESSにWAVとMP4が併存する理由
+
+**質問/文脈**: RAVDESS-selectedにWAVファイルとMP4ファイルの両方が含まれる理由の確認。
+
+| 論文 | 著者 | 年 | エビデンス強度 | DOI/URL | 使用した主張 |
+|------|------|----|--------------|---------|-------------|
+| The Ryerson Audio-Visual Database of Emotional Speech and Song (RAVDESS): A dynamic, multimodal set of facial and vocal expressions in North American English | Livingstone & Russo | 2018 | [高] | https://doi.org/10.1371/journal.pone.0196391 | 同一の発話・歌唱をaudio-video、video-only、audio-onlyの3条件へ書き出し、前二者をMP4、audio-onlyをWAVとして配布していることの根拠 |
+
+## 2026-09-23 — HCUDBとRAVDESSの音声比較条件
+
+**質問/文脈**: HCUDBと比較する際にRAVDESSのWAVファイルだけを使用すべきかを検討。
+
+**再引用**: Livingstone and Russo (2018)、HCUDB公式配布文書、および Mera et al. (2025) を再確認した。同一DOI/URLは登録済みのため重複行は追加しない。HCUDBとの音声感情認識比較では、RAVDESSのaudio-onlyかつspeech条件を用い、対応するMP4由来音声とsong条件を混在させないことが比較設計上適切であると整理した。
+
+## 2026-09-23 — MP4削除後のRAVDESS分析可否
+
+**質問/文脈**: RAVDESS-selectedをWAVのみ2,452件にした状態で分析できるかを確認。
+
+**再引用**: Livingstone and Russo (2018) およびHCUDB公式配布文書を再確認した。同一DOI/URLは登録済みのため重複行は追加しない。RAVDESS単独の音声分析には残存WAV全件を使用できるが、HCUDBとの発話音声比較ではsongを除いたspeech 1,440件へ限定する必要がある。また、削除前に生成したCSVにはMP4 4,904件の行が残るため、実ファイルとの整合を更新する必要がある。
+
